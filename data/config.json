@@ -1,0 +1,59 @@
+{
+  "port": 8765,
+  "sources": {
+    "holdings": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_ETF_Holdings.csv",
+    "navDaily": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_DailyNAV.csv",
+    "navHistory": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_DailyNAVHistorical.csv",
+    "monthlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_MonthlyPerformance.csv",
+    "quarterlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_QuarterlyPerformance.csv"
+  },
+  "fx": { "USD": "USDSEK=X", "CAD": "CADSEK=X" },
+  "dalalStreet": {
+    "asOf": "2026-06-30",
+    "filed": "2026-08-13",
+    "portfolioValueUsd": 326749980,
+    "nextFilingWindow": "13–16 nov 2026",
+    "holdings": [
+      { "ticker": "HCC",  "name": "Warrior Met Coal",     "shares": 1744050,  "weight": 43.32, "qChange": "−3,69% (−66 781)" },
+      { "ticker": "RIG",  "name": "Transocean",           "shares": 20398659, "weight": 30.53, "qChange": "+0,03% (+5 990)" },
+      { "ticker": "AMR",  "name": "Alpha Metallurgical",  "shares": 517194,   "weight": 26.11, "qChange": "−10,79% (−62 540)" },
+      { "ticker": "KSPI", "name": "Kaspi.kz",             "shares": 1702,     "weight": 0.05,  "qChange": "ny" }
+    ]
+  },
+  "dates": [
+    { "date": "2026-09-01", "label": "WAGN årsredovisning (räkenskapsår slutade 30 jun) — fullständiga innehav + likviditetsklassning", "approx": true },
+    { "date": "2026-09-08", "label": "Kaspi avstämningsdag utdelning (KZT 1 000/ADS); bolagsstämma 9 sep" },
+    { "date": "2026-09-10", "label": "TCMB räntebesked (Turkiet är {TR} av fonden)" },
+    { "date": "2026-09-16", "label": "Pabrai på Pareto Energy Conference, Oslo (träffar rigg-VD:arna)" },
+    { "date": "2026-09-23", "label": "Pabrais investerarsamtal (WAGN)" },
+    { "date": "2026-10-28", "label": "Kaspi Q3-rapport" },
+    { "date": "2026-10-30", "label": "Warrior Met Q3-rapport" },
+    { "date": "2026-10-31", "label": "DOJ-certifiering RIG/VAL måste ske ~nu för stängning 2026", "approx": true },
+    { "date": "2026-11-06", "label": "Constellation Q3-rapport" },
+    { "date": "2026-11-13", "label": "Dalal Street Q3 13F väntas (deadline lör 14 nov → mån 16 nov)", "approx": true }
+  ],
+  "names": {
+    "HCC":       { "name": "Warrior Met Coal",            "flag": "🇺🇸", "avanza": "online" },
+    "KSPI":      { "name": "Kaspi.kz",                    "flag": "🇰🇿", "avanza": "online" },
+    "RIG":       { "name": "Transocean",                  "flag": "🇺🇸", "avanza": "online" },
+    "AMR":       { "name": "Alpha Metallurgical",         "flag": "🇺🇸", "avanza": "online" },
+    "NE":        { "name": "Noble Corp",                  "flag": "🇺🇸", "avanza": "online" },
+    "VAL":       { "name": "Valaris",                     "flag": "🇺🇸", "avanza": "online" },
+    "DAC":       { "name": "Danaos",                      "flag": "🇺🇸", "avanza": "online" },
+    "OXY":       { "name": "Occidental Petroleum",        "flag": "🇺🇸", "avanza": "online" },
+    "CSU CN":    { "name": "Constellation Software",      "flag": "🇨🇦", "avanza": "online" },
+    "LMN CN":    { "name": "Lumine Group",                "flag": "🇨🇦", "avanza": "online" },
+    "TOI CN":    { "name": "Topicus.com",                 "flag": "🇳🇱", "avanza": "online" },
+    "RYGYO TI":  { "name": "Reysas REIT",                 "flag": "🇹🇷", "avanza": "telefon" },
+    "RYSAS TI":  { "name": "Reysas Tasimacilik",          "flag": "🇹🇷", "avanza": "telefon" },
+    "TAVHL TI":  { "name": "TAV Airports",                "flag": "🇹🇷", "avanza": "telefon" },
+    "GMTAS TI":  { "name": "Gimat",                       "flag": "🇹🇷", "avanza": "telefon" },
+    "TABGD TI":  { "name": "TAB Gida",                    "flag": "🇹🇷", "avanza": "telefon" },
+    "EDEL IN":   { "name": "Edelweiss Financial",         "flag": "🇮🇳", "avanza": "nej" },
+    "NUVAMA IN": { "name": "Nuvama Wealth",               "flag": "🇮🇳", "avanza": "nej" },
+    "SGN PW":    { "name": "Sygnity",                     "flag": "🇵🇱", "avanza": "telefon" },
+    "FXFXX":     { "name": "Penningmarknadsfond (kassa)", "flag": "💵", "avanza": "—" }
+  },
+  "cashTickers": ["CAD", "PLN", "TRY", "USD", "EUR", "INR", "Cash&Other"],
+  "cashLike": ["FXFXX"]
+}

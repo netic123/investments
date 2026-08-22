@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pabrai Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+:root{
+  --paper:#F4F5F3; --surface:#FFFFFF; --surface-2:#EDEFEC; --ink:#191D1B; --ink-2:#3D4441; --muted:#6A726E;
+  --rule:#DCDFDB; --rule-strong:#C4C8C3; --accent:#7A4A22; --accent-soft:#E9DDD1;
+  --pos:#2E6B4F; --neg:#A03828; --warn:#8A6A1F; --pos-bg:#E4EEE8; --neg-bg:#F5E3DF;
+  --f-display:"Spectral",Georgia,serif; --f-body:"IBM Plex Sans","Segoe UI",Arial,sans-serif; --f-mono:"IBM Plex Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --paper:#15120F; --surface:#1C1916; --surface-2:#232019; --ink:#EDE9E3; --ink-2:#CFC8BF; --muted:#9A9388;
+    --rule:#2E2A24; --rule-strong:#413B33; --accent:#C98A50; --accent-soft:#3A2C1D;
+    --pos:#74B994; --neg:#E08573; --warn:#D4A94A; --pos-bg:#1D2A23; --neg-bg:#2E1E1A; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px 60px}
+a{color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:600;font-size:2rem;margin:0;letter-spacing:-.01em}
+h2{font-family:var(--f-display);font-weight:600;font-size:1.35rem;margin:0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.up{color:var(--pos)} .down{color:var(--neg)} .flat{color:var(--muted)}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;padding:34px 0 18px;border-bottom:1px solid var(--rule-strong)}
+.top .sub{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;gap:14px;flex-wrap:wrap}
+.top .filenote{font-size:.82rem;color:var(--muted);margin-top:6px}
+.kpis{display:flex;gap:22px;flex-wrap:wrap}
+.kpi{min-width:110px}
+.kpi .l{font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font-family:var(--f-display);font-size:1.35rem;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:.8rem;color:var(--muted)}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:420px;justify-content:flex-end}
+button{font:inherit;font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:8px 14px;border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button:disabled{opacity:.5;cursor:wait}
+#status{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right}
+#status.err{color:var(--neg)}
+
+section{padding-top:34px}
+.sec-head{border-top:1px solid var(--rule-strong);padding-top:12px;margin-bottom:14px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.sec-head .note{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--rule);padding:16px 18px}
+.card .hd{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.chip{font-family:var(--f-mono);font-size:.78rem;font-weight:600;background:var(--ink);color:var(--paper);padding:1px 7px}
+.card .nm{font-family:var(--f-display);font-size:1.08rem;font-weight:600}
+.badge{margin-left:auto;font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border:1px solid;font-weight:600}
+.b-buy{color:var(--pos);border-color:var(--pos);background:var(--pos-bg)}
+.b-sell{color:var(--neg);border-color:var(--neg);background:var(--neg-bg)}
+.b-flat{color:var(--muted);border-color:var(--rule-strong)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:.9rem}
+.grid2 .l{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.grid2 .v{font-variant-numeric:tabular-nums}
+.grid2 .s{font-size:.76rem;color:var(--muted)}
+.big{font-family:var(--f-display);font-size:1.5rem;line-height:1.1}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.88rem}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--rule);white-space:nowrap}
+thead th{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);position:sticky;top:0}
+tbody tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:.84rem}
+tr.mine td{background:var(--accent-soft)}
+tr.chg-buy td:first-child{box-shadow:inset 3px 0 0 var(--pos)}
+tr.chg-sell td:first-child{box-shadow:inset 3px 0 0 var(--neg)}
+tr.cashrow td{color:var(--muted);font-style:italic}
+.tick{font-family:var(--f-mono);font-weight:600;font-size:.82rem}
+.pill{display:inline-block;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;border:1px solid var(--rule-strong);color:var(--muted)}
+.pill.ok{color:var(--pos);border-color:var(--pos)} .pill.tel{color:var(--warn);border-color:var(--warn)} .pill.no{color:var(--neg);border-color:var(--neg)}
+
+.empty{padding:14px 16px;color:var(--muted);font-size:.9rem;border:1px dashed var(--rule-strong)}
+.callout{border:1px solid var(--rule);border-left:3px solid var(--accent);background:var(--surface);padding:12px 16px;font-size:.9rem;margin-bottom:12px}
+.callout b{color:var(--ink)}
+details{border:1px solid var(--rule);background:var(--surface);margin-top:10px}
+summary{cursor:pointer;padding:10px 14px;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.spark{width:100%;height:64px;display:block}
+.dates{list-style:none;margin:0;padding:0}
+.dates li{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--rule);font-size:.9rem}
+.dates .d{font-family:var(--f-mono);font-size:.82rem;min-width:150px;color:var(--ink)}
+.dates .in{margin-left:auto;font-family:var(--f-mono);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.dates li.soon .d{color:var(--accent);font-weight:600}
+footer{margin-top:44px;border-top:1px solid var(--rule-strong);padding-top:16px;font-size:.8rem;color:var(--muted)}
+footer p{margin:0 0 .5em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <div class="sub"><span>Mohnish Pabrai</span><span>Wagons ETF · Dalal Street</span><span>Inte investeringsrådgivning</span></div>
+    <h1>Pabrai Dashboard</h1>
+    <div class="filenote" id="fileDate">—</div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="l">Fondens tillgångar</div><div class="v mono" id="kNet">—</div><div class="s" id="kNetSub">&nbsp;</div></div>
+    <div class="kpi"><div class="l">NAV</div><div class="v mono" id="kNav">—</div><div class="s" id="kNavSub">&nbsp;</div></div>
+    <div class="kpi"><div class="l">Börskurs WAGN</div><div class="v mono" id="kPx">—</div><div class="s" id="kPxSub">&nbsp;</div></div>
+  </div>
+  <div class="actions">
+    <span id="status">laddar…</span>
+    <button id="btnRefresh">Uppdatera</button>
+  </div>
+</header>
+
+<section>
+  <div class="sec-head"><h2>Dina aktier — vad Pabrai gör i dem</h2><span class="note" id="mineNote">—</span></div>
+  <div class="cards" id="cards"></div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Ändringar mellan de två senaste filerna</h2><span class="note" id="chgNote">—</span></div>
+  <div id="changes"></div>
+  <details><summary>Hela förändringsloggen</summary><div id="log"></div></details>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Hela ETF-portföljen</h2><span class="note" id="allNote">—</span></div>
+  <div class="tablewrap"><table id="tblAll"><thead><tr>
+    <th>#</th><th>Innehav</th><th class="num">Vikt</th><th class="num">Aktier</th><th class="num">Δ vs förra filen</th><th class="num" id="thFirst">Δ sedan första fil</th><th class="num">Kurs (lokal)</th><th class="num">Värde USD</th><th>Avanza</th>
+  </tr></thead><tbody></tbody></table></div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Avkastning</h2><span class="note" id="perfNote">—</span></div>
+  <div class="cards" style="grid-template-columns:2fr 1fr">
+    <div class="card">
+      <div class="tablewrap" style="border:none"><table id="tblPerf"><thead><tr>
+        <th></th><th class="num">1 mån</th><th class="num">3 mån</th><th class="num">6 mån</th><th class="num">YTD</th><th class="num">1 år</th><th class="num">Sedan fondstart (årlig)</th><th class="num">Sedan fondstart (kum.)</th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="grid2 l" style="display:block;margin-bottom:6px">NAV — senaste 90 dagarna</div>
+      <svg class="spark" id="spark" viewBox="0 0 300 64" preserveAspectRatio="none"></svg>
+      <div class="muted" id="sparkSub" style="font-size:.8rem">—</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Privatfonden — Dalal Street (13F)</h2><span class="note" id="dalalNote">—</span></div>
+  <div class="callout" id="dalalCall"></div>
+  <div class="tablewrap"><table id="tblDalal"><thead><tr><th>Innehav</th><th class="num">Vikt</th><th class="num">Aktier</th><th>Ändring i kvartalet</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Datum</h2><span class="note">Kommande</span></div>
+  <ul class="dates" id="dates"></ul>
+</section>
+
+<footer>
+  <p>Källor: fondens egna dagliga filer (wagonsetf.filepoint.live) · Yahoo Finance för kurser · SEC 13F för privatfonden. 13F visar bara USA-noterade innehav.</p>
+  <p>Fondens innehavsfil är daterad en handelsdag <em>efter</em> kurserna i den (T+1). Ögonblicksbilder sparas i <span class="mono">data/snapshots.json</span> varje gång en ny fil-dag upptäcks — körs dashboarden inte varje vardag slås flera dagars affärer ihop under "Ändringar", intervallet visas i rubriken.</p>
+  <p><b>Inte investeringsrådgivning.</b> Siffrorna är fondens egna och Yahoos; uppskattade ordervärden är antal × fondens kurs.</p>
+</footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const nf = new Intl.NumberFormat('sv-SE');
+const fmt = (n,d=0)=> n==null||!isFinite(n) ? '—' : (d?new Intl.NumberFormat('sv-SE',{minimumFractionDigits:d,maximumFractionDigits:d}).format(n):nf.format(Math.round(n)));
+const pct = (n,d=1,sign=true)=> n==null||!isFinite(n) ? '—' : (sign&&n>0?'+':'')+n.toFixed(d).replace('.',',')+'%';
+const cls = n => n==null||!isFinite(n)||Math.abs(n)<1e-9 ? 'flat' : n>0 ? 'up' : 'down';
+const ratio = (a,b)=> a==null||b==null||!b ? null : (a/b-1)*100;   // null in → null ut, aldrig -100 %
+const div = (a,k)=> a==null ? null : a/k;
+const money = (n,cur='USD')=> n==null ? '—' : (cur==='USD'?'$':cur==='CAD'?'C$':'')+fmt(n,2)+(cur!=='USD'&&cur!=='CAD'?' '+cur:'');
+const dateSv = iso => iso ? new Date(iso+'T00:00:00').toLocaleDateString('sv-SE',{day:'numeric',month:'short',year:'numeric'}) : '—';
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today0 = ()=>{ const t=new Date(); t.setHours(0,0,0,0); return t; };
+
+let CFG=null, TR_WEIGHT=null;
+async function getJson(u){ const r=await fetch(u,{cache:'no-store'}); const j=await r.json().catch(()=>({error:'ogiltigt svar'})); if(!r.ok) throw new Error(j.error||r.statusText); return j; }
+
+async function load(force){
+  const st=$('#status'); st.className=''; st.textContent = force?'hämtar på nytt…':'laddar…'; $('#btnRefresh').disabled=true;
+  try{
+    if(force) await getJson('/api/refresh');
+    CFG = CFG || await getJson('/api/config');
+    const [h,n,p,q] = await Promise.allSettled([getJson('/api/holdings'),getJson('/api/nav'),getJson('/api/perf'),getJson('/api/quotes')]);
+    const errs=[];
+    const Q = q.status==='fulfilled' ? q.value : {};
+    if(h.status==='fulfilled'){
+      renderHoldings(h.value, Q);
+      if(h.value.fetchError) errs.push(h.value.latest ? 'innehavsfilen kunde inte hämtas — visar sparad fil från '+dateSv(h.value.latest.date) : 'innehavsfilen kunde inte hämtas');
+    } else errs.push('innehav: '+h.reason.message);
+    if(n.status==='fulfilled') renderNav(n.value); else errs.push('NAV kunde inte hämtas');
+    if(p.status==='fulfilled') renderPerf(p.value); else errs.push('avkastning kunde inte hämtas');
+    if(q.status!=='fulfilled') errs.push('kurser kunde inte hämtas');
+    else { const bad=Object.values(Q).filter(x=>x.error).map(x=>x.symbol); if(bad.length) errs.push('kurs saknas: '+bad.join(', ')); }
+    renderDalal(); renderDates();
+    const t=new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
+    st.textContent = errs.length ? 'uppdaterad '+t+' — '+errs.join(' · ') : 'uppdaterad '+t;
+    if(errs.length) st.className='err';
+  }catch(e){ st.className='err'; st.textContent='fel: '+e.message; }
+  $('#btnRefresh').disabled=false;
+}
+
+function nameOf(t){ const m=CFG.names[t]; return m?m.name:t; }
+function flagOf(t){ const m=CFG.names[t]; return m?m.flag:''; }
+function avanzaPill(t){ const a=(CFG.names[t]||{}).avanza; return a==='online'?'<span class="pill ok">online</span>':a==='telefon'?'<span class="pill tel">via telefon</span>':a==='nej'?'<span class="pill no">ej möjligt</span>':'<span class="pill">—</span>'; }
+const isCashLike = t => (CFG.cashLike||[]).includes(t);
+
+function renderHoldings(H,Q){
+  const L=H.latest; if(!L){ $('#cards').innerHTML='<div class="empty">Ingen innehavsdata — källan svarade inte och ingen ögonblicksbild finns sparad ännu.</div>'; return; }
+  const F=H.first, P=H.previous;
+  $('#fileDate').innerHTML = `Fondens innehavsfil daterad <b>${dateSv(L.date)}</b> — kurser per föregående handelsdag (T+1). Hämtad ${new Date(H.fetchedAt).toLocaleString('sv-SE',{dateStyle:'short',timeStyle:'short'})}.`;
+  $('#kNet').textContent = L.netAssets==null ? '—' : '$'+fmt(L.netAssets/1e6,1)+'M';
+  $('#kNetSub').textContent = F&&F!==L ? pct(ratio(L.netAssets,F.netAssets),1)+' sedan '+dateSv(F.date)+' (inkl. flöden)' : '';
+  if(F) $('#thFirst').textContent='Δ sedan första fil ('+dateSv(F.date)+')';
+  TR_WEIGHT = Object.entries(L.rows).filter(([t])=>t.endsWith(' TI')).reduce((s,[,r])=>s+(r.weight||0),0);
+
+  // ---- dina aktier
+  const fx={}; for(const [cur,sym] of Object.entries(CFG.fx||{})){ const qq=Q[sym]; if(qq&&qq.price) fx[cur]=qq.price; }
+  const prevMap = P ? Object.fromEntries(H.changesVsPrevious.map(c=>[c.ticker,c])) : {};
+  $('#mineNote').textContent = P ? 'jämfört med filen '+dateSv(P.date) : 'första ögonblicksbilden';
+  const t0=today0();
+  $('#cards').innerHTML = CFG.myPositions.map(pos=>{
+    const row=L.rows[pos.ticker]; const ch=prevMap[pos.ticker]; const q=Q[pos.yahoo]||{};
+    const badge = ch&&ch.kind==='SÅLD HELT' ? `<span class="badge b-sell">SÅLD HELT ${fmt(ch.delta)}</span>`
+      : !row ? '<span class="badge b-sell">ej i fonden</span>'
+      : ch ? (ch.delta>0?`<span class="badge b-buy">KÖP +${fmt(ch.delta)} (${pct(ch.pct,1)})</span>`:`<span class="badge b-sell">SÄLJ ${fmt(ch.delta)} (${pct(ch.pct,1)})</span>`)
+      : '<span class="badge b-flat">Pabrai oförändrad</span>';
+    const live=q.price, day = ratio(live,q.prevClose);
+    const qt=q.time?new Date(q.time):null, sameDay = qt && qt.toDateString()===new Date().toDateString();
+    const qLabel = live ? (sameDay?'Kurs nu':'Senaste stängning') : 'Kurs';
+    const qWhen = qt ? qt.toLocaleString('sv-SE',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+    const vsEntry = ratio(live,pos.entry);
+    const sek = live&&fx[pos.currency] ? live*fx[pos.currency] : null;
+    const inFund = row ? `${fmt(row.shares)} aktier · ${pct(row.weight,2,false)} av fonden` : '—';
+    const rp = pos.nextReport ? Math.round((new Date(pos.nextReport+'T00:00:00')-t0)/864e5) : null;
+    const report = !pos.nextReport ? '—' : rp<0 ? `<span class="down">${dateSv(pos.nextReport)} (passerad — uppdatera config)</span>` : dateSv(pos.nextReport)+(rp<=7?` <span class="up">(om ${rp} d)</span>`:'');
+    return `<div class="card">
+      <div class="hd"><span class="chip">${esc(pos.ticker.replace(' CN',''))}</span><span class="nm">${esc(nameOf(pos.ticker))}</span>${badge}</div>
+      <div class="grid2">
+        <div><div class="l">Pabrai (ETF)</div><div class="v">${inFund}</div></div>
+        <div><div class="l">Pabrais affär (≈ USD)</div><div class="v">${ch?'≈ $'+fmt(ch.approxUsd):'—'}</div></div>
+        <div><div class="l">${qLabel}</div><div class="v big">${live?money(live,pos.currency)+' <span class="'+cls(day)+'" style="font-size:.8rem">'+pct(day,2)+'</span>':'<span class="down" style="font-size:.95rem">kurs kunde inte hämtas</span>'}</div><div class="s">${qWhen}${day!=null?' · dagsförändring':''}</div></div>
+        <div><div class="l">Sedan ditt köp (${money(pos.entry,pos.currency)})</div><div class="v big ${cls(vsEntry)}">${pct(vsEntry,1)}</div></div>
+        <div><div class="l">Kurs i SEK (per aktie)</div><div class="v">${sek?fmt(sek,0)+' kr':(live?'växelkurs saknas':'—')}</div></div>
+        <div><div class="l">Nästa rapport</div><div class="v">${report}</div></div>
+      </div></div>`;
+  }).join('');
+
+  // ---- ändringar
+  const C=H.changesVsPrevious.filter(c=>!c.cashLike), LOG=H.log.filter(c=>!c.cashLike);
+  const span = P ? `${dateSv(P.date)} → ${dateSv(L.date)}` : '';
+  const multiDay = P && Math.round((new Date(L.date)-new Date(P.date))/864e5)>1;
+  const gapCallout = multiDay ? `<div class="callout">Intervallet ${span} täcker flera handelsdagar — affärer däremellan är hopslagna.</div>` : '';
+  $('#chgNote').textContent = P ? span : '—';
+  $('#changes').innerHTML = !P ? '<div class="empty">Bara en ögonblicksbild sparad ännu — ändringar syns från nästa fil-dag.</div>'
+    : !C.length ? `<div class="empty">Inga ändringar i antal aktier (${span}).</div>`
+    : gapCallout+changesTable(C);
+  $('#log').innerHTML = LOG.length ? changesTable(LOG,true) : '<div class="empty">Tom.</div>';
+
+  // ---- hela tabellen
+  const firstMap = H.changesVsFirst ? Object.fromEntries(H.changesVsFirst.map(c=>[c.ticker,c])) : {};
+  const mine=new Set(CFG.myPositions.map(p=>p.ticker));
+  const rows=Object.entries(L.rows).sort((a,b)=>(b[1].weight||0)-(a[1].weight||0));
+  $('#allNote').textContent=rows.length+' innehav · fil '+dateSv(L.date);
+  const cash=Object.values(L.cash||{}).reduce((a,v)=>a+(v||0),0);
+  $('#tblAll tbody').innerHTML = rows.map(([t,r],i)=>{
+    const c=prevMap[t], f=firstMap[t], cl=isCashLike(t);
+    const d = c ? `<span class="${cls(c.delta)}">${c.delta>0?'+':''}${fmt(c.delta)} (${pct(c.pct,1)})</span>` : '<span class="flat">—</span>';
+    const df = f ? `<span class="${cls(f.delta)}">${f.delta>0?'+':''}${fmt(f.delta)} (${pct(f.pct,1)})</span>` : '<span class="flat">—</span>';
+    const px = cl && r.shares ? r.mv/r.shares : r.price;
+    return `<tr class="${mine.has(t)?'mine ':''}${cl?'cashrow':(c?(c.delta>0?'chg-buy':'chg-sell'):'')}">
+      <td class="num">${i+1}</td><td>${flagOf(t)} <span class="tick">${esc(t)}</span> ${esc(nameOf(t))}</td>
+      <td class="num">${pct(r.weight,2,false)}</td><td class="num">${fmt(r.shares)}</td><td class="num">${d}</td><td class="num">${df}</td>
+      <td class="num">${fmt(px,2)}</td><td class="num">${fmt(div(r.mv,1e6),2)}M</td><td>${avanzaPill(t)}</td></tr>`;
+  }).join('') + `<tr class="cashrow"><td></td><td>Kassa / valutor (netto)</td><td class="num">${pct(L.netAssets?cash/L.netAssets*100:null,2,false)}</td><td colspan="4"></td><td class="num">${fmt(cash/1e6,2)}M</td><td></td></tr>`;
+}
+function changesTable(list,withDate){
+  return `<div class="tablewrap"><table><thead><tr>${withDate?'<th>Mellan filerna</th>':''}<th>Innehav</th><th>Typ</th><th class="num">Δ aktier</th><th class="num">Δ %</th><th class="num">Efter</th><th class="num">≈ Värde USD</th></tr></thead><tbody>`+
+    list.map(c=>`<tr class="${c.delta>0?'chg-buy':'chg-sell'}">${withDate?`<td class="mono">${dateSv(c.from)} → ${dateSv(c.to)}</td>`:''}<td>${flagOf(c.ticker)} <span class="tick">${esc(c.ticker)}</span> ${esc(nameOf(c.ticker))}</td>
+      <td><span class="badge ${c.delta>0?'b-buy':'b-sell'}" style="margin:0">${c.kind}</span></td><td class="num ${cls(c.delta)}">${c.delta>0?'+':''}${fmt(c.delta)}</td><td class="num ${cls(c.delta)}">${pct(c.pct,1)}</td><td class="num">${fmt(c.sharesTo)}</td><td class="num">${fmt(c.approxUsd)}</td></tr>`).join('')+'</tbody></table></div>';
+}
+
+function renderNav(N){
+  $('#kNav').textContent = N.nav==null ? '—' : '$'+fmt(N.nav,2);
+  $('#kNavSub').innerHTML = `<span class="${cls(N.navChgPct)}">${pct(N.navChgPct,2)}</span> · ${dateSv(N.date)}`;
+  $('#kPx').textContent = N.price==null ? '—' : '$'+fmt(N.price,2);
+  $('#kPxSub').textContent = N.premium==null ? '' : (N.premium<0?'rabatt ':'premie ')+pct(Math.abs(N.premium),2,false)+' mot NAV';
+  const cut=new Date(Date.now()-90*864e5).toISOString().slice(0,10);
+  const h=(N.history||[]).filter(r=>r.date>=cut && r.nav!=null); if(h.length<2){ $('#sparkSub').textContent='—'; return; }
+  const xs=h.map((_,i)=>i/(h.length-1)*300), ys=h.map(r=>r.nav); const lo=Math.min(...ys),hi=Math.max(...ys); const y=v=>60-(v-lo)/((hi-lo)||1)*52;
+  const d=h.map((r,i)=>(i?'L':'M')+xs[i].toFixed(1)+' '+y(r.nav).toFixed(1)).join(' ');
+  $('#spark').innerHTML=`<path d="${d} L300 64 L0 64 Z" fill="var(--accent-soft)"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="1.6"/><circle cx="300" cy="${y(ys[ys.length-1]).toFixed(1)}" r="2.6" fill="var(--accent)"/>`;
+  const first=h[0], last=h[h.length-1], r=ratio(last.nav,first.nav);
+  $('#sparkSub').innerHTML=`${dateSv(first.date)} $${fmt(first.nav,2)} → ${dateSv(last.date)} $${fmt(last.nav,2)} <span class="${cls(r)}">${pct(r,1)}</span>`;
+}
+function renderPerf(Pf){
+  const m=Pf.monthly||[]; if(!m.length){ $('#perfNote').textContent='—'; return; }
+  $('#perfNote').textContent='per '+dateSv(m[0].date)+' · månadsdata från fonden';
+  const order=['WAGN NAV','WAGN MKT','SPTR2','SPXEWTR']; const label={'WAGN NAV':'Pabrai (NAV)','WAGN MKT':'Pabrai (börskurs)','SPTR2':'S&P 500 TR','SPXEWTR':'S&P 500 likaviktat'};
+  const rows=order.map(k=>m.find(r=>r.ticker===k)).filter(Boolean);
+  const c=v=>`<td class="num ${cls(v)}">${pct(v,2)}</td>`;
+  $('#tblPerf tbody').innerHTML=rows.map(r=>`<tr><td><b>${label[r.ticker]||r.ticker}</b></td>${c(r.m1)}${c(r.m3)}${c(r.m6)}${c(r.ytd)}${c(r.y1)}${c(r.sinceAnn)}${c(r.sinceCum)}</tr>`).join('');
+}
+function renderDalal(){
+  const D=CFG.dalalStreet; $('#dalalNote').textContent='per '+dateSv(D.asOf)+' · inlämnad '+dateSv(D.filed);
+  $('#dalalCall').innerHTML=`<b>$${fmt(D.portfolioValueUsd/1e6,1)}M, ${D.holdings.length} USA-noterade innehav.</b> Privatfonden syns bara kvartalsvis via 13F, och bara för amerikanska noteringar — de turkiska innehaven (~25% av Reysas Tasimacilik, &gt;25% av Gimat) finns inte här. <b>Nästa 13F: ${esc(D.nextFilingWindow)}.</b> Uppdateras för hand i <span class="mono">data/config.json</span>.`;
+  const mine=new Set(CFG.myPositions.map(p=>p.ticker));
+  $('#tblDalal tbody').innerHTML=D.holdings.map(h=>`<tr class="${mine.has(h.ticker)?'mine':''}"><td><span class="tick">${esc(h.ticker)}</span> ${esc(h.name)}</td><td class="num">${pct(h.weight,2,false)}</td><td class="num">${fmt(h.shares)}</td><td>${esc(h.qChange)}</td></tr>`).join('');
+}
+function renderDates(){
+  const t0=today0();
+  const items=[...CFG.dates].sort((a,b)=>a.date.localeCompare(b.date));
+  const html=items.map(d=>{ const dt=new Date(d.date+'T00:00:00'); const days=Math.round((dt-t0)/864e5); if(days<-3) return '';
+    const inStr=days<0?'passerat':days===0?'idag':days===1?'imorgon':'om '+days+' dagar';
+    const label=String(d.label).replace('{TR}', TR_WEIGHT!=null?pct(TR_WEIGHT,0,false):'~30%');
+    return `<li class="${days>=0&&days<=7?'soon':''}"><span class="d">${d.approx?'~':''}${dateSv(d.date)}</span><span>${esc(label)}</span><span class="in">${inStr}</span></li>`; }).join('');
+  $('#dates').innerHTML = html || '<li class="empty">Inga kommande datum — fyll på listan i data/config.json (dates).</li>';
+}
+
+$('#btnRefresh').addEventListener('click',()=>load(true));
+load(false);
+setInterval(()=>load(true), 10*60*1000); // var 10:e minut
+</script>
+</body>
+</html>

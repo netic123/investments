@@ -1,0 +1,4 @@
+data/snapshots.json.broken-*
+data/*.tmp
+*.log
+Thumbs.db

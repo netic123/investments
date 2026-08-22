@@ -1,0 +1,288 @@
+[
+ {
+  "date": "2026-08-20",
+  "fileDate": "08/20/2026",
+  "netAssets": 277772617,
+  "rows": {
+   "AMR": {
+    "shares": 70041,
+    "price": 194.42,
+    "mv": 13617371.22,
+    "weight": 4.9
+   },
+   "CSU CN": {
+    "shares": 5620,
+    "price": 3102.9,
+    "mv": 12626383.32,
+    "weight": 4.55
+   },
+   "DAC": {
+    "shares": 86596,
+    "price": 147.6,
+    "mv": 12781569.6,
+    "weight": 4.6
+   },
+   "EDEL IN": {
+    "shares": 14572000,
+    "price": 122.27,
+    "mv": 18606082.29,
+    "weight": 6.7
+   },
+   "FXFXX": {
+    "shares": 4106638.94,
+    "price": 100,
+    "mv": 4106638.94,
+    "weight": 1.48
+   },
+   "GMTAS TI": {
+    "shares": 16569895.88,
+    "price": 45.6,
+    "mv": 15767680.55,
+    "weight": 5.68
+   },
+   "HCC": {
+    "shares": 254389,
+    "price": 105.05,
+    "mv": 26723564.45,
+    "weight": 9.62
+   },
+   "KSPI": {
+    "shares": 128878,
+    "price": 101.48,
+    "mv": 13078539.44,
+    "weight": 4.71
+   },
+   "LMN CN": {
+    "shares": 692411,
+    "price": 25.13,
+    "mv": 12598862.09,
+    "weight": 4.54
+   },
+   "NE": {
+    "shares": 285317,
+    "price": 45.87,
+    "mv": 13087490.79,
+    "weight": 4.71
+   },
+   "NUVAMA IN": {
+    "shares": 520420,
+    "price": 1733.4,
+    "mv": 9420384.59,
+    "weight": 3.39
+   },
+   "OXY": {
+    "shares": 88606,
+    "price": 60.09,
+    "mv": 5324334.54,
+    "weight": 1.92
+   },
+   "RIG": {
+    "shares": 4128872,
+    "price": 5.84,
+    "mv": 24112612.48,
+    "weight": 8.68
+   },
+   "RYGYO TI": {
+    "shares": 34071459,
+    "price": 41.22,
+    "mv": 29307711.6,
+    "weight": 10.55
+   },
+   "RYSAS TI": {
+    "shares": 19461689,
+    "price": 22.16,
+    "mv": 8999812.78,
+    "weight": 3.24
+   },
+   "SGN PW": {
+    "shares": 174708,
+    "price": 78.1,
+    "mv": 3691746.43,
+    "weight": 1.33
+   },
+   "TABGD TI": {
+    "shares": 2329523,
+    "price": 258.5,
+    "mv": 12566395.98,
+    "weight": 4.52
+   },
+   "TAVHL TI": {
+    "shares": 2978173,
+    "price": 281.25,
+    "mv": 17479364.7,
+    "weight": 6.29
+   },
+   "TOI CN": {
+    "shares": 167736,
+    "price": 102.42,
+    "mv": 12439013.19,
+    "weight": 4.48
+   },
+   "VAL": {
+    "shares": 148117,
+    "price": 86.92,
+    "mv": 12874329.64,
+    "weight": 4.63
+   }
+  },
+  "cash": {
+   "CAD": -149478.31,
+   "PLN": -146238.56,
+   "TRY": -326966.77,
+   "Cash&Other": -851563.24
+  }
+ },
+ {
+  "date": "2026-08-24",
+  "fileDate": "08/24/2026",
+  "netAssets": 282432028.64,
+  "rows": {
+   "AMR": {
+    "shares": 66641,
+    "price": 210.01,
+    "mv": 13995276.41,
+    "weight": 4.96,
+    "name": "Alpha Metallurgical Resources Inc"
+   },
+   "CSU CN": {
+    "shares": 5735,
+    "price": 3041.21,
+    "mv": 12666646.83,
+    "weight": 4.48,
+    "name": "Constellation Software Inc/Canada"
+   },
+   "DAC": {
+    "shares": 86596,
+    "price": 149.75,
+    "mv": 12967751,
+    "weight": 4.59,
+    "name": "Danaos Corp"
+   },
+   "EDEL IN": {
+    "shares": 14572000,
+    "price": 128.68,
+    "mv": 19591223.3,
+    "weight": 6.94,
+    "name": "Edelweiss Financial Services Ltd"
+   },
+   "FXFXX": {
+    "shares": 4632948.55,
+    "price": 100,
+    "mv": 4632948.55,
+    "weight": 1.64,
+    "name": "First American Treasury Obligations Fund 01/01/2040"
+   },
+   "GMTAS TI": {
+    "shares": 16569895.878795,
+    "price": 44.38,
+    "mv": 15303033.65,
+    "weight": 5.42,
+    "name": "Gimat Magazacilik Sanayi Ve Ticaret AS"
+   },
+   "HCC": {
+    "shares": 254389,
+    "price": 106.73,
+    "mv": 27150937.97,
+    "weight": 9.61,
+    "name": "Warrior Met Coal Inc"
+   },
+   "KSPI": {
+    "shares": 128878,
+    "price": 105.55,
+    "mv": 13603072.9,
+    "weight": 4.82,
+    "name": "Kaspi.KZ JSC"
+   },
+   "LMN CN": {
+    "shares": 708511,
+    "price": 24.35,
+    "mv": 12529316.86,
+    "weight": 4.44,
+    "name": "Lumine Group Inc"
+   },
+   "NE": {
+    "shares": 285317,
+    "price": 46.27,
+    "mv": 13201617.59,
+    "weight": 4.67,
+    "name": "Noble Corp PLC"
+   },
+   "NUVAMA IN": {
+    "shares": 520420,
+    "price": 1743.6,
+    "mv": 9480520.43,
+    "weight": 3.36,
+    "name": "Nuvama Wealth Management Ltd"
+   },
+   "OXY": {
+    "shares": 88606,
+    "price": 61.3,
+    "mv": 5431547.8,
+    "weight": 1.92,
+    "name": "Occidental Petroleum Corp"
+   },
+   "RIG": {
+    "shares": 4128872,
+    "price": 5.92,
+    "mv": 24442922.24,
+    "weight": 8.65,
+    "name": "Transocean Ltd"
+   },
+   "RYGYO TI": {
+    "shares": 35302294,
+    "price": 43,
+    "mv": 31589433.6,
+    "weight": 11.18,
+    "name": "Reysas Gayrimenkul Yatirim Ortakligi AS"
+   },
+   "RYSAS TI": {
+    "shares": 19461689,
+    "price": 23.2,
+    "mv": 9395912.61,
+    "weight": 3.33,
+    "name": "Reysas Tasimacilik ve Lojistik Ticaret AS"
+   },
+   "SGN PW": {
+    "shares": 183321,
+    "price": 86.9,
+    "mv": 4312559.53,
+    "weight": 1.53,
+    "name": "Sygnity SA"
+   },
+   "TABGD TI": {
+    "shares": 2368623,
+    "price": 257.75,
+    "mv": 12704719.24,
+    "weight": 4.5,
+    "name": "TAB Gida Sanayi Ve Ticaret AS"
+   },
+   "TAVHL TI": {
+    "shares": 2978173,
+    "price": 279.75,
+    "mv": 17337659.65,
+    "weight": 6.14,
+    "name": "TAV Havalimanlari Holding AS"
+   },
+   "TOI CN": {
+    "shares": 171736,
+    "price": 102.09,
+    "mv": 12732872.1,
+    "weight": 4.51,
+    "name": "Topicus.com Inc"
+   },
+   "VAL": {
+    "shares": 148117,
+    "price": 87.76,
+    "mv": 12998747.92,
+    "weight": 4.6,
+    "name": "Valaris Ltd"
+   }
+  },
+  "cash": {
+   "CAD": -793308.36,
+   "PLN": -145171.49,
+   "TRY": -1508400.54,
+   "Cash&Other": -1223289.98
+  }
+ }
+]
