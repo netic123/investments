@@ -12,7 +12,6 @@ const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
 const CONFIG_PATH = path.join(DATA, 'config.json');
 const SNAP_PATH = path.join(DATA, 'snapshots.json');
-const PORTFOLIO_PATH = path.join(DATA, 'portfolio.local.json');
 
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 
@@ -68,33 +67,6 @@ function cached(key, fn, isGood = () => true) {
 }
 
 const shortName = url => { try { return new URL(url).pathname.split('/').pop(); } catch { return url; } };
-
-// ---------- private local portfolio snapshot ----------
-// Read on every request so editing the gitignored file only requires a browser reload, not a server restart.
-// This is deliberately separate from config, Yahoo quotes, WAGN snapshots and /api/refresh: its numbers are
-// a dated user-supplied Avanza snapshot, not values that this server can recompute without quantities and FX lots.
-async function getPortfolio() {
-  let p;
-  try { p = JSON.parse(fs.readFileSync(PORTFOLIO_PATH, 'utf8')); }
-  catch (e) {
-    if (e.code === 'ENOENT') return { available: false, reason: 'missing', loadedAt: new Date().toISOString() };
-    throw new Error(`portfolio.local.json could not be read: ${e.message}`);
-  }
-  const iso = /^\d{4}-\d{2}-\d{2}$/;
-  const finite = v => typeof v === 'number' && Number.isFinite(v);
-  if (!p || p.schemaVersion !== 1 || !iso.test(p.asOf || '') || !Array.isArray(p.stocks) || !Array.isArray(p.funds)) {
-    throw new Error('portfolio.local.json has an unsupported or invalid schema');
-  }
-  if (!p.summary || !finite(p.summary.valueSek) || !finite(p.summary.gainSek) || !finite(p.summary.returnPct)) {
-    throw new Error('portfolio.local.json is missing valid summary values');
-  }
-  for (const row of [...p.stocks, ...p.funds]) {
-    if (!row || typeof row.name !== 'string' || !finite(row.valueSek) || !finite(row.gainSek) || !finite(row.returnPct)) {
-      throw new Error('portfolio.local.json contains an invalid position row');
-    }
-  }
-  return { available: true, snapshot: p, loadedAt: new Date().toISOString() };
-}
 
 async function fetchText(url) {
   let r;
@@ -382,7 +354,6 @@ function send(res, code, body, type = 'application/json; charset=utf-8') {
   res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 }
 const routes = {
-  '/api/portfolio': getPortfolio,
   '/api/holdings': () => cached('holdings', getHoldings, v => v.ok), // a failed fetch is not cached
   '/api/nav': () => cached('nav', getNav),
   '/api/perf': () => cached('perf', getPerf),

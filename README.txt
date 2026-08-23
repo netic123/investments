@@ -12,16 +12,8 @@ Copy data/positions.example.json to data/positions.local.json and enter display 
 committed, so the repo can be shared without revealing what you follow. If it is missing the app visibly
 labels the fallback list as DEMO instead of presenting the examples as your holdings.
 
-MY INVESTMENTS SNAPSHOT
-Your dated Avanza portfolio snapshot lives in data/portfolio.local.json. It is gitignored, read through its
-own /api/portfolio endpoint on every page reload and never mixed into Yahoo, WAGN, SEC or Fear & Greed data.
-The current screenshot does not show quantities or purchase-date FX, so the tab displays Avanza's exact
-reported values as a snapshot and does not pretend to calculate live portfolio value or SEK profit.
-
 TABS (top of the page)
-- My Investments = the private local Avanza snapshot: stocks, funds, reported gains and total value.
-                   This is the default tab; open directly at / or /#my-investments.
-- Pabrai  = what Mohnish Pabrai is doing, for the positions you follow yourself:
+- Pabrai  = the default tab: what Mohnish Pabrai is doing, for the positions you follow yourself:
   - Your focused stocks (from data/positions.local.json): WAGN's latest daily quantity change, Dalal
     Street's quarterly 13F position/change, price now (Yahoo) vs your entry, SEK price and next report
   - Every net quantity change in the ETF between the two latest saved files, plus the full log
@@ -29,7 +21,7 @@ TABS (top of the page)
   - Fund performance vs S&P 500 and the NAV curve
   - Dalal Street's manager-aggregated 13F — static, delayed and updated by hand after each quarter
   - Upcoming dates
-  Open directly: /#pabrai
+  Open directly: / or /#pabrai
 - Crypto  = CoinMarketCap's Crypto Fear & Greed Index (0-100): gauge, yesterday/last week/last month/
             yearly high-low, chart controls from 30 days through 5 and 10 years to Max (CMC's whole series,
             currently from 29 Jun 2023), how the index is
@@ -97,7 +89,6 @@ SOURCES AND HOW THEY WERE VERIFIED (23 Aug 2026)
   marked "~" / "expected" on the page; re-check the companies' IR pages in mid-October.
 
 UPDATE BY HAND
-- data/portfolio.local.json: private dated Avanza snapshot (browser reload is enough; no server restart)
 - data/positions.local.json: focus tickers, exact WAGN/Yahoo symbol, entry price/currency and estimated or
   confirmed next report date (restart after editing; Update does not reload this file)
 - dalalStreet: the manager-aggregated 13F (next filing due by 16 Nov 2026)
