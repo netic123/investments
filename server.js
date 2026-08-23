@@ -14,6 +14,27 @@ const CONFIG_PATH = path.join(DATA, 'config.json');
 const SNAP_PATH = path.join(DATA, 'snapshots.json');
 
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+
+// Your own holdings live outside the committed config so the repo can be shared without them.
+// data/positions.local.json is gitignored; if it is missing we fall back to the example so the server still starts.
+const POSITIONS_PATH = path.join(DATA, 'positions.local.json');
+const POSITIONS_EXAMPLE_PATH = path.join(DATA, 'positions.example.json');
+config.myPositions = (() => {
+  for (const p of [POSITIONS_PATH, POSITIONS_EXAMPLE_PATH]) {
+    try {
+      const list = JSON.parse(fs.readFileSync(p, 'utf8')).myPositions;
+      if (Array.isArray(list)) {
+        if (p === POSITIONS_EXAMPLE_PATH) console.log('data/positions.local.json not found — using the example positions. Copy the example file and enter your own.');
+        return list;
+      }
+    } catch (e) {
+      if (e.code !== 'ENOENT') console.error(`${path.basename(p)}: ${e.message} — skipping it`);
+    }
+  }
+  console.error('No usable positions file — "Your stocks" will be empty.');
+  return [];
+})();
+
 const PORT = Number(process.env.PORT || config.port || 8765);
 const ADDR = `http://127.0.0.1:${PORT}`; // 127.0.0.1, not localhost — avoids the ~300 ms IPv6 fallback per call
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Investments/1.0';

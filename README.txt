@@ -4,12 +4,17 @@ INVESTMENTS
 Start:   double-click start.bat  -> the browser opens http://127.0.0.1:8765
 Stop:    close the black window (or Ctrl+C in it)
 
-Requires Node.js 18+ (already on this computer). No other dependencies, no installation.
+Requires Node.js 18+. No other dependencies, no installation.
+
+YOUR OWN HOLDINGS
+Copy data/positions.example.json to data/positions.local.json and enter your tickers, Yahoo symbols and
+entry prices. That file is gitignored and is never committed, so the repo can be shared without revealing
+what you own. If it is missing the app falls back to the example file and still starts.
 
 TABS (top of the page)
 - Pabrai  = what Mohnish Pabrai is doing, for the positions you follow yourself:
-  - Your own stocks (from your positions file): what Pabrai did in them since the previous file, price now
-    (Yahoo) vs your entry price, in SEK, next report date
+  - Your own stocks (from data/positions.local.json): what Pabrai did in them since the previous
+    file, price now (Yahoo) vs your entry price, in SEK, next report date
   - Every buy/sell in the ETF between the two latest saved files, plus the full log
   - The whole ETF portfolio sorted by weight, with Avanza status (online / by phone / not available)
   - Fund performance vs S&P 500 and the NAV curve

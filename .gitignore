@@ -3,3 +3,4 @@ data/*.tmp
 *.log
 Thumbs.db
 gf_*
+data/positions.local.json
