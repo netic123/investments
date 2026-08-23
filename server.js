@@ -12,28 +12,42 @@ const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
 const CONFIG_PATH = path.join(DATA, 'config.json');
 const SNAP_PATH = path.join(DATA, 'snapshots.json');
+const PORTFOLIO_PATH = path.join(DATA, 'portfolio.local.json');
 
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 
-// Your own holdings live outside the committed config so the repo can be shared without them.
+// Your own focus list lives outside the committed config so the repo can be shared without it.
 // data/positions.local.json is gitignored; if it is missing we fall back to the example so the server still starts.
 const POSITIONS_PATH = path.join(DATA, 'positions.local.json');
 const POSITIONS_EXAMPLE_PATH = path.join(DATA, 'positions.example.json');
-config.myPositions = (() => {
+const loadedPositions = (() => {
+  let localIssue = null;
   for (const p of [POSITIONS_PATH, POSITIONS_EXAMPLE_PATH]) {
     try {
       const list = JSON.parse(fs.readFileSync(p, 'utf8')).myPositions;
       if (Array.isArray(list)) {
-        if (p === POSITIONS_EXAMPLE_PATH) console.log('data/positions.local.json not found — using the example positions. Copy the example file and enter your own.');
-        return list;
+        const demo = p === POSITIONS_EXAMPLE_PATH;
+        if (demo) console.log('data/positions.local.json unavailable — using the example watchlist. Copy the example file and enter your own.');
+        return {
+          list,
+          meta: {
+            source: demo ? 'example' : 'local',
+            demo,
+            warning: demo ? (localIssue || 'data/positions.local.json was not found') : null,
+          },
+        };
       }
+      throw new Error('myPositions is not a list');
     } catch (e) {
+      if (p === POSITIONS_PATH) localIssue = e.code === 'ENOENT' ? 'data/positions.local.json was not found' : `data/positions.local.json is invalid: ${e.message}`;
       if (e.code !== 'ENOENT') console.error(`${path.basename(p)}: ${e.message} — skipping it`);
     }
   }
-  console.error('No usable positions file — "Your stocks" will be empty.');
-  return [];
+  console.error('No usable positions file — the focused watchlist will be empty.');
+  return { list: [], meta: { source: 'empty', demo: false, warning: localIssue || 'No usable positions file' } };
 })();
+config.myPositions = loadedPositions.list;
+config.positionsMeta = loadedPositions.meta;
 
 const PORT = Number(process.env.PORT || config.port || 8765);
 const ADDR = `http://127.0.0.1:${PORT}`; // 127.0.0.1, not localhost — avoids the ~300 ms IPv6 fallback per call
@@ -54,6 +68,34 @@ function cached(key, fn, isGood = () => true) {
 }
 
 const shortName = url => { try { return new URL(url).pathname.split('/').pop(); } catch { return url; } };
+
+// ---------- private local portfolio snapshot ----------
+// Read on every request so editing the gitignored file only requires a browser reload, not a server restart.
+// This is deliberately separate from config, Yahoo quotes, WAGN snapshots and /api/refresh: its numbers are
+// a dated user-supplied Avanza snapshot, not values that this server can recompute without quantities and FX lots.
+async function getPortfolio() {
+  let p;
+  try { p = JSON.parse(fs.readFileSync(PORTFOLIO_PATH, 'utf8')); }
+  catch (e) {
+    if (e.code === 'ENOENT') return { available: false, reason: 'missing', loadedAt: new Date().toISOString() };
+    throw new Error(`portfolio.local.json could not be read: ${e.message}`);
+  }
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  const finite = v => typeof v === 'number' && Number.isFinite(v);
+  if (!p || p.schemaVersion !== 1 || !iso.test(p.asOf || '') || !Array.isArray(p.stocks) || !Array.isArray(p.funds)) {
+    throw new Error('portfolio.local.json has an unsupported or invalid schema');
+  }
+  if (!p.summary || !finite(p.summary.valueSek) || !finite(p.summary.gainSek) || !finite(p.summary.returnPct)) {
+    throw new Error('portfolio.local.json is missing valid summary values');
+  }
+  for (const row of [...p.stocks, ...p.funds]) {
+    if (!row || typeof row.name !== 'string' || !finite(row.valueSek) || !finite(row.gainSek) || !finite(row.returnPct)) {
+      throw new Error('portfolio.local.json contains an invalid position row');
+    }
+  }
+  return { available: true, snapshot: p, loadedAt: new Date().toISOString() };
+}
+
 async function fetchText(url) {
   let r;
   try { r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20000) }); }
@@ -179,9 +221,9 @@ function diff(a, b) {
     out.push({
       ticker: t, from: a.date, to: b.date, sharesFrom: sa, sharesTo: sb, delta,
       pct: sa ? delta / sa * 100 : null,
-      kind: !ra ? 'NEW' : !rb ? 'SOLD OUT' : delta > 0 ? 'BUY' : 'SELL',
+      kind: !ra ? 'NEW' : !rb ? 'SOLD OUT' : delta > 0 ? 'INCREASE' : 'DECREASE',
       localPrice: price, approxUsd: Math.abs(delta) * usdPerShare, absValue: Math.abs(delta) * usdPerShare,
-      cashLike: cashLike.has(t), // money-market fund etc. — shown in the table but not counted as a trade
+      cashLike: cashLike.has(t), // money-market fund etc. — shown in the table but not counted as a position change
     });
   }
   return out.sort((x, y) => y.absValue - x.absValue);
@@ -236,7 +278,7 @@ async function yahooQuote(symbol) {
   };
 }
 async function getQuotes() {
-  const symbols = [...config.myPositions.map(p => p.yahoo), ...Object.values(config.fx || {})];
+  const symbols = [...new Set([...config.myPositions.map(p => p.yahoo), ...Object.values(config.fx || {})].filter(Boolean))];
   const out = {};
   await Promise.all(symbols.map(async s => {
     try { out[s] = await yahooQuote(s); } catch (e) { out[s] = { symbol: s, error: String(e.message || e) }; }
@@ -340,6 +382,7 @@ function send(res, code, body, type = 'application/json; charset=utf-8') {
   res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 }
 const routes = {
+  '/api/portfolio': getPortfolio,
   '/api/holdings': () => cached('holdings', getHoldings, v => v.ok), // a failed fetch is not cached
   '/api/nav': () => cached('nav', getNav),
   '/api/perf': () => cached('perf', getPerf),
@@ -396,6 +439,6 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`Investments running at ${ADDR}  (Ctrl+C or close the window to stop)`);
   if (process.platform === 'win32' && !process.env.NO_OPEN) exec(`start "" "${ADDR}"`);
   // capture the fund's holdings file every 30 minutes while the server runs, so a file day is not missed when the page is closed
-  // (the fund republishes ~20:05 ET; a missed day merges two days' trades under "Changes")
+  // (the fund republishes ~20:05 ET; a missed day merges multiple days into one net quantity change)
   setInterval(() => getHoldings().catch(e => console.error('snapshot capture:', e.message || e)), 30 * 60 * 1000).unref();
 });

@@ -40,7 +40,7 @@ h2{font-family:var(--f-display);font-weight:600;font-size:1.35rem;margin:0}
 button{font:inherit;font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:8px 14px;border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
 button:hover{border-color:var(--accent);color:var(--accent)}
 button:disabled{opacity:.5;cursor:wait}
-#status{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right}
+#status,#myStatus{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right}
 #status.err{color:var(--neg)}
 
 section{padding-top:34px}
@@ -72,6 +72,7 @@ tr.mine td{background:var(--accent-soft)}
 tr.chg-buy td:first-child{box-shadow:inset 3px 0 0 var(--pos)}
 tr.chg-sell td:first-child{box-shadow:inset 3px 0 0 var(--neg)}
 tr.cashrow td{color:var(--muted);font-style:italic}
+tr.totalrow td{font-weight:600;background:var(--surface-2)}
 .tick{font-family:var(--f-mono);font-weight:600;font-size:.82rem}
 .pill{display:inline-block;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;border:1px solid var(--rule-strong);color:var(--muted)}
 .pill.ok{color:var(--pos);border-color:var(--pos)} .pill.tel{color:var(--warn);border-color:var(--warn)} .pill.no{color:var(--neg);border-color:var(--neg)}
@@ -97,8 +98,7 @@ footer p{margin:0 0 .5em}
 .tabs button:hover{color:var(--accent)}
 .tabs button.active{color:var(--ink);border-bottom-color:var(--accent)}
 .panel[hidden]{display:none}
-body[data-tab]:not([data-tab="pabrai"]) .pabrai-only{display:none}
-body:not([data-tab]) .fg-only, body[data-tab="pabrai"] .fg-only{display:none}
+[hidden]{display:none!important}
 .panel.nodata .fg-data{display:none}
 @media (min-width:700px){ .fg-top{grid-template-columns:minmax(290px,1fr) 2fr} }
 
@@ -139,26 +139,36 @@ body:not([data-tab]) .fg-only, body[data-tab="pabrai"] .fg-only{display:none}
 <header class="top">
   <div>
     <h1>Investments</h1>
-    <div class="filenote pabrai-only" id="fileDate">—</div>
-    <div class="filenote fg-only" id="fgFileNote">—</div>
+    <div class="filenote my-only" id="myFileNote" data-header-tabs="mine">Private local snapshot · loading…</div>
+    <div class="filenote pabrai-only" id="fileDate" data-header-tabs="pabrai" hidden>—</div>
+    <div class="filenote fg-only" id="fgFileNote" data-header-tabs="crypto sweden usa europe global" hidden>—</div>
   </div>
-  <div class="kpis pabrai-only">
+  <div class="kpis my-only" data-header-tabs="mine">
+    <div class="kpi"><div class="l">Portfolio value</div><div class="v mono" id="kMyValue">—</div><div class="s">Avanza snapshot</div></div>
+    <div class="kpi"><div class="l">Since purchase</div><div class="v mono" id="kMyGain">—</div><div class="s">Avanza SEK result</div></div>
+    <div class="kpi"><div class="l">Return</div><div class="v mono" id="kMyReturn">—</div><div class="s">Avanza total</div></div>
+  </div>
+  <div class="kpis pabrai-only" data-header-tabs="pabrai" hidden>
     <div class="kpi"><div class="l">Fund assets</div><div class="v mono" id="kNet">—</div><div class="s" id="kNetSub">&nbsp;</div></div>
     <div class="kpi"><div class="l">NAV</div><div class="v mono" id="kNav">—</div><div class="s" id="kNavSub">&nbsp;</div></div>
     <div class="kpi"><div class="l">WAGN market price</div><div class="v mono" id="kPx">—</div><div class="s" id="kPxSub">&nbsp;</div></div>
   </div>
-  <div class="kpis fg-only">
+  <div class="kpis fg-only" data-header-tabs="crypto sweden usa europe global" hidden>
     <div class="kpi"><div class="l">Fear &amp; Greed now</div><div class="v mono" id="kFg">—</div><div class="s" id="kFgSub">&nbsp;</div></div>
     <div class="kpi"><div class="l" id="kFgPrevL">Yesterday</div><div class="v mono" id="kFgPrev">—</div><div class="s" id="kFgPrevSub">&nbsp;</div></div>
   </div>
-  <div class="actions">
+  <div class="actions my-only" data-header-tabs="mine">
+    <span id="myStatus">local snapshot</span>
+  </div>
+  <div class="actions" data-header-tabs="pabrai crypto sweden usa europe global" hidden>
     <span id="status">loading…</span>
     <button id="btnRefresh">Update</button>
   </div>
 </header>
 
 <nav class="tabs" id="tabs" role="tablist" aria-label="Views">
-  <button role="tab" id="tab-pabrai" data-tab="pabrai" class="active" aria-selected="true" aria-controls="panel-pabrai">Pabrai</button>
+  <button role="tab" id="tab-mine" data-tab="mine" class="active" aria-selected="true" aria-controls="panel-mine">My Investments</button>
+  <button role="tab" id="tab-pabrai" data-tab="pabrai" aria-selected="false" aria-controls="panel-pabrai" tabindex="-1">Pabrai</button>
   <button role="tab" id="tab-crypto" data-tab="crypto" aria-selected="false" aria-controls="panel-crypto" tabindex="-1">Crypto</button>
   <button role="tab" id="tab-sweden" data-tab="sweden" aria-selected="false" aria-controls="panel-sweden" tabindex="-1">Sweden</button>
   <button role="tab" id="tab-usa" data-tab="usa" aria-selected="false" aria-controls="panel-usa" tabindex="-1">USA</button>
@@ -166,10 +176,48 @@ body:not([data-tab]) .fg-only, body[data-tab="pabrai"] .fg-only{display:none}
   <button role="tab" id="tab-global" data-tab="global" aria-selected="false" aria-controls="panel-global" tabindex="-1">Global</button>
 </nav>
 
-<div class="panel" id="panel-pabrai" role="tabpanel" aria-labelledby="tab-pabrai">
+<div class="panel" id="panel-mine" role="tabpanel" aria-labelledby="tab-mine">
 
 <section>
-  <div class="sec-head"><h2>Your stocks — what Pabrai is doing in them</h2><span class="note" id="mineNote">—</span></div>
+  <div class="sec-head"><h2>My Investments</h2><span class="note" id="mySnapshotNote">—</span></div>
+  <div class="callout" id="mySnapshotCall">Loading the private local snapshot…</div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Stocks</h2><span class="note" id="myStocksNote">—</span></div>
+  <div class="tablewrap"><table id="tblMyStocks"><thead><tr>
+    <th>Holding</th><th class="num">P/E</th><th class="num">Snapshot / entry</th><th class="num">Since purchase</th><th>Next report</th><th class="num">Value SEK</th>
+  </tr></thead><tbody></tbody></table></div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Funds</h2><span class="note" id="myFundsNote">—</span></div>
+  <div class="tablewrap"><table id="tblMyFunds"><thead><tr>
+    <th>Holding</th><th class="num">Accounts</th><th class="num">Snapshot NAV</th><th class="num">Entry</th><th class="num">Since purchase</th><th class="num">Gain SEK</th><th class="num">Value SEK</th>
+  </tr></thead><tbody></tbody></table></div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Total securities</h2><span class="note">Avanza-reported total</span></div>
+  <div class="cards">
+    <div class="card"><div class="kpi"><div class="l">Value</div><div class="v mono" id="myTotalValue">—</div></div></div>
+    <div class="card"><div class="kpi"><div class="l">Since purchase</div><div class="v mono" id="myTotalGain">—</div></div></div>
+    <div class="card"><div class="kpi"><div class="l">Return</div><div class="v mono" id="myTotalReturn">—</div></div></div>
+  </div>
+</section>
+
+<footer>
+  <p>This tab is a private, dated local snapshot copied from the Avanza screenshot you supplied. It is not live and contains no inferred quantities.</p>
+  <p>The snapshot file is gitignored, but it is not encrypted: another process or user with access to this Windows account or the local API can read it.</p>
+</footer>
+
+</div><!-- /panel-mine -->
+
+<div class="panel" id="panel-pabrai" role="tabpanel" aria-labelledby="tab-pabrai" hidden>
+
+<section>
+  <div class="sec-head"><h2>Focused watchlist — what Pabrai is doing</h2><span class="note" id="mineNote">—</span></div>
+  <div class="callout" id="watchNote"></div>
   <div class="cards" id="cards"></div>
 </section>
 
@@ -204,7 +252,7 @@ body:not([data-tab]) .fg-only, body[data-tab="pabrai"] .fg-only{display:none}
 </section>
 
 <section>
-  <div class="sec-head"><h2>Private fund — Dalal Street (13F)</h2><span class="note" id="dalalNote">—</span></div>
+  <div class="sec-head"><h2>Dalal Street — reported 13F holdings</h2><span class="note" id="dalalNote">—</span></div>
   <div class="callout" id="dalalCall"></div>
   <div class="tablewrap"><table id="tblDalal"><thead><tr><th>Holding</th><th class="num">Weight</th><th class="num">Shares</th><th>Change in quarter</th></tr></thead><tbody></tbody></table></div>
 </section>
@@ -215,9 +263,9 @@ body:not([data-tab]) .fg-only, body[data-tab="pabrai"] .fg-only{display:none}
 </section>
 
 <footer>
-  <p>Sources: the fund's own daily files (wagonsetf.filepoint.live) · Yahoo Finance for quotes · SEC 13F for the private fund. The 13F only shows US-listed holdings.</p>
-  <p>The fund's holdings file is dated one trading day <em>after</em> the prices in it (T+1). Snapshots are saved in <span class="mono">data/snapshots.json</span> every time a new file day is detected — if Investments is not run every weekday, several days' trades are merged under "Changes"; the interval is shown in the heading.</p>
-  <p><b>Not investment advice.</b> The figures are the fund's own and Yahoo's; estimated trade values are shares × the fund's price.</p>
+  <p>Sources: the fund's own daily files (wagonsetf.filepoint.live) · Yahoo Finance for quotes · SEC 13F for Dalal Street LLC's manager-aggregated report. A 13F is delayed and incomplete.</p>
+  <p>The fund's holdings file is dated one trading day <em>after</em> the prices in it (T+1). Snapshots are saved in <span class="mono">data/snapshots.json</span> every time a new file day is detected — if Investments is not run every weekday, several days' net quantity changes are merged under "Changes"; the interval is shown in the heading.</p>
+  <p><b>Not investment advice.</b> The figures are the fund's own and Yahoo's; estimated change values are share-count differences × the latest fund-file value per share, not execution values.</p>
 </footer>
 
 </div><!-- /panel-pabrai -->
@@ -242,6 +290,53 @@ const today0 = ()=>{ const t=new Date(); t.setHours(0,0,0,0); return t; };
 let CFG=null, TR_WEIGHT=null;
 async function getJson(u,opt){ const r=await fetch(u,{cache:'no-store',...opt}); const j=await r.json().catch(()=>({error:'invalid response'})); if(!r.ok) throw new Error(j.error||r.statusText); return j; }
 
+const sekMoney = n => n==null||!isFinite(n) ? '—' : fmt(n)+' kr';
+const signedSek = n => n==null||!isFinite(n) ? '—' : (n>0?'+':'')+fmt(n)+' kr';
+function clearPortfolioTables(){ $('#tblMyStocks tbody').innerHTML=''; $('#tblMyFunds tbody').innerHTML=''; }
+function renderPortfolio(R){
+  if(!R||!R.available){
+    $('#myFileNote').textContent='Private local snapshot · unavailable';
+    $('#myStatus').textContent='no local snapshot';
+    $('#mySnapshotNote').textContent='—';
+    $('#mySnapshotCall').innerHTML='<b>No portfolio snapshot found.</b> Add <span class="mono">data/portfolio.local.json</span> and reload the page. No example amounts are shown.';
+    ['#kMyValue','#kMyGain','#kMyReturn','#myTotalValue','#myTotalGain','#myTotalReturn'].forEach(id=>$(id).textContent='—');
+    $('#myStocksNote').textContent='—'; $('#myFundsNote').textContent='—'; clearPortfolioTables(); return;
+  }
+  const P=R.snapshot, T=P.summary||{}, SS=P.stockSummary||{}, FS=P.fundSummary||{};
+  $('#myFileNote').textContent=`Private Avanza snapshot · supplied ${fmtDate(P.asOf)} · prices as of ${fmtDate(P.marketPricesAsOf)} · not live`;
+  $('#myStatus').textContent='local snapshot · loaded '+timeStr();
+  $('#mySnapshotNote').textContent=`as of ${fmtDate(P.asOf)} · ${P.baseCurrency||'SEK'}`;
+  $('#kMyValue').textContent=sekMoney(T.valueSek);
+  $('#kMyGain').innerHTML=`<span class="${cls(T.gainSek)}">${signedSek(T.gainSek)}</span>`;
+  $('#kMyReturn').innerHTML=`<span class="${cls(T.returnPct)}">${pct(T.returnPct,2)}</span>`;
+  $('#myTotalValue').textContent=sekMoney(T.valueSek);
+  $('#myTotalGain').innerHTML=`<span class="${cls(T.gainSek)}">${signedSek(T.gainSek)}</span>`;
+  $('#myTotalReturn').innerHTML=`<span class="${cls(T.returnPct)}">${pct(T.returnPct,2)}</span>`;
+  const rowGain=[...(P.stocks||[]),...(P.funds||[])].reduce((s,r)=>s+(r.gainSek||0),0);
+  const rounding=Number.isFinite(T.gainSek)&&T.gainSek!==rowGain ? ` The visible row gains sum to ${signedSek(rowGain)}, ${fmt(Math.abs(T.gainSek-rowGain))} kr below Avanza’s total because the displayed rows are rounded.` : '';
+  $('#mySnapshotCall').innerHTML=`<b>Exact values copied from your Avanza screenshot.</b> Market values, gains, returns and P/E are a dated snapshot—not live calculations.${rounding} Quantities are not visible in the screenshot, so none have been inferred. Report dates are Avanza estimates and were not company-confirmed when checked.`;
+  $('#myStocksNote').textContent=`${(P.stocks||[]).length} holdings · ${sekMoney(SS.valueSek)}`;
+  $('#tblMyStocks tbody').innerHTML=(P.stocks||[]).map(s=>`<tr>
+    <td>${esc(s.flag||'')} <span class="tick">${esc(s.ticker||'')}</span> ${esc(s.name)}</td>
+    <td class="num">${fmt(s.pe,2)}</td><td class="num">${money(s.last,s.quoteCurrency)}<br><span class="muted" style="font-size:.76rem">entry ${money(s.entry,s.quoteCurrency)}</span></td>
+    <td class="num ${cls(s.returnPct)}">${pct(s.returnPct,2)}<br><span class="${cls(s.gainSek)}" style="font-size:.76rem">${signedSek(s.gainSek)}</span></td>
+    <td>${s.nextReport?(s.nextReportApprox?'~':'')+fmtDate(s.nextReport):'—'}</td><td class="num">${sekMoney(s.valueSek)}</td></tr>`).join('')+
+    `<tr class="totalrow"><td>Total stocks</td><td class="num">${fmt(SS.pe,2)}</td><td></td><td class="num ${cls(SS.returnPct)}">${pct(SS.returnPct,2)}<br><span class="${cls(SS.gainSek)}" style="font-size:.76rem">${signedSek(SS.gainSek)}</span></td><td></td><td class="num">${sekMoney(SS.valueSek)}</td></tr>`;
+  $('#myFundsNote').textContent=`${(P.funds||[]).length} fund · ${sekMoney(FS.valueSek)}`;
+  $('#tblMyFunds tbody').innerHTML=(P.funds||[]).map(f=>`<tr><td>${f.ticker?'<span class="tick">'+esc(f.ticker)+'</span> ':''}${esc(f.name)}</td>
+    <td class="num">${f.accounts==null?'—':fmt(f.accounts)+'×'}</td><td class="num">${money(f.nav,P.baseCurrency||'SEK')}</td><td class="num">${money(f.entry,f.entryCurrency||P.baseCurrency||'SEK')}</td>
+    <td class="num ${cls(f.returnPct)}">${pct(f.returnPct,2)}</td><td class="num ${cls(f.gainSek)}">${signedSek(f.gainSek)}</td><td class="num">${sekMoney(f.valueSek)}</td></tr>`).join('')+
+    `<tr class="totalrow"><td>Total funds</td><td colspan="3"></td><td class="num ${cls(FS.returnPct)}">${pct(FS.returnPct,2)}</td><td class="num ${cls(FS.gainSek)}">${signedSek(FS.gainSek)}</td><td class="num">${sekMoney(FS.valueSek)}</td></tr>`;
+}
+async function loadPortfolio(){
+  try { renderPortfolio(await getJson('/api/portfolio')); }
+  catch(e){
+    renderPortfolio({available:false});
+    $('#myStatus').textContent='snapshot error';
+    $('#mySnapshotCall').innerHTML=`<b>Portfolio snapshot could not be loaded.</b> ${esc(e.message)}`;
+  }
+}
+
 async function load(mode){ // mode: 'manual' = Update button (re-fetch everything), 'auto' = 10-minute timer, undefined = first load
   const st=$('#status'); st.className=''; st.textContent = mode ? 'refreshing… fund files, NAV, quotes' : 'loading…'; $('#btnRefresh').disabled=true;
   const t0=Date.now(), errs=[];
@@ -253,11 +348,12 @@ async function load(mode){ // mode: 'manual' = Update button (re-fetch everythin
     const fgReq=[getJson('/api/feargreed'),getJson('/api/marketfg')];
     const [h,n,p,q] = await Promise.allSettled([getJson('/api/holdings'),getJson('/api/nav'),getJson('/api/perf'),getJson('/api/quotes')]);
     const Q = q.status==='fulfilled' ? q.value : {};
+    // NAV carries the actual pricing date for the T+1 holdings file. Render it first so the watch cards show that date too.
+    if(n.status==='fulfilled') renderNav(n.value); else errs.push('NAV could not be fetched');
     if(h.status==='fulfilled'){
       renderHoldings(h.value, Q);
       if(h.value.fetchError) errs.push(h.value.latest ? 'holdings file could not be fetched — showing saved file from '+fmtDate(h.value.latest.date) : 'holdings file could not be fetched');
     } else errs.push('holdings: '+h.reason.message);
-    if(n.status==='fulfilled') renderNav(n.value); else errs.push('NAV could not be fetched');
     if(p.status==='fulfilled') renderPerf(p.value); else errs.push('performance could not be fetched');
     if(q.status!=='fulfilled') errs.push('quotes could not be fetched');
     else { const bad=Object.values(Q).filter(x=>x.error).map(x=>x.symbol); if(bad.length) errs.push('quote missing: '+bad.join(', ')); }
@@ -294,17 +390,23 @@ function renderHoldings(H,Q){
   if(F) $('#thFirst').textContent='Δ since first file ('+fmtDate(F.date)+')';
   TR_WEIGHT = Object.entries(L.rows).filter(([t])=>t.endsWith(' TI')).reduce((s,[,r])=>s+(r.weight||0),0);
 
-  // ---- your stocks
+  // ---- focused watchlist: daily WAGN disclosure + quarterly Dalal Street 13F are separate signals
   const fx={}; for(const [cur,sym] of Object.entries(CFG.fx||{})){ const qq=Q[sym]; if(qq&&qq.price) fx[cur]=qq.price; }
   const prevMap = P ? Object.fromEntries(H.changesVsPrevious.map(c=>[c.ticker,c])) : {};
-  $('#mineNote').textContent = P ? 'compared with the file of '+fmtDate(P.date) : 'first snapshot';
+  const posMeta=CFG.positionsMeta||{};
+  $('#mineNote').textContent = CFG.myPositions.length+' watched'+(P?' · WAGN vs '+fmtDate(P.date):' · first WAGN snapshot');
+  $('#watchNote').innerHTML = posMeta.demo
+    ? '<b>DEMO watchlist.</b> These are example tickers, not verified as your positions. Create <span class="mono">data/positions.local.json</span> and restart the server.'
+    : `<b>${CFG.myPositions.length} focus positions.</b> WAGN is checked from the fund’s daily T+1 holdings file; Dalal Street is checked separately from its delayed quarterly 13F. A quantity change is not proof of an execution date or price. All other Pabrai holdings remain visible in the full tables below.`;
   const t0=today0();
   $('#cards').innerHTML = CFG.myPositions.map(pos=>{
-    const row=L.rows[pos.ticker]; const ch=prevMap[pos.ticker]; const q=Q[pos.yahoo]||{};
+    const fundTicker=pos.fundTicker||pos.ticker;
+    const secTicker=pos.secTicker||pos.ticker;
+    const row=L.rows[fundTicker]; const ch=prevMap[fundTicker]; const q=Q[pos.yahoo]||{};
     const badge = ch&&ch.kind==='SOLD OUT' ? `<span class="badge b-sell">SOLD OUT ${fmt(ch.delta)}</span>`
-      : !row ? '<span class="badge b-sell">not in the fund</span>'
-      : ch ? (ch.delta>0?`<span class="badge b-buy">BUY +${fmt(ch.delta)} (${pct(ch.pct,1)})</span>`:`<span class="badge b-sell">SELL ${fmt(ch.delta)} (${pct(ch.pct,1)})</span>`)
-      : '<span class="badge b-flat">Pabrai unchanged</span>';
+      : !row ? '<span class="badge b-sell">not in WAGN</span>'
+      : ch ? (ch.delta>0?`<span class="badge b-buy">WAGN +${fmt(ch.delta)} (${pct(ch.pct,1)})</span>`:`<span class="badge b-sell">WAGN ${fmt(ch.delta)} (${pct(ch.pct,1)})</span>`)
+      : '<span class="badge b-flat">WAGN unchanged</span>';
     const live=q.price, day = ratio(live,q.prevClose);
     const qt=q.time?new Date(q.time):null, sameDay = qt && qt.toDateString()===new Date().toDateString();
     const qLabel = live ? (sameDay?'Price now':'Last close') : 'Price';
@@ -313,19 +415,32 @@ function renderHoldings(H,Q){
     const sek = live&&fx[pos.currency] ? live*fx[pos.currency] : null;
     const fxq=Q[(CFG.fx||{})[pos.currency]]||{};
     const fxNote = fxq.price ? `${pos.currency}/SEK ${fmt(fxq.price,4)}${fxq.time?' · '+new Date(fxq.time).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''} (Yahoo)` : '';
-    const inFund = row ? `${fmt(row.shares)} shares · ${pct(row.weight,2,false)} of the fund` : '—';
+    const inFund = row ? `${fmt(row.shares)} shares · ${pct(row.weight,2,false)} of WAGN` : 'not reported in WAGN';
+    const wagnChange = !ch ? 'No quantity change' : `${ch.delta>0?'+':''}${fmt(ch.delta)} shares (${pct(ch.pct,1)})`;
+    const wagnChangeNote = ch ? `≈ $${fmt(ch.approxUsd)} at the latest holding-file value; not an execution price` : (P?`${fmtDate(P.date)} → ${fmtDate(L.date)}`:'—');
+    const dh=((CFG.dalalStreet||{}).holdings||[]).find(h=>h.ticker===secTicker);
+    const dw=dh&&CFG.dalalStreet.portfolioValueUsd ? dh.valueUsd/CFG.dalalStreet.portfolioValueUsd*100 : null;
+    const dalalPosition=dh ? `${fmt(dh.shares)} shares · ${pct(dw,2,false)} of the 13F` : 'not reported in the latest 13F';
+    let dalalChange='—';
+    if(dh){
+      if(dh.prevShares==null) dalalChange='<span class="up">NEW in latest filing</span>';
+      else { const dd=dh.shares-dh.prevShares, dp=dh.prevShares?dd/dh.prevShares*100:null; dalalChange=`<span class="${cls(dd)}">${dd>0?'+':''}${fmt(dd)} shares (${pct(dp,2)})</span>`; }
+    }
     const rp = pos.nextReport ? Math.round((new Date(pos.nextReport+'T00:00:00')-t0)/864e5) : null;
     const report = !pos.nextReport ? '—' : rp<0 ? `<span class="down">${fmtDate(pos.nextReport)} (passed — update config)</span>`
-      : (pos.nextReportApprox?'~':'')+fmtDate(pos.nextReport)+(pos.nextReportApprox?' <span class="muted" style="font-size:.78rem">expected, not yet announced</span>':'')+(rp<=7?` <span class="up">(in ${rp} d)</span>`:'');
+      : (pos.nextReportApprox?'~':'')+fmtDate(pos.nextReport)+(pos.nextReportApprox?' <span class="muted" style="font-size:.78rem">estimate, not company-confirmed</span>':'')+(rp<=7?` <span class="up">(in ${rp} d)</span>`:'');
+    const hasEntry=typeof pos.entry==='number'&&isFinite(pos.entry)&&pos.entry>0;
     return `<div class="card">
-      <div class="hd"><span class="chip">${esc(pos.ticker.replace(' CN',''))}</span><span class="nm">${esc(nameOf(pos.ticker))}</span>${badge}</div>
+      <div class="hd"><span class="chip">${esc(pos.ticker)}</span><span class="nm">${esc(nameOf(fundTicker))}</span>${badge}</div>
       <div class="grid2">
-        <div><div class="l">Pabrai (ETF)</div><div class="v">${inFund}</div></div>
-        <div><div class="l">Pabrai's trade (≈ USD)</div><div class="v">${ch?'≈ $'+fmt(ch.approxUsd):'—'}</div></div>
+        <div><div class="l">Pabrai · WAGN daily file</div><div class="v">${inFund}</div><div class="s">file ${fmtDate(L.date)}, priced ${NAV_DATE?fmtDate(NAV_DATE):'at prior close'}</div></div>
+        <div><div class="l">WAGN net quantity change</div><div class="v ${ch?cls(ch.delta):'flat'}">${wagnChange}</div><div class="s">${wagnChangeNote}</div></div>
+        <div><div class="l">Pabrai · Dalal Street 13F</div><div class="v">${dalalPosition}</div><div class="s">as of ${fmtDate((CFG.dalalStreet||{}).asOf)} · delayed quarterly disclosure</div></div>
+        <div><div class="l">Dalal change vs prior 13F</div><div class="v">${dalalChange}</div><div class="s">Do not add WAGN and 13F quantities together</div></div>
         <div><div class="l">${qLabel}</div><div class="v big">${live?money(live,pos.currency)+' <span class="'+cls(day)+'" style="font-size:.8rem">'+pct(day,2)+'</span>':'<span class="down" style="font-size:.95rem">price unavailable</span>'}</div><div class="s">${qWhen}${day!=null?' · day change':''}</div></div>
-        <div><div class="l">Since your purchase (${money(pos.entry,pos.currency)})</div><div class="v big ${cls(vsEntry)}">${pct(vsEntry,1)}</div></div>
+        <div><div class="l">${hasEntry?'Price return since entry ('+money(pos.entry,pos.currency)+')':'Return since entry'}</div><div class="v big ${hasEntry?cls(vsEntry):'flat'}">${hasEntry?pct(vsEntry,1):'No entry price entered'}</div><div class="s">${hasEntry?'Local currency; excludes FX, fees and dividends, so it differs from Avanza’s SEK result':''}</div></div>
         <div><div class="l">Price in SEK (per share)</div><div class="v">${sek?fmt(sek,0)+' kr':(live?'FX rate missing':'—')}</div><div class="s">${fxNote}</div></div>
-        <div><div class="l">Next report</div><div class="v">${report}</div></div>
+        <div><div class="l">Next report</div><div class="v">${report}</div><div class="s">${pos.nextReportNote?esc(pos.nextReportNote):''}</div></div>
       </div></div>`;
   }).join('');
 
@@ -333,7 +448,7 @@ function renderHoldings(H,Q){
   const C=H.changesVsPrevious.filter(c=>!c.cashLike), LOG=H.log.filter(c=>!c.cashLike);
   const span = P ? `${fmtDate(P.date)} → ${fmtDate(L.date)}` : '';
   const multiDay = P && Math.round((new Date(L.date)-new Date(P.date))/864e5)>1;
-  const gapCallout = multiDay ? `<div class="callout">The interval ${span} spans several trading days — trades in between are merged.</div>` : '';
+  const gapCallout = multiDay ? `<div class="callout">The interval ${span} spans several trading days — only the net quantity change is known; exact transactions in between are not.</div>` : '';
   $('#chgNote').textContent = P ? span : '—';
   $('#changes').innerHTML = !P ? '<div class="empty">Only one snapshot saved so far — changes appear from the next file day.</div>'
     : !C.length ? `<div class="empty">No changes in share counts (${span}).</div>`
@@ -342,7 +457,7 @@ function renderHoldings(H,Q){
 
   // ---- the full table
   const firstMap = H.changesVsFirst ? Object.fromEntries(H.changesVsFirst.map(c=>[c.ticker,c])) : {};
-  const mine=new Set(CFG.myPositions.map(p=>p.ticker));
+  const mine=new Set(CFG.myPositions.map(p=>p.fundTicker||p.ticker));
   const rows=Object.entries(L.rows).sort((a,b)=>(b[1].weight||0)-(a[1].weight||0));
   $('#allNote').textContent=rows.length+' holdings · file '+fmtDate(L.date);
   const cash=Object.values(L.cash||{}).reduce((a,v)=>a+(v||0),0);
@@ -394,8 +509,8 @@ function renderPerf(Pf){
 function renderDalal(){
   const D=CFG.dalalStreet; $('#dalalNote').textContent='as of '+fmtDate(D.asOf)+' · filed '+fmtDate(D.filed);
   const src = D.sourceUrl ? ` Source: <a href="${esc(D.sourceUrl)}" target="_blank" rel="noopener">${esc(D.source||'SEC EDGAR 13F-HR')}</a>.` : '';
-  $('#dalalCall').innerHTML=`<b>$${fmt(D.portfolioValueUsd/1e6,1)}M, ${D.holdings.length} US-listed holdings.</b> The private fund is only visible quarterly via the 13F, and only for US listings — the Turkish holdings (~25% of Reysas Tasimacilik, &gt;25% of Gimat) are not here. <b>Next 13F: ${esc(D.nextFilingWindow)}.</b>${src} Shares and values are typed from the filing into <span class="mono">data/config.json</span>; weights and quarter changes are computed from them.`;
-  const mine=new Set(CFG.myPositions.map(p=>p.ticker));
+  $('#dalalCall').innerHTML=`<b>$${fmt(D.portfolioValueUsd/1e6,1)}M across ${D.holdings.length} reported securities.</b> This is Dalal Street LLC’s manager-aggregated 13F, not a complete or live private-fund portfolio. It is quarterly and generally covers reportable long US-listed securities; cash, shorts and most non-US listings are absent. <b>Next filing due ${esc(D.nextFilingWindow)}.</b>${src} Shares and values are typed from the filing into <span class="mono">data/config.json</span>; weights and quarter changes are computed from them.`;
+  const mine=new Set(CFG.myPositions.map(p=>p.secTicker||p.ticker));
   $('#tblDalal tbody').innerHTML=D.holdings.map(h=>{
     const w = h.valueUsd!=null && D.portfolioValueUsd ? h.valueUsd/D.portfolioValueUsd*100 : h.weight; // weight = 13F value / total
     let q;
@@ -527,7 +642,7 @@ function normMarket(M,model,fetchedAt){
   const explain=`<div class="kpi"><div class="l">Own model, inspired by CNN Fear &amp; Greed</div></div>
     <p style="margin:8px 0 0;font-size:.9rem">Six indicators are computed from daily closes (Yahoo Finance, dividend-adjusted). Each indicator gets a score 0–100 = its <b>percentile within the last ${model.window} trading days</b> (≈ 1 year): 100 means "greediest in a year", 0 "most fearful". The index is the mean of the indicators (equal weight, at least ${model.minComponents} required). Labels as CNN.</p>
     <ul class="fg-comp" style="list-style:disc">${seriesList}</ul>
-    <p class="muted" style="font-size:.82rem;margin:10px 0 0">No published Fear &amp; Greed index with an open data source exists for ${esc(M.name)}${M.key==='usa'?' apart from CNN’s (an unofficial feed whose terms forbid automated access)':''}, hence the own computation. Scores are relative to the last year — after a calm year a moderate pullback reads as "extreme fear".${realised?' Volatility = realised 20-day (no volatility index exists for this market), which reacts somewhat slower than a VIX.':''}${M.key==='usa'?' <b>Validation (23 Aug 2026):</b> against CNN’s published index over 398 trading days this model has correlation 0.88, a mean gap of 8.9 points and reads on average 6 points greedier; same label on 56 % of days, within one band on 93 %. The remaining gap comes from CNN’s put/call and NYSE advance/decline inputs, for which no open data exists.':' The same construction applied to the US market tracks CNN’s published index with correlation 0.88 (see the USA tab).'} Not investment advice.</p>`;
+    <p class="muted" style="font-size:.82rem;margin:10px 0 0">No published Fear &amp; Greed index with an open data source exists for ${esc(M.name)}${M.key==='usa'?' apart from CNN’s (an unofficial feed whose terms forbid automated access)':''}, hence the own computation. Scores are relative to the last year — after a calm year a moderate pullback reads as "extreme fear".${realised?' Volatility = realised 20-day because this model is not configured with a matching implied-volatility series; it is backward-looking and behaves differently from a VIX-style measure.':''}${M.key==='usa'?' <b>Validation (23 Aug 2026):</b> against CNN’s published index over 398 trading days this model has correlation 0.88, a mean gap of 8.9 points and reads on average 6 points greedier; same label on 56 % of days, within one band on 93 %. The remaining gap comes from CNN’s put/call and NYSE advance/decline inputs, for which no open data exists.':' The same construction applied to the US market tracks CNN’s published index with correlation 0.88 (see the USA tab).'} Not investment advice.</p>`;
   return { bands, value:v, label:M.label, title:`Fear & Greed — ${M.name} (own model)`, note:`${esc(M.indexName)} · as of ${when} · ${fetchedStr(fetchedAt)}`,
     sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous trading day · `:'')+'as of '+when,
     kpiSub:M.label+' · '+fmtDate(M.asOf), prevLabel:'Previous day', prev:row(P.close,P.closeDate),
@@ -622,18 +737,19 @@ function updateFgHeader(id){
   $('#kFgPrevSub').textContent = p ? p.label+' · '+dayMon(p.date) : '';
 }
 
-// ---- tabs (#crypto, #sweden, #usa, #europe, #global in the address opens the tab directly; old aliases still work)
-const TAB_HASH={pabrai:'',crypto:'#crypto',sweden:'#sweden',usa:'#usa',europe:'#europe',global:'#global'};
-const HASH_ALIAS={'#fear-greed':'crypto','#krypto':'crypto','#sverige':'sweden','#europa':'europe'};
-const tabFromHash=()=>{ const h=location.hash; if(HASH_ALIAS[h]) return HASH_ALIAS[h]; const e=Object.entries(TAB_HASH).find(([,v])=>v&&v===h); return e?e[0]:'pabrai'; };
+// ---- tabs (empty hash opens My Investments; every other view has a direct hash; old aliases still work)
+const TAB_HASH={mine:'',pabrai:'#pabrai',crypto:'#crypto',sweden:'#sweden',usa:'#usa',europe:'#europe',global:'#global'};
+const HASH_ALIAS={'#my-investments':'mine','#portfolio':'mine','#fear-greed':'crypto','#krypto':'crypto','#sverige':'sweden','#europa':'europe'};
+const tabFromHash=()=>{ const h=location.hash; if(HASH_ALIAS[h]) return HASH_ALIAS[h]; const e=Object.entries(TAB_HASH).find(([,v])=>v&&v===h); return e?e[0]:'mine'; };
 function showTab(id){
-  if(!Object.prototype.hasOwnProperty.call(TAB_HASH,id)) id='pabrai';
-  document.body.dataset.tab=id; // drives .pabrai-only / .fg-only in the header
+  if(!Object.prototype.hasOwnProperty.call(TAB_HASH,id)) id='mine';
+  document.body.dataset.tab=id;
   document.querySelectorAll('#tabs button').forEach(b=>{ const on=b.dataset.tab===id; b.classList.toggle('active',on); b.setAttribute('aria-selected',String(on)); b.tabIndex=on?0:-1; });
   document.querySelectorAll('.panel').forEach(p=>{ p.hidden = p.id!=='panel-'+id; });
-  document.title = id==='pabrai' ? 'Investments' : `Fear & Greed ${FGS[id].tab.tab} — Investments`;
+  document.querySelectorAll('[data-header-tabs]').forEach(el=>{ el.hidden=!el.dataset.headerTabs.split(/\s+/).includes(id); });
+  document.title = id==='mine' ? 'My Investments — Investments' : id==='pabrai' ? 'Pabrai — Investments' : `Fear & Greed ${FGS[id].tab.tab} — Investments`;
   const want=TAB_HASH[id]; if(location.hash!==want) history.replaceState(null,'',location.pathname+location.search+want);
-  if(id!=='pabrai') updateFgHeader(id);
+  if(FGS[id]) updateFgHeader(id);
 }
 $('#tabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-tab]'); if(b) showTab(b.dataset.tab); });
 $('#tabs').addEventListener('keydown',e=>{
@@ -647,6 +763,7 @@ showTab(tabFromHash());
 $('#navRange').addEventListener('click',e=>{ const b=e.target.closest('button[data-days]'); if(!b) return; NAV_DAYS=Number(b.dataset.days);
   document.querySelectorAll('#navRange button').forEach(x=>x.classList.toggle('active',x===b)); renderNavSpark(); });
 $('#btnRefresh').addEventListener('click',()=>load('manual'));
+loadPortfolio();
 load();
 setInterval(()=>load('auto'), 10*60*1000); // every 10 minutes
 </script>

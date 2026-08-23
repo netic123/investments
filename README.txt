@@ -6,20 +6,30 @@ Stop:    close the black window (or Ctrl+C in it)
 
 Requires Node.js 18+. No other dependencies, no installation.
 
-YOUR OWN HOLDINGS
-Copy data/positions.example.json to data/positions.local.json and enter your tickers, Yahoo symbols and
-entry prices. That file is gitignored and is never committed, so the repo can be shared without revealing
-what you own. If it is missing the app falls back to the example file and still starts.
+YOUR FOCUSED WATCHLIST
+Copy data/positions.example.json to data/positions.local.json and enter display ticker, exact WAGN ticker
+(fundTicker, when different), Yahoo symbol, entry price and currency. That file is gitignored and is never
+committed, so the repo can be shared without revealing what you follow. If it is missing the app visibly
+labels the fallback list as DEMO instead of presenting the examples as your holdings.
+
+MY INVESTMENTS SNAPSHOT
+Your dated Avanza portfolio snapshot lives in data/portfolio.local.json. It is gitignored, read through its
+own /api/portfolio endpoint on every page reload and never mixed into Yahoo, WAGN, SEC or Fear & Greed data.
+The current screenshot does not show quantities or purchase-date FX, so the tab displays Avanza's exact
+reported values as a snapshot and does not pretend to calculate live portfolio value or SEK profit.
 
 TABS (top of the page)
+- My Investments = the private local Avanza snapshot: stocks, funds, reported gains and total value.
+                   This is the default tab; open directly at / or /#my-investments.
 - Pabrai  = what Mohnish Pabrai is doing, for the positions you follow yourself:
-  - Your own stocks (from data/positions.local.json): what Pabrai did in them since the previous
-    file, price now (Yahoo) vs your entry price, in SEK, next report date
-  - Every buy/sell in the ETF between the two latest saved files, plus the full log
+  - Your focused stocks (from data/positions.local.json): WAGN's latest daily quantity change, Dalal
+    Street's quarterly 13F position/change, price now (Yahoo) vs your entry, SEK price and next report
+  - Every net quantity change in the ETF between the two latest saved files, plus the full log
   - The whole ETF portfolio sorted by weight, with Avanza status (online / by phone / not available)
   - Fund performance vs S&P 500 and the NAV curve
-  - The private fund (13F) — static, updated by hand after each quarter
+  - Dalal Street's manager-aggregated 13F — static, delayed and updated by hand after each quarter
   - Upcoming dates
+  Open directly: /#pabrai
 - Crypto  = CoinMarketCap's Crypto Fear & Greed Index (0-100): gauge, yesterday/last week/last month/
             yearly high-low, chart controls from 30 days through 5 and 10 years to Max (CMC's whole series,
             currently from 29 Jun 2023), how the index is
@@ -38,8 +48,8 @@ HOW IT WORKS
 - The fund's own daily holdings file is fetched every 5 minutes (the page refreshes every 10).
 - Every new file day is saved as a snapshot in data/snapshots.json. Changes = the difference in NUMBER OF
   SHARES between two snapshots. Weight in percent moves with prices and means nothing.
-- If Investments is not run every weekday, several days' trades are merged under "Changes". The heading
-  says so when that is the case.
+- If Investments is not run every weekday, several days' net quantity changes are merged under "Changes".
+  They are not proof of exact execution dates/prices; the heading says when the interval spans several days.
 - The fund's file is dated one trading day AFTER the prices in it (T+1).
 - Weekends/evenings: the card shows "Last close" with a timestamp, not "Price now".
 - The Update button re-fetches EVERYTHING: fund files, Yahoo quotes, CoinMarketCap and all 23 Yahoo series
@@ -57,17 +67,18 @@ HOW IT WORKS
   hours today's point is a live value that can change until the close. The NAV chart covers the fund's whole
   life (since 29 Sep 2023; price only, distributions excluded).
 - While the server runs it also captures the fund's holdings file every 30 minutes on its own, so a file
-  day is not missed when the page is closed (a missed day merges two days' trades under "Changes").
+  day is not missed when the page is closed (a missed day merges multiple days into one net quantity change).
 
 SOURCES AND HOW THEY WERE VERIFIED (23 Aug 2026)
 - Fund holdings / NAV / performance: the fund's own files on wagonsetf.filepoint.live — verified to be the
-  exact files wagonsetf.com loads (its page embeds that site). NAV x shares = net assets to the cent; the
-  market price matches Yahoo and Nasdaq; the performance table matches the fund's investor presentation.
+  exact files wagonsetf.com loads (its page embeds that site). Rounded NAV × shares matches the holdings-file
+  net-assets convention within 0.001% of the daily NAV file; market price matches Nasdaq and performance
+  matches the fund's published table.
   The holdings file is dated T+1: "dated 24 Aug" means priced at the 21 Aug close (the page says so).
 - Quotes (your tickers + the ETF's): Yahoo Finance, verified to the cent against Nasdaq's and TSX's own quote
   services. FX (USD/SEK, CAD/SEK): Yahoo's last tick; differs from the ECB/Riksbank daily fix by ~0.1 %.
   The rate and its time are shown under "Price in SEK".
-- Private fund: SEC EDGAR 13F-HR (accession in config.json, linked from the page). Shares and values are
+- Dalal Street: SEC EDGAR 13F-HR (accession in config.json, linked from the page). Shares and values are
   typed from the filing; weights and quarter changes are computed from them, so nothing is rounded by hand.
 - Crypto Fear & Greed: CoinMarketCap's official API; identical to CMC's own page (value, time, 365-day
   history) at verification.
@@ -77,15 +88,19 @@ SOURCES AND HOW THEY WERE VERIFIED (23 Aug 2026)
   manual check, not a feed): correlation 0.88 over 398 trading days, mean gap 8.9 points, ours on average
   6 points greedier, same label 56 % of days, within one band 93 %. The remaining gap is CNN's put/call and
   NYSE breadth inputs, which have no open data source. Known caveats: OMXSBGI is total return but STOXX 600
-  is a price index (slight spring-dividend bias for Europe); Sweden/Europe use realised volatility (no VIX
-  equivalent exists); the global credit ETFs (HYLD.L/CORP.L) are thinly traded, so that indicator is noisier.
+  is a price index (slight spring-dividend bias for Europe); Sweden/Europe use realised volatility because
+  no matching implied series is configured (Europe does have VSTOXX for Euro STOXX 50 options, but this
+  model applies backward-looking realised volatility to STOXX Europe 600); the global credit ETFs
+  (HYLD.L/CORP.L) are thinly traded, so that indicator is noisier.
 - Event dates: six confirmed by primary sources (Kaspi EGM/record date, TCMB, Pareto, WAGN call, 13F rule,
   RIG/VAL filings). Q3 report dates are NOT announced yet — they are expectations from last year's cadence,
   marked "~" / "expected" on the page; re-check the companies' IR pages in mid-October.
 
-UPDATE BY HAND (data/config.json)
-- myPositions: your entry prices, Yahoo ticker, next report date
-- dalalStreet: the private fund's 13F (next expected 13-16 Nov 2026)
+UPDATE BY HAND
+- data/portfolio.local.json: private dated Avanza snapshot (browser reload is enough; no server restart)
+- data/positions.local.json: focus tickers, exact WAGN/Yahoo symbol, entry price/currency and estimated or
+  confirmed next report date (restart after editing; Update does not reload this file)
+- dalalStreet: the manager-aggregated 13F (next filing due by 16 Nov 2026)
 - dates: upcoming events (the list empties itself when dates have passed)
 - names: name, flag, Avanza status per ticker (online / telefon / nej)
 - marketFearGreed: Yahoo symbols per market (index, vol, bond, hy, ig, small, large). If a series fails,

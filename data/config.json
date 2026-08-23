@@ -22,7 +22,7 @@
     "asOf": "2026-06-30",
     "filed": "2026-08-13",
     "portfolioValueUsd": 326749980,
-    "nextFilingWindow": "13–16 Nov 2026",
+    "nextFilingWindow": "by 16 Nov 2026",
     "source": "SEC EDGAR 13F-HR, accession 0001549575-26-000015 (Dalal Street LLC, CIK 0001549575); previous quarter 0001549575-26-000009",
     "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/",
     "holdings": [
@@ -34,16 +34,18 @@
   },
   "dates": [
     { "date": "2026-09-08", "label": "WAGN annual report (Form N-CSR, fiscal year ended 30 Jun, due within 70 days; filed 6 Sep 2024 and 9 Sep 2025) — full holdings + liquidity classification", "approx": true },
-    { "date": "2026-09-08", "label": "Kaspi dividend record date (proposed KZT 1,000 per share = per ADS, subject to the vote); EGM 9 Sep" },
+    { "date": "2026-09-08", "label": "Kaspi proposed common-share dividend record date (KZT 1,000, subject to vote; ADS record/payment dates not announced); EGM 9 Sep" },
     { "date": "2026-09-10", "label": "TCMB rate decision (Turkey is {TR} of the fund)" },
-    { "date": "2026-09-16", "label": "Pabrai at Pareto Energy Conference, Oslo (meets the rig CEOs)" },
+    { "date": "2026-09-16", "label": "Pareto Energy Conference, Oslo, 16–17 Sep (relevant to rig holdings; Pabrai attendance/meetings not publicly verified)" },
+    { "date": "2026-09-18", "label": "Constellation Software dividend record date (US$1.00 per share; payment 9 Oct)" },
     { "date": "2026-09-23", "label": "Pabrai investor call (WAGN)" },
+    { "date": "2026-10-09", "label": "Constellation Software US$1.00-per-share dividend payment" },
     { "date": "2026-10-22", "label": "TCMB rate decision (Turkey is {TR} of the fund)" },
+    { "date": "2026-10-28", "label": "Kaspi Q3 report (Avanza estimate from your screenshot — company date not announced)", "approx": true },
+    { "date": "2026-10-30", "label": "Warrior Met Q3 report (Avanza estimate from your screenshot — company date not announced)", "approx": true },
     { "date": "2026-10-31", "label": "DOJ certification RIG/VAL must happen ~now for a 2026 close (back-calculated from the 60-day wait after certification; none announced as of the 20 Aug 8-K)", "approx": true },
-    { "date": "2026-11-04", "label": "Warrior Met Q3 report (expected — not yet announced; last year Wed 5 Nov)", "approx": true },
-    { "date": "2026-11-06", "label": "Constellation Q3 report (expected — not yet announced; last two years Fri 8 Nov / 7 Nov)", "approx": true },
-    { "date": "2026-11-09", "label": "Kaspi Q3 report (expected — not yet announced; last year Mon 10 Nov)", "approx": true },
-    { "date": "2026-11-13", "label": "Dalal Street Q3 13F expected (deadline Sat 14 Nov → Mon 16 Nov)", "approx": true }
+    { "date": "2026-11-06", "label": "Constellation Q3 report (Avanza estimate from your screenshot — company date not announced)", "approx": true },
+    { "date": "2026-11-16", "label": "SEC deadline for Dalal Street Q3 13F (may be filed earlier)" }
   ],
   "names": {
     "HCC":       { "name": "Warrior Met Coal",            "flag": "🇺🇸", "avanza": "online" },
