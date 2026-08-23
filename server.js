@@ -1,11 +1,12 @@
-// Pabrai Dashboard — lokal server. Inga beroenden, kräver Node 18+.
-// Hämtar fondens egna CSV-filer + kurser från Yahoo, sparar dagliga ögonblicksbilder,
-// och serverar index.html. Starta: node server.js  (eller dubbelklicka start.bat)
+// Investments — local server. No dependencies, requires Node 18+.
+// Fetches the fund's own CSV files + quotes from Yahoo, stores daily snapshots,
+// and serves index.html. Start: node server.js  (or double-click start.bat)
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
+const marketfg = require('./marketfg'); // own Fear & Greed model for equity markets (Sweden/USA/Europe/Global)
 
 const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
@@ -14,14 +15,14 @@ const SNAP_PATH = path.join(DATA, 'snapshots.json');
 
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 const PORT = Number(process.env.PORT || config.port || 8765);
-const ADDR = `http://127.0.0.1:${PORT}`; // 127.0.0.1, inte localhost — slipper IPv6-fallback på ~300 ms per anrop
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) PabraiDashboard/1.0';
+const ADDR = `http://127.0.0.1:${PORT}`; // 127.0.0.1, not localhost — avoids the ~300 ms IPv6 fallback per call
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Investments/1.0';
 const TTL_MS = 5 * 60 * 1000;
 
-process.on('unhandledRejection', e => console.error('Ohanterat fel:', e && e.message || e));
-process.on('uncaughtException', e => console.error('Oväntat fel:', e && e.message || e));
+process.on('unhandledRejection', e => console.error('Unhandled error:', e && e.message || e));
+process.on('uncaughtException', e => console.error('Unexpected error:', e && e.message || e));
 
-// ---------- cache: delar pågående hämtning mellan samtidiga anrop, cachar bara lyckade svar ----------
+// ---------- cache: shares an in-flight fetch between concurrent calls, caches only successful responses ----------
 const cache = new Map();
 function cached(key, fn, isGood = () => true) {
   const hit = cache.get(key);
@@ -35,19 +36,19 @@ const shortName = url => { try { return new URL(url).pathname.split('/').pop(); 
 async function fetchText(url) {
   let r;
   try { r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20000) }); }
-  catch (e) { throw new Error(`ingen kontakt med ${new URL(url).host}`); }
+  catch (e) { throw new Error(`no contact with ${new URL(url).host}`); }
   if (!r.ok) throw new Error(`${r.status} ${r.statusText} (${shortName(url)})`);
   return r.text();
 }
 async function fetchJson(url) {
   let r;
   try { r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(20000) }); }
-  catch (e) { throw new Error(`ingen kontakt med ${new URL(url).host}`); }
+  catch (e) { throw new Error(`no contact with ${new URL(url).host}`); }
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
   return r.json();
 }
 
-// Enkel CSV-parser — fondens filer har inga citerade kommatecken.
+// Simple CSV parser — the fund's files have no quoted commas.
 function parseCsv(text) {
   const lines = String(text || '').replace(/\r/g, '').split('\n').filter(l => l.trim().length);
   if (!lines.length) return [];
@@ -69,17 +70,17 @@ const isoFromUs = s => {
   return m ? `${m[3]}-${m[1]}-${m[2]}` : null;
 };
 
-// ---------- ögonblicksbilder på disk (validerade, säkerhetskopierade vid fel, atomisk skrivning) ----------
+// ---------- snapshots on disk (validated, backed up on error, atomic write) ----------
 function loadSnapshots() {
   if (!fs.existsSync(SNAP_PATH)) return [];
   try {
     const v = JSON.parse(fs.readFileSync(SNAP_PATH, 'utf8'));
-    if (!Array.isArray(v)) throw new Error('inte en lista');
+    if (!Array.isArray(v)) throw new Error('not a list');
     return v.filter(s => s && typeof s.date === 'string' && s.rows && typeof s.rows === 'object');
   } catch (e) {
     const bak = SNAP_PATH + '.broken-' + Date.now();
     try { fs.copyFileSync(SNAP_PATH, bak); } catch {}
-    console.error(`snapshots.json gick inte att läsa (${e.message}) — kopia sparad som ${path.basename(bak)}`);
+    console.error(`snapshots.json could not be read (${e.message}) — copy saved as ${path.basename(bak)}`);
     return [];
   }
 }
@@ -90,16 +91,16 @@ function saveSnapshots(list) {
   fs.renameSync(tmp, SNAP_PATH);
 }
 
-// ---------- innehav ----------
+// ---------- holdings ----------
 async function getHoldings() {
   const cashSet = new Set(config.cashTickers || []);
   let live = null, fetchError = null;
   try {
     const rows = parseCsv(await fetchText(config.sources.holdings));
-    if (!rows.length) throw new Error('tom innehavsfil');
+    if (!rows.length) throw new Error('empty holdings file');
     const fileDate = rows[0].Date;
     const date = isoFromUs(fileDate);
-    if (!date) throw new Error(`oväntat datumformat: ${fileDate}`);
+    if (!date) throw new Error(`unexpected date format: ${fileDate}`);
     const snap = { date, fileDate, netAssets: num(rows[0].NetAssets), rows: {}, cash: {} };
     for (const r of rows) {
       const t = r.StockTicker;
@@ -110,7 +111,7 @@ async function getHoldings() {
         name: r.SecurityName || '',
       };
     }
-    if (!Object.keys(snap.rows).length) throw new Error('inga innehav i filen');
+    if (!Object.keys(snap.rows).length) throw new Error('no holdings in the file');
     live = snap;
   } catch (e) { fetchError = String(e.message || e); }
 
@@ -118,10 +119,10 @@ async function getHoldings() {
   if (live) {
     const i = snaps.findIndex(s => s.date === live.date);
     const changed = i === -1 || JSON.stringify(snaps[i]) !== JSON.stringify(live);
-    if (i === -1) snaps.push(live); else snaps[i] = live; // samma dag: senaste filen gäller
+    if (i === -1) snaps.push(live); else snaps[i] = live; // same day: the latest file wins
     if (changed) {
       try { saveSnapshots(snaps); }
-      catch (e) { console.error('kunde inte spara snapshots.json:', e.message); fetchError = 'kunde inte spara ögonblicksbild (' + e.message + ')'; }
+      catch (e) { console.error('could not save snapshots.json:', e.message); fetchError = 'could not save snapshot (' + e.message + ')'; }
     }
   }
   snaps.sort((a, b) => a.date.localeCompare(b.date));
@@ -157,15 +158,15 @@ function diff(a, b) {
     out.push({
       ticker: t, from: a.date, to: b.date, sharesFrom: sa, sharesTo: sb, delta,
       pct: sa ? delta / sa * 100 : null,
-      kind: !ra ? 'NY' : !rb ? 'SÅLD HELT' : delta > 0 ? 'KÖP' : 'SÄLJ',
+      kind: !ra ? 'NEW' : !rb ? 'SOLD OUT' : delta > 0 ? 'BUY' : 'SELL',
       localPrice: price, approxUsd: Math.abs(delta) * usdPerShare, absValue: Math.abs(delta) * usdPerShare,
-      cashLike: cashLike.has(t), // penningmarknadsfond o.dyl. — visas i tabellen men räknas inte som affär
+      cashLike: cashLike.has(t), // money-market fund etc. — shown in the table but not counted as a trade
     });
   }
   return out.sort((x, y) => y.absValue - x.absValue);
 }
 
-// ---------- NAV / avkastning ----------
+// ---------- NAV / performance ----------
 async function getNav() {
   const [daily, hist] = await Promise.all([
     fetchText(config.sources.navDaily).then(parseCsv),
@@ -179,7 +180,7 @@ async function getNav() {
     date: isoFromUs(d['Rate Date']), nav: num(d.NAV), navChgPct: num(d['NAV Change Percentage']),
     price: num(d['Market Price']), premium: num(d['Premium/Discount Percentage']),
     netAssets: num(d['Net Assets']), sharesOut: num(d['Shares Outstanding']), spread: num(d['Median 30 Day Spread Percentage']),
-    history: history.slice(-250),
+    history, // the fund's full daily series since inception (29 Sep 2023) — price only, no distributions
   };
 }
 async function getPerf() {
@@ -195,15 +196,15 @@ async function getPerf() {
   return { monthly: shape(m), quarterly: shape(q) };
 }
 
-// ---------- kurser (Yahoo) ----------
+// ---------- quotes (Yahoo) ----------
 async function yahooQuote(symbol) {
   const u = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
   const j = await fetchJson(u);
   const res = j.chart && j.chart.result && j.chart.result[0];
-  if (!res) throw new Error(`inget resultat för ${symbol}`);
+  if (!res) throw new Error(`no result for ${symbol}`);
   const m = res.meta || {};
-  // Gårdagens stängning = näst sista giltiga dagsstängningen. chartPreviousClose är stängningen FÖRE hela
-  // intervallet och duger aldrig som "igår" — hellre tomt än fel siffra.
+  // Yesterday's close = the second-to-last valid daily close. chartPreviousClose is the close BEFORE the whole
+  // range and never works as "yesterday" — better empty than wrong.
   const closes = (((res.indicators || {}).quote || [])[0] || {}).close || [];
   const valid = closes.filter(c => c != null && Number.isFinite(c));
   const prevClose = valid.length >= 2 ? valid[valid.length - 2] : null;
@@ -222,25 +223,117 @@ async function getQuotes() {
   return out;
 }
 
+// ---------- Crypto Fear & Greed (CoinMarketCap) ----------
+// CoinMarketCap's official API. Without a key /public-api/v3/… is used (keyless, IP-based quota).
+// If CMC_API_KEY is set in the environment, /v3/… with the key in X-CMC_PRO_API_KEY is used instead (free Basic plan is enough).
+//   latest     → { data:{ value:78, value_classification:"Greed", update_time:"2026-08-23T00:08:10.031Z" } }
+//   historical → { data:[ { timestamp:"1787356800", value:76, value_classification:"Greed" }, … ] }  newest first, one value/day 00:00 UTC
+// Errors arrive as { status:{ error_code:"1011", error_message:"You've hit an IP rate limit." } } with HTTP 4xx.
+const FG_HISTORY_MAX = 5000;          // row cap; the API pages 500 rows per call (CMC's series starts 2023-06-29, ~1,150 rows today)
+const FG_MIN_INTERVAL_MS = 60 * 1000; // CMC updates every 15 minutes — no point fetching more often (protects the quota on repeated Update presses)
+const FG_FORCE_MIN_MS = 10 * 1000;    // a forced refresh (Update button) may re-fetch after this — hard floor against hammering
+let lastFg = null;                    // last successful response — shown with a warning if CMC does not respond
+let fgForce = false;                  // set by /api/refresh?force=1
+
+async function cmcJson(url, headers) {
+  let r;
+  try { r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json', ...headers }, signal: AbortSignal.timeout(20000) }); }
+  catch (e) { throw new Error('no contact with CoinMarketCap'); }
+  const j = await r.json().catch(() => null);
+  const st = (j && j.status) || {};
+  if (!r.ok || (st.error_code != null && String(st.error_code) !== '0')) {
+    const msg = st.error_message || `${r.status} ${r.statusText}`;
+    throw new Error(r.status === 429 ? `CoinMarketCap: rate limit reached (${msg})` : `CoinMarketCap: ${msg}`);
+  }
+  if (!j || typeof j !== 'object') throw new Error(`CoinMarketCap: invalid response (HTTP ${r.status})`);
+  return j;
+}
+
+let fgAttempt = null; // last attempt (successful or not) — the throttle also applies when CMC answers 429, otherwise we keep hammering
+async function getFearGreed() {
+  if (fgAttempt) {
+    const age = Date.now() - fgAttempt.t;
+    if (age < FG_FORCE_MIN_MS || (!fgForce && age < FG_MIN_INTERVAL_MS)) return fgAttempt.p;
+  }
+  fgForce = false;
+  fgAttempt = { t: Date.now(), p: fetchFearGreed() };
+  return fgAttempt.p;
+}
+async function fetchFearGreed() {
+  const key = process.env.CMC_API_KEY || '';
+  const root = String((config.sources && config.sources.fearGreed) || 'https://pro-api.coinmarketcap.com').replace(/\/+$/, '');
+  const base = root + (key ? '/v3' : '/public-api/v3') + '/fear-and-greed/';
+  const headers = key ? { 'X-CMC_PRO_API_KEY': key } : {};
+  try {
+    let historyError = null;
+    // the whole daily history: pages of 500 (API max), newest first; the first three pages in parallel, more only if the third was full
+    const page = start => cmcJson(base + `historical?start=${start}&limit=500`, headers).then(j => {
+      if (!j || !Array.isArray(j.data)) throw new Error('CoinMarketCap: unexpected history format');
+      return j.data;
+    });
+    const historyAll = async () => {
+      const pages = await Promise.all([1, 501, 1001].map(page));
+      let rows = pages.flat(), start = 1501;
+      while (pages[2].length === 500 && start <= FG_HISTORY_MAX) { const more = await page(start); rows = rows.concat(more); if (more.length < 500) break; start += 500; }
+      return rows;
+    };
+    const [latest, histRows] = await Promise.all([
+      cmcJson(base + 'latest', headers),
+      historyAll().catch(e => { historyError = String(e.message || e); return null; }),
+    ]);
+    const d = (latest && latest.data) || {};
+    const value = num(d.value);
+    if (value == null) throw new Error('invalid value from CoinMarketCap');
+    const dayIso = ts => { const n = Number(ts); return Number.isFinite(n) && n > 0 ? new Date(n * 1000).toISOString().slice(0, 10) : null; };
+    const byDate = new Map();
+    for (const r of (histRows || [])) {
+      const date = dayIso(r.timestamp), v = num(r.value);
+      if (date && v != null) byDate.set(date, { date, value: v, label: r.value_classification || null });
+    }
+    // if only the history fails, keep the last fetched one (with historyError + historyFetchedAt so the page can say how old it is)
+    const history = histRows ? [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)) : (lastFg ? lastFg.v.history : []);
+    const historyFetchedAt = histRows ? new Date().toISOString() : (lastFg ? lastFg.v.historyFetchedAt : null);
+    const v = {
+      value, label: d.value_classification || null, updateTime: d.update_time || null,
+      keyed: !!key, history, historyError, historyFetchedAt, fetchedAt: new Date().toISOString(),
+    };
+    lastFg = { t: Date.now(), v };
+    return v;
+  } catch (e) {
+    if (!lastFg) throw e;
+    console.error(new Date().toISOString(), '/api/feargreed', e.message || e);
+    return { ...lastFg.v, stale: true, fetchError: String(e.message || e) };
+  }
+}
+
 // ---------- http ----------
 function send(res, code, body, type = 'application/json; charset=utf-8') {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
   res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 }
 const routes = {
-  '/api/holdings': () => cached('holdings', getHoldings, v => v.ok), // misslyckad hämtning cachas inte
+  '/api/holdings': () => cached('holdings', getHoldings, v => v.ok), // a failed fetch is not cached
   '/api/nav': () => cached('nav', getNav),
   '/api/perf': () => cached('perf', getPerf),
   '/api/quotes': () => cached('quotes', getQuotes, v => Object.values(v).some(q => !q.error)),
+  '/api/feargreed': () => cached('feargreed', getFearGreed, v => !v.stale), // fallback value (stale) is not cached
+  // equity-market Fear & Greed: the Yahoo series are cached 15 min inside the module; a plain /api/refresh only recomputes,
+  // /api/refresh?force=1 (the Update button) re-fetches all series and lets CoinMarketCap be re-fetched too
+  '/api/marketfg': () => cached('marketfg', () => marketfg.getMarketFearGreed(config.marketFearGreed), v => v.ok),
   '/api/config': async () => config,
-  '/api/refresh': async () => { cache.clear(); return { cleared: true }; },
+  '/api/refresh': async (u) => {
+    cache.clear();
+    const force = u && u.searchParams.get('force') === '1';
+    if (force) { marketfg.clearCache(); fgForce = true; }
+    return { cleared: true, forced: force };
+  },
 };
 
 const server = http.createServer(async (req, res) => {
-  let p;
-  try { p = new URL(req.url, ADDR).pathname; } catch { return send(res, 400, { error: 'ogiltig URL' }); }
+  let u, p;
+  try { u = new URL(req.url, ADDR); p = u.pathname; } catch { return send(res, 400, { error: 'invalid URL' }); }
   try {
-    if (routes[p]) return send(res, 200, await routes[p]());
+    if (routes[p]) return send(res, 200, await routes[p](u));
     if (p === '/' || p === '/index.html') {
       return send(res, 200, fs.readFileSync(path.join(ROOT, 'index.html')), 'text/html; charset=utf-8');
     }
@@ -253,12 +346,15 @@ const server = http.createServer(async (req, res) => {
 
 server.on('error', e => {
   if (e.code === 'EADDRINUSE') {
-    console.log(`Dashboarden verkar redan köras på ${ADDR} — öppnar den i webbläsaren.`);
+    console.log(`Investments already seems to be running at ${ADDR} — opening it in the browser.`);
     if (process.platform === 'win32' && !process.env.NO_OPEN) exec(`start "" "${ADDR}"`);
     setTimeout(() => process.exit(0), 1500);
-  } else { console.error('Serverfel:', e.message || e); process.exit(1); }
+  } else { console.error('Server error:', e.message || e); process.exit(1); }
 });
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Pabrai Dashboard körs på ${ADDR}  (Ctrl+C eller stäng fönstret för att stoppa)`);
+  console.log(`Investments running at ${ADDR}  (Ctrl+C or close the window to stop)`);
   if (process.platform === 'win32' && !process.env.NO_OPEN) exec(`start "" "${ADDR}"`);
+  // capture the fund's holdings file every 30 minutes while the server runs, so a file day is not missed when the page is closed
+  // (the fund republishes ~20:05 ET; a missed day merges two days' trades under "Changes")
+  setInterval(() => getHoldings().catch(e => console.error('snapshot capture:', e.message || e)), 30 * 60 * 1000).unref();
 });

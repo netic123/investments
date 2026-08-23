@@ -5,32 +5,45 @@
     "navDaily": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_DailyNAV.csv",
     "navHistory": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_DailyNAVHistorical.csv",
     "monthlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_MonthlyPerformance.csv",
-    "quarterlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_QuarterlyPerformance.csv"
+    "quarterlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_QuarterlyPerformance.csv",
+    "fearGreed": "https://pro-api.coinmarketcap.com"
+  },
+  "marketFearGreed": {
+    "range": "max", "window": 252, "minWindowPoints": 126, "minComponents": 3,
+    "markets": {
+      "sweden": { "name": "Sweden", "currency": "SEK", "symbols": { "index": "^OMXSBGI", "vol": null,  "bond": "XACT-OBLIGATION.ST", "hy": "0P0001C87Y.ST", "ig": "0P00000KIW.ST",      "small": "XACT-SMABOLAG.ST", "large": "XACT-SVERIGE.ST" } },
+      "usa":    { "name": "USA",     "currency": "USD", "symbols": { "index": "SPY",     "vol": "^VIX", "bond": "IEF",                "hy": "HYG",           "ig": "LQD",                "small": "IWM",              "large": null } },
+      "europe": { "name": "Europe",  "currency": "EUR", "symbols": { "index": "^STOXX",  "vol": null,   "bond": "SXRQ.DE",            "hy": "IHYG.L",        "ig": "IEAC.L",             "small": "EXSE.DE",          "large": "EXSA.DE" } },
+      "global": { "name": "Global", "currency": "USD", "symbols": { "index": "ACWI",    "vol": "^VIX", "bond": "IEF",                "hy": "HYLD.L",        "ig": "CORP.L",             "small": "WSML.L",           "large": "IWDA.L" } }
+    }
   },
   "fx": { "USD": "USDSEK=X", "CAD": "CADSEK=X" },
   "dalalStreet": {
     "asOf": "2026-06-30",
     "filed": "2026-08-13",
     "portfolioValueUsd": 326749980,
-    "nextFilingWindow": "13–16 nov 2026",
+    "nextFilingWindow": "13–16 Nov 2026",
+    "source": "SEC EDGAR 13F-HR, accession 0001549575-26-000015 (Dalal Street LLC, CIK 0001549575); previous quarter 0001549575-26-000009",
+    "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/",
     "holdings": [
-      { "ticker": "HCC",  "name": "Warrior Met Coal",     "shares": 1744050,  "weight": 43.32, "qChange": "−3,69% (−66 781)" },
-      { "ticker": "RIG",  "name": "Transocean",           "shares": 20398659, "weight": 30.53, "qChange": "+0,03% (+5 990)" },
-      { "ticker": "AMR",  "name": "Alpha Metallurgical",  "shares": 517194,   "weight": 26.11, "qChange": "−10,79% (−62 540)" },
-      { "ticker": "KSPI", "name": "Kaspi.kz",             "shares": 1702,     "weight": 0.05,  "qChange": "ny" }
+      { "ticker": "HCC",  "name": "Warrior Met Coal",     "shares": 1744050,  "prevShares": 1810831,  "valueUsd": 141547098 },
+      { "ticker": "RIG",  "name": "Transocean",           "shares": 20398659, "prevShares": 20392672, "valueUsd": 99749443 },
+      { "ticker": "AMR",  "name": "Alpha Metallurgical",  "shares": 517194,   "prevShares": 579738,   "valueUsd": 85305978 },
+      { "ticker": "KSPI", "name": "Kaspi.kz",             "shares": 1702,     "prevShares": null,     "valueUsd": 147461 }
     ]
   },
   "dates": [
-    { "date": "2026-09-01", "label": "WAGN årsredovisning (räkenskapsår slutade 30 jun) — fullständiga innehav + likviditetsklassning", "approx": true },
-    { "date": "2026-09-08", "label": "Kaspi avstämningsdag utdelning (KZT 1 000/ADS); bolagsstämma 9 sep" },
-    { "date": "2026-09-10", "label": "TCMB räntebesked (Turkiet är {TR} av fonden)" },
-    { "date": "2026-09-16", "label": "Pabrai på Pareto Energy Conference, Oslo (träffar rigg-VD:arna)" },
-    { "date": "2026-09-23", "label": "Pabrais investerarsamtal (WAGN)" },
-    { "date": "2026-10-28", "label": "Kaspi Q3-rapport" },
-    { "date": "2026-10-30", "label": "Warrior Met Q3-rapport" },
-    { "date": "2026-10-31", "label": "DOJ-certifiering RIG/VAL måste ske ~nu för stängning 2026", "approx": true },
-    { "date": "2026-11-06", "label": "Constellation Q3-rapport" },
-    { "date": "2026-11-13", "label": "Dalal Street Q3 13F väntas (deadline lör 14 nov → mån 16 nov)", "approx": true }
+    { "date": "2026-09-08", "label": "WAGN annual report (Form N-CSR, fiscal year ended 30 Jun, due within 70 days; filed 6 Sep 2024 and 9 Sep 2025) — full holdings + liquidity classification", "approx": true },
+    { "date": "2026-09-08", "label": "Kaspi dividend record date (proposed KZT 1,000 per share = per ADS, subject to the vote); EGM 9 Sep" },
+    { "date": "2026-09-10", "label": "TCMB rate decision (Turkey is {TR} of the fund)" },
+    { "date": "2026-09-16", "label": "Pabrai at Pareto Energy Conference, Oslo (meets the rig CEOs)" },
+    { "date": "2026-09-23", "label": "Pabrai investor call (WAGN)" },
+    { "date": "2026-10-22", "label": "TCMB rate decision (Turkey is {TR} of the fund)" },
+    { "date": "2026-10-31", "label": "DOJ certification RIG/VAL must happen ~now for a 2026 close (back-calculated from the 60-day wait after certification; none announced as of the 20 Aug 8-K)", "approx": true },
+    { "date": "2026-11-04", "label": "Warrior Met Q3 report (expected — not yet announced; last year Wed 5 Nov)", "approx": true },
+    { "date": "2026-11-06", "label": "Constellation Q3 report (expected — not yet announced; last two years Fri 8 Nov / 7 Nov)", "approx": true },
+    { "date": "2026-11-09", "label": "Kaspi Q3 report (expected — not yet announced; last year Mon 10 Nov)", "approx": true },
+    { "date": "2026-11-13", "label": "Dalal Street Q3 13F expected (deadline Sat 14 Nov → Mon 16 Nov)", "approx": true }
   ],
   "names": {
     "HCC":       { "name": "Warrior Met Coal",            "flag": "🇺🇸", "avanza": "online" },
@@ -52,7 +65,7 @@
     "EDEL IN":   { "name": "Edelweiss Financial",         "flag": "🇮🇳", "avanza": "nej" },
     "NUVAMA IN": { "name": "Nuvama Wealth",               "flag": "🇮🇳", "avanza": "nej" },
     "SGN PW":    { "name": "Sygnity",                     "flag": "🇵🇱", "avanza": "telefon" },
-    "FXFXX":     { "name": "Penningmarknadsfond (kassa)", "flag": "💵", "avanza": "—" }
+    "FXFXX":     { "name": "Money market fund (cash)", "flag": "💵", "avanza": "—" }
   },
   "cashTickers": ["CAD", "PLN", "TRY", "USD", "EUR", "INR", "Cash&Other"],
   "cashLike": ["FXFXX"]
