@@ -1,7 +1,7 @@
 {
-  "_comment": "Copy this file to data/positions.local.json and put your own holdings there. positions.local.json is gitignored and never committed. If it is missing, the app falls back to this example so it still starts.",
+  "_comment": "Copy this file to data/positions.local.json and enter your own holdings. positions.local.json is gitignored and is never committed. If it is missing, the app falls back to this example so it still starts. entry: null renders as — instead of a made-up cost basis; nextReport: null avoids a date that goes stale.",
   "myPositions": [
-    { "ticker": "HCC",    "yahoo": "HCC",    "entry": 100.00,  "currency": "USD", "nextReport": "2026-11-04", "nextReportApprox": true },
-    { "ticker": "CSU CN", "yahoo": "CSU.TO", "entry": 3000.00, "currency": "CAD", "nextReport": "2026-11-06", "nextReportApprox": true }
+    { "ticker": "RIG", "yahoo": "RIG", "entry": null, "currency": "USD", "nextReport": null },
+    { "ticker": "AMR", "yahoo": "AMR", "entry": null, "currency": "USD", "nextReport": null }
   ]
 }

@@ -240,14 +240,14 @@ const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 const today0 = ()=>{ const t=new Date(); t.setHours(0,0,0,0); return t; };
 
 let CFG=null, TR_WEIGHT=null;
-async function getJson(u){ const r=await fetch(u,{cache:'no-store'}); const j=await r.json().catch(()=>({error:'ogiltigt svar'})); if(!r.ok) throw new Error(j.error||r.statusText); return j; }
+async function getJson(u,opt){ const r=await fetch(u,{cache:'no-store',...opt}); const j=await r.json().catch(()=>({error:'invalid response'})); if(!r.ok) throw new Error(j.error||r.statusText); return j; }
 
 async function load(mode){ // mode: 'manual' = Update button (re-fetch everything), 'auto' = 10-minute timer, undefined = first load
   const st=$('#status'); st.className=''; st.textContent = mode ? 'refreshing… fund files, NAV, quotes' : 'loading…'; $('#btnRefresh').disabled=true;
   const t0=Date.now(), errs=[];
   const setStatus=extra=>{ st.textContent = 'updated '+timeStr()+(errs.length?' — '+errs.join(' · '):'')+(extra||''); st.className = errs.length?'err':''; };
   try{
-    if(mode) await getJson('/api/refresh'+(mode==='manual'?'?force=1':'')); // force=1: server re-fetches all 23 Yahoo series and lets CoinMarketCap be asked again
+    if(mode) await getJson('/api/refresh'+(mode==='manual'?'?force=1':''),{method:'POST'}); // POST so a cross-site <img> cannot trigger it; force=1: server re-fetches all 23 Yahoo series and lets CoinMarketCap be asked again
     CFG = CFG || await getJson('/api/config');
     // All requests start at once, but the Pabrai part renders as soon as it is ready — Fear & Greed (Yahoo, 23 series) must not hold it back.
     const fgReq=[getJson('/api/feargreed'),getJson('/api/marketfg')];

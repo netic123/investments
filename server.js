@@ -284,6 +284,13 @@ async function fetchFearGreed() {
   const key = process.env.CMC_API_KEY || '';
   const root = String((config.sources && config.sources.fearGreed) || 'https://pro-api.coinmarketcap.com').replace(/\/+$/, '');
   const base = root + (key ? '/v3' : '/public-api/v3') + '/fear-and-greed/';
+  // Only ever send the API key to CoinMarketCap itself. sources.fearGreed is editable config, and in a shared
+  // repo an edited config must not be able to redirect the key to someone else's host.
+  let cmcHost = '';
+  try { cmcHost = new URL(root).host; } catch { /* malformed root — treated as untrusted below */ }
+  if (key && cmcHost !== 'pro-api.coinmarketcap.com') {
+    throw new Error(`CMC_API_KEY is set but sources.fearGreed points at "${cmcHost || root}" — refusing to send the key anywhere but pro-api.coinmarketcap.com`);
+  }
   const headers = key ? { 'X-CMC_PRO_API_KEY': key } : {};
   try {
     let historyError = null;
@@ -350,9 +357,22 @@ const routes = {
   },
 };
 
+// Listening on 127.0.0.1 keeps other machines out, but not a web page in your own browser: DNS rebinding
+// lets evil.com resolve to 127.0.0.1 and read /api/config, which carries your positions. Such requests still
+// carry the attacker's name in Host, so pinning Host to the loopback address we actually serve blocks them.
+const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, `[::1]:${PORT}`]);
+
 const server = http.createServer(async (req, res) => {
+  if (!ALLOWED_HOSTS.has(String(req.headers.host || '').toLowerCase())) {
+    return send(res, 403, { error: 'unexpected Host header — open the page at ' + ADDR });
+  }
   let u, p;
   try { u = new URL(req.url, ADDR); p = u.pathname; } catch { return send(res, 400, { error: 'invalid URL' }); }
+  // /api/refresh clears caches and re-pulls every source, so it must not be reachable from a cross-site
+  // <img> or <script> tag. Those can only issue GETs; requiring POST is enough to rule them out.
+  if (p === '/api/refresh' && req.method !== 'POST') {
+    return send(res, 405, { error: 'use POST for /api/refresh' });
+  }
   try {
     if (routes[p]) return send(res, 200, await routes[p](u));
     if (p === '/' || p === '/index.html') {
