@@ -104,3 +104,7 @@ IF SOMETHING GOES WRONG
 - If snapshots.json breaks, a copy is saved (snapshots.json.broken-<time>) and the history starts over.
 
 Not investment advice.
+
+LICENSE
+MIT (see LICENSE). The code is yours to use; the market data belongs to its respective sources
+(the fund, Yahoo Finance, CoinMarketCap, SEC EDGAR) and their terms apply to the data, not to this code.
