@@ -42,8 +42,9 @@ TABS (top of the page)
             completed UTC daily closes for a frozen seven-asset basket. Bitcoin trend (vs 200-day average),
             strength (distance from 365-day high), volatility shock (30-day realised volatility vs its 90-day
             average, inverted), breadth (share of the basket above its 200-day average), and altcoin appetite
-            (median 30-day alt return minus BTC). Each raw indicator is ranked only against its own previous
-            365 observations; all five indicators and all seven assets are required. The tab exposes every raw
+            (median 30-day alt return minus BTC). Each raw indicator is ranked only within its latest rolling
+            window of at most 365 completed observations (current observation included; at least 180 required);
+            all five indicators and all seven assets are required. The tab exposes every raw
             value, score, formula, symbol and caveat. Open directly: /#crypto
 - Sweden, USA, Europe, Global = Fear & Greed for the equity markets, OWN MODEL (no published index with
             open data exists for these — the US CNN index only has an unofficial feed whose terms forbid
