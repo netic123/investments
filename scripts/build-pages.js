@@ -62,14 +62,21 @@ function validateSnapshot(data, examplePositions) {
   assert(config && typeof config === 'object', 'config is missing');
   assert(config.positionsMeta && config.positionsMeta.demo === true && config.positionsMeta.source === 'example', 'public build did not select the demo watchlist');
   assert(JSON.stringify(config.myPositions) === JSON.stringify(examplePositions), 'public build positions differ from data/positions.example.json');
+  assert(!config.sources || !Object.prototype.hasOwnProperty.call(config.sources, 'fearGreed'), 'retired third-party crypto index source is still configured');
+  assert(config.cryptoFearGreed && config.cryptoFearGreed.modelId === 'investments-crypto-risk-appetite' && config.cryptoFearGreed.version === 1, 'own crypto model config is missing or has drifted');
 
   assert(holdings && holdings.latest && typeof holdings.latest.date === 'string', 'holdings has no usable latest snapshot');
   assert(holdings.latest.rows && typeof holdings.latest.rows === 'object', 'holdings rows are missing');
   assert(nav && typeof nav.date === 'string' && Array.isArray(nav.history) && nav.history.length > 1, 'NAV data is incomplete');
   assert(perf && Array.isArray(perf.monthly) && perf.monthly.length > 0, 'performance data is incomplete');
   assert(quotes && typeof quotes === 'object' && Object.values(quotes).some(q => q && Number.isFinite(q.price)), 'all quotes are missing');
-  assert(feargreed && Number.isFinite(feargreed.value) && feargreed.value >= 0 && feargreed.value <= 100, 'crypto Fear & Greed is invalid');
-  assert(Array.isArray(feargreed.history), 'crypto Fear & Greed history is missing');
+  assert(feargreed && feargreed.ok === true && Number.isFinite(feargreed.value) && feargreed.value >= 0 && feargreed.value <= 100, 'own crypto model is invalid');
+  assert(feargreed.model && feargreed.model.id === 'investments-crypto-risk-appetite' && feargreed.model.version === 1 && feargreed.model.owner === 'repository', 'crypto result is not identified as the repository-owned v1 model');
+  assert(feargreed.source && feargreed.source.provider === 'Yahoo Finance', 'crypto raw-price provider metadata is missing');
+  assert(feargreed.n === 5 && feargreed.total === 5 && feargreed.assetCount === 7, 'crypto model does not have the frozen five components and seven-asset basket');
+  assert(feargreed.components && Object.keys(feargreed.components).length === 5, 'crypto component details are incomplete');
+  assert(Array.isArray(feargreed.history) && feargreed.history.length > 100, 'own crypto model history is missing');
+  assert(feargreed.history.every(row => Number.isFinite(row.value) && row.value >= 0 && row.value <= 100 && row.n === 5 && row.assetCount === 7), 'crypto history contains an invalid or definition-changing row');
   assert(marketfg && marketfg.ok === true && marketfg.markets && typeof marketfg.markets === 'object', 'market Fear & Greed is invalid');
   for (const name of ['sweden', 'usa', 'europe', 'global']) {
     const market = marketfg.markets[name];
@@ -131,6 +138,12 @@ function verifyArtifact(forbiddenSecrets) {
       assert(!bytes.includes(Buffer.from(secret)), `an environment secret was found in ${relative}`);
     }
   }
+  for (const retiredMarker of ['pro-api.coinmarketcap.com', 'CMC_API_KEY']) {
+    for (const relative of actual) {
+      const bytes = fs.readFileSync(path.join(OUT, relative));
+      assert(!bytes.includes(Buffer.from(retiredMarker)), `retired crypto-index integration marker found in ${relative}`);
+    }
+  }
 }
 
 async function stopChild(child) {
@@ -147,7 +160,7 @@ async function stopChild(child) {
 async function main() {
   const example = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'positions.example.json'), 'utf8'));
   assert(Array.isArray(example.myPositions), 'data/positions.example.json has no myPositions list');
-  const forbiddenSecrets = ['CMC_API_KEY', 'GH_TOKEN', 'GITHUB_TOKEN']
+  const forbiddenSecrets = ['GH_TOKEN', 'GITHUB_TOKEN']
     .map(name => process.env[name]).filter(value => typeof value === 'string' && value.length >= 8);
 
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'investments-pages-'));
@@ -175,7 +188,6 @@ async function main() {
         ...childEnv,
         PORT: String(port),
         NO_OPEN: '1',
-        CMC_API_KEY: '',
         INVESTMENTS_PUBLIC_BUILD: '1',
         INVESTMENTS_SNAPSHOT_PATH: snapshotPath,
       },

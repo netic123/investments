@@ -1,6 +1,6 @@
 # Fear & Greed predictive backtest protocol
 
-Status: frozen before inspecting forward-return results on 2026-08-23.
+Status: crypto model v1 frozen on 2026-08-24 before running its replacement forward-return results. The existing equity design and statistical decision rules are unchanged from the protocol frozen on 2026-08-23.
 
 This is an exploratory historical study, not a deployable trading system. Its purpose is to test whether the five Fear & Greed series displayed by this repository contain information about strictly later market returns.
 
@@ -14,16 +14,29 @@ The tested signals are exactly the series shown by the app:
 | USA own model | `SPY` adjusted close | The model's configured US index/proxy |
 | Europe own model | `^STOXX` | The model's configured European index |
 | Global own model | `ACWI` adjusted close | The model's configured global proxy |
-| CoinMarketCap Crypto Fear & Greed | `BTC-USD` adjusted close | Explicit assumption: the repo defines no crypto return benchmark; BTC is the most liquid single-asset proxy, but it is not the whole crypto market |
+| Crypto Risk Appetite — repository model v1 | `BTC-USD` adjusted close | BTC is both the model benchmark input and the explicit tested return target, but it is not the whole seven-asset basket |
 
 The equity targets for Sweden and Europe are indices rather than directly tradable instruments. Their strategy results are therefore hypothetical diagnostics, not executable performance claims.
 
-The CoinMarketCap series must not be substituted with Alternative.me's differently constructed index. CoinMarketCap documents five component groups but does not publish their weights. Its historical API supplies one daily observation at 00:00 UTC.
+The crypto signal is calculated by `cryptofg.js`; no published Fear & Greed score may be substituted or used as a fallback. Version 1 is frozen as follows before its results are inspected:
+
+- fixed basket: `BTC-USD`, `ETH-USD`, `SOL-USD`, `XRP-USD`, `ADA-USD`, `DOGE-USD`, `BNB-USD`;
+- Bitcoin trend: `100 × (BTC close / SMA200 − 1)`;
+- Bitcoin strength: `100 × (BTC close / trailing 365-day high − 1)`;
+- volatility shock: BTC 30-day annualized realized volatility relative to its 90-day average, scored in the fear direction;
+- breadth: percentage of all seven basket assets above their own 200-day moving averages;
+- altcoin appetite: median 30-day return of the six non-BTC assets minus BTC's 30-day return;
+- each raw component receives a no-lookahead midrank percentile using at most the current and previous 364 valid completed daily observations, with at least 180 required;
+- volatility's percentile is inverted; the five component scores are averaged with equal weight;
+- all five components and all seven assets are required for every canonical historical row;
+- fixed display bands are 0–24 Extreme Fear, 25–44 Fear, 45–55 Neutral, 56–74 Greed, and 75–100 Extreme Greed.
+
+The windows, equal weights, basket and bands are heuristic design choices, not empirically calibrated probabilities. The basket was selected in August 2026 and therefore creates explicit hindsight-selection and survivorship risk in the retrospective history. The model is a relative price-regime proxy; it does not directly observe emotions, derivatives, funding, search, social-media or news sentiment.
 
 ## Samples and timestamps
 
 - Equity primary sample: dates on which all six configured components are present. Earlier three-to-five-component histories are a structurally different model and are reported only as secondary robustness evidence.
-- Crypto primary sample: the complete published CoinMarketCap daily history available at retrieval.
+- Crypto primary sample: only model-v1 rows with all five components and all seven frozen-basket assets, using completed UTC daily candles. The still-forming retrieval date is excluded.
 - A normalized dated input snapshot, retrieval time, source identities, code/config hashes, and SHA-256 digest must be saved before analysis.
 - No provider supplies a point-in-time vintage archive or revision history for these downloaded series. Historical revision cannot be ruled out.
 - A date label alone does not prove the value was executable at that instant. The primary alignment therefore imposes one full target-bar lag: score on bar `t`, hypothetical entry at close of bar `t+1`, exit at close of `t+1+h`.
@@ -46,7 +59,7 @@ For each market and horizon:
 2. Regress the simple forward return on the continuous score (scaled per ten score points).
 3. Report Pearson and Spearman correlations, effect size, Newey-West standard error and two-sided p-value. HAC bandwidth is at least the return horizon.
 4. Learn score quartiles from the training sample only, then compare fearful and greedy tails in the holdout.
-5. Report fixed provider bands without selecting thresholds from completed history.
+5. Report the fixed, predeclared model bands without selecting thresholds from completed history.
 6. Apply Benjamini-Hochberg false-discovery-rate adjustment across the complete family of 20 market-by-horizon score tests. All tests remain visible.
 7. Report the coefficient sign separately in training and holdout. A sign reversal counts against robustness.
 
@@ -91,6 +104,7 @@ Even a pass is not ready for real capital. It requires frozen forward collection
 
 ## Primary source references
 
-- CoinMarketCap index description and component groups: https://coinmarketcap.com/charts/fear-and-greed-index/
-- CoinMarketCap historical API timing and pagination: https://coinmarketcap.com/api/documentation/pro-api-reference/global-metrics
+- Liu and Tsyvinski, *Risks and Returns of Cryptocurrency* (momentum and realized-volatility context only; it does not validate this composite): https://www.nber.org/papers/w24877
+- Liu, Tsyvinski and Wu, *Common Risk Factors in Cryptocurrency* (market and momentum-factor context only): https://www.nber.org/papers/w25882
+- Yahoo Finance historical-data help (raw-price source context; the chart endpoint itself has no contractual public API/SLA): https://help.yahoo.com/kb/finance/download-historical-data-yahoo-finance-sln2311.html
 - CNN methodology used only as context for the repo's own equity construction: https://www.cnn.com/markets/fear-and-greed

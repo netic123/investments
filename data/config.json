@@ -5,8 +5,26 @@
     "navDaily": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_DailyNAV.csv",
     "navHistory": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_DailyNAVHistorical.csv",
     "monthlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_MonthlyPerformance.csv",
-    "quarterlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_QuarterlyPerformance.csv",
-    "fearGreed": "https://pro-api.coinmarketcap.com"
+    "quarterlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_QuarterlyPerformance.csv"
+  },
+  "cryptoFearGreed": {
+    "modelId": "investments-crypto-risk-appetite",
+    "version": 1,
+    "benchmark": "BTC-USD",
+    "symbols": ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "ADA-USD", "DOGE-USD", "BNB-USD"],
+    "range": "max",
+    "scoreWindow": 365,
+    "minScorePoints": 180,
+    "trendDays": 200,
+    "highDays": 365,
+    "volatilityDays": 30,
+    "volatilityBaselineDays": 90,
+    "breadthSmaDays": 200,
+    "relativeReturnDays": 30,
+    "requiredComponents": 5,
+    "historyPoints": 8000,
+    "timeoutMs": 30000,
+    "concurrency": 3
   },
   "marketFearGreed": {
     "range": "max", "window": 252, "minWindowPoints": 126, "minComponents": 3,

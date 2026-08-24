@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const marketfg = require('./marketfg'); // own Fear & Greed model for equity markets (Sweden/USA/Europe/Global)
+const cryptofg = require('./cryptofg'); // own price-based crypto risk-appetite model
 
 const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
@@ -266,96 +267,6 @@ async function getQuotes() {
   return out;
 }
 
-// ---------- Crypto Fear & Greed (CoinMarketCap) ----------
-// CoinMarketCap's official API. Without a key /public-api/v3/… is used (keyless, IP-based quota).
-// If CMC_API_KEY is set in the environment, /v3/… with the key in X-CMC_PRO_API_KEY is used instead (free Basic plan is enough).
-//   latest     → { data:{ value:78, value_classification:"Greed", update_time:"2026-08-23T00:08:10.031Z" } }
-//   historical → { data:[ { timestamp:"1787356800", value:76, value_classification:"Greed" }, … ] }  newest first, one value/day 00:00 UTC
-// Errors arrive as { status:{ error_code:"1011", error_message:"You've hit an IP rate limit." } } with HTTP 4xx.
-const FG_HISTORY_MAX = 5000;          // row cap; the API pages 500 rows per call (CMC's series starts 2023-06-29, ~1,150 rows today)
-const FG_MIN_INTERVAL_MS = 60 * 1000; // CMC updates every 15 minutes — no point fetching more often (protects the quota on repeated Update presses)
-const FG_FORCE_MIN_MS = 10 * 1000;    // a forced refresh (Update button) may re-fetch after this — hard floor against hammering
-let lastFg = null;                    // last successful response — shown with a warning if CMC does not respond
-let fgForce = false;                  // set by /api/refresh?force=1
-
-async function cmcJson(url, headers) {
-  let r;
-  try { r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json', ...headers }, signal: AbortSignal.timeout(20000) }); }
-  catch (e) { throw new Error('no contact with CoinMarketCap'); }
-  const j = await r.json().catch(() => null);
-  const st = (j && j.status) || {};
-  if (!r.ok || (st.error_code != null && String(st.error_code) !== '0')) {
-    const msg = st.error_message || `${r.status} ${r.statusText}`;
-    throw new Error(r.status === 429 ? `CoinMarketCap: rate limit reached (${msg})` : `CoinMarketCap: ${msg}`);
-  }
-  if (!j || typeof j !== 'object') throw new Error(`CoinMarketCap: invalid response (HTTP ${r.status})`);
-  return j;
-}
-
-let fgAttempt = null; // last attempt (successful or not) — the throttle also applies when CMC answers 429, otherwise we keep hammering
-async function getFearGreed() {
-  if (fgAttempt) {
-    const age = Date.now() - fgAttempt.t;
-    if (age < FG_FORCE_MIN_MS || (!fgForce && age < FG_MIN_INTERVAL_MS)) return fgAttempt.p;
-  }
-  fgForce = false;
-  fgAttempt = { t: Date.now(), p: fetchFearGreed() };
-  return fgAttempt.p;
-}
-async function fetchFearGreed() {
-  const key = process.env.CMC_API_KEY || '';
-  const root = String((config.sources && config.sources.fearGreed) || 'https://pro-api.coinmarketcap.com').replace(/\/+$/, '');
-  const base = root + (key ? '/v3' : '/public-api/v3') + '/fear-and-greed/';
-  // Only ever send the API key to CoinMarketCap itself. sources.fearGreed is editable config, and in a shared
-  // repo an edited config must not be able to redirect the key to someone else's host.
-  let cmcHost = '';
-  try { cmcHost = new URL(root).host; } catch { /* malformed root — treated as untrusted below */ }
-  if (key && cmcHost !== 'pro-api.coinmarketcap.com') {
-    throw new Error(`CMC_API_KEY is set but sources.fearGreed points at "${cmcHost || root}" — refusing to send the key anywhere but pro-api.coinmarketcap.com`);
-  }
-  const headers = key ? { 'X-CMC_PRO_API_KEY': key } : {};
-  try {
-    let historyError = null;
-    // the whole daily history: pages of 500 (API max), newest first; the first three pages in parallel, more only if the third was full
-    const page = start => cmcJson(base + `historical?start=${start}&limit=500`, headers).then(j => {
-      if (!j || !Array.isArray(j.data)) throw new Error('CoinMarketCap: unexpected history format');
-      return j.data;
-    });
-    const historyAll = async () => {
-      const pages = await Promise.all([1, 501, 1001].map(page));
-      let rows = pages.flat(), start = 1501;
-      while (pages[2].length === 500 && start <= FG_HISTORY_MAX) { const more = await page(start); rows = rows.concat(more); if (more.length < 500) break; start += 500; }
-      return rows;
-    };
-    const [latest, histRows] = await Promise.all([
-      cmcJson(base + 'latest', headers),
-      historyAll().catch(e => { historyError = String(e.message || e); return null; }),
-    ]);
-    const d = (latest && latest.data) || {};
-    const value = num(d.value);
-    if (value == null) throw new Error('invalid value from CoinMarketCap');
-    const dayIso = ts => { const n = Number(ts); return Number.isFinite(n) && n > 0 ? new Date(n * 1000).toISOString().slice(0, 10) : null; };
-    const byDate = new Map();
-    for (const r of (histRows || [])) {
-      const date = dayIso(r.timestamp), v = num(r.value);
-      if (date && v != null) byDate.set(date, { date, value: v, label: r.value_classification || null });
-    }
-    // if only the history fails, keep the last fetched one (with historyError + historyFetchedAt so the page can say how old it is)
-    const history = histRows ? [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)) : (lastFg ? lastFg.v.history : []);
-    const historyFetchedAt = histRows ? new Date().toISOString() : (lastFg ? lastFg.v.historyFetchedAt : null);
-    const v = {
-      value, label: d.value_classification || null, updateTime: d.update_time || null,
-      keyed: !!key, history, historyError, historyFetchedAt, fetchedAt: new Date().toISOString(),
-    };
-    lastFg = { t: Date.now(), v };
-    return v;
-  } catch (e) {
-    if (!lastFg) throw e;
-    console.error(new Date().toISOString(), '/api/feargreed', e.message || e);
-    return { ...lastFg.v, stale: true, fetchError: String(e.message || e) };
-  }
-}
-
 // ---------- http ----------
 function send(res, code, body, type = 'application/json; charset=utf-8') {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
@@ -366,15 +277,15 @@ const routes = {
   '/api/nav': () => cached('nav', getNav),
   '/api/perf': () => cached('perf', getPerf),
   '/api/quotes': () => cached('quotes', getQuotes, v => Object.values(v).some(q => !q.error)),
-  '/api/feargreed': () => cached('feargreed', getFearGreed, v => !v.stale), // fallback value (stale) is not cached
+  '/api/feargreed': () => cached('feargreed', () => cryptofg.getCryptoFearGreed(config.cryptoFearGreed), v => v.ok && !v.stale),
   // equity-market Fear & Greed: the Yahoo series are cached 15 min inside the module; a plain /api/refresh only recomputes,
-  // /api/refresh?force=1 (the Update button) re-fetches all series and lets CoinMarketCap be re-fetched too
+  // /api/refresh?force=1 (the Update button) re-fetches every configured daily series for both repository-owned models
   '/api/marketfg': () => cached('marketfg', () => marketfg.getMarketFearGreed(config.marketFearGreed), v => v.ok),
   '/api/config': async () => config,
   '/api/refresh': async (u) => {
     cache.clear();
     const force = u && u.searchParams.get('force') === '1';
-    if (force) { marketfg.clearCache(); fgForce = true; }
+    if (force) { marketfg.clearCache(); cryptofg.clearCache(); }
     return { cleared: true, forced: force };
   },
 };

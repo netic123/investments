@@ -38,10 +38,13 @@ TABS (top of the page)
   - Dalal Street's manager-aggregated 13F — static, delayed and updated by hand after each quarter
   - Upcoming dates
   Open directly: / or /#pabrai
-- Crypto  = CoinMarketCap's Crypto Fear & Greed Index (0-100): gauge, yesterday/last week/last month/
-            yearly high-low, chart controls from 30 days through 5 and 10 years to Max (CMC's whole series,
-            currently from 29 Jun 2023), how the index is
-            computed. Open directly: /#crypto
+- Crypto  = Crypto Risk Appetite, OWN PRICE-BASED MODEL v1 (0-100): five equally weighted indicators from
+            completed UTC daily closes for a frozen seven-asset basket. Bitcoin trend (vs 200-day average),
+            strength (distance from 365-day high), volatility shock (30-day realised volatility vs its 90-day
+            average, inverted), breadth (share of the basket above its 200-day average), and altcoin appetite
+            (median 30-day alt return minus BTC). Each raw indicator is ranked only against its own previous
+            365 observations; all five indicators and all seven assets are required. The tab exposes every raw
+            value, score, formula, symbol and caveat. Open directly: /#crypto
 - Sweden, USA, Europe, Global = Fear & Greed for the equity markets, OWN MODEL (no published index with
             open data exists for these — the US CNN index only has an unofficial feed whose terms forbid
             automated access). Six indicators from Yahoo Finance daily data, CNN-inspired: momentum (index vs
@@ -60,16 +63,17 @@ HOW IT WORKS
   They are not proof of exact execution dates/prices; the heading says when the interval spans several days.
 - The fund's file is dated one trading day AFTER the prices in it (T+1).
 - Weekends/evenings: the card shows "Last close" with a timestamp, not "Price now".
-- Locally, the Update button re-fetches EVERYTHING: fund files, Yahoo quotes, CoinMarketCap and all 23 Yahoo series
-  behind the market indices (it takes a few seconds; the status line shows progress and the time with
-  seconds, and every source shows when it was fetched). The automatic 10-minute refresh is gentler: it
-  reuses Yahoo series that are less than 15 minutes old. CoinMarketCap is never asked more than once per
-  10 seconds; its live value only changes every 15 minutes anyway, and the daily market data only changes
-  once per trading day — so identical numbers after an Update are normal outside trading hours. On GitHub
+- Locally, the Update button re-fetches EVERYTHING: fund files, Yahoo quotes, the seven fixed crypto series
+  and all 23 Yahoo series behind the equity indices (it takes a few seconds; the status line shows progress
+  and the time with seconds, and every source shows when it was fetched). The automatic 10-minute refresh is
+  gentler: it reuses daily series that are less than 15 minutes old. The crypto model admits only the previous
+  completed UTC day, while equity data changes once per trading day — so identical numbers after an Update are
+  normal until another daily bar is complete. On GitHub
   Pages, Reload snapshot re-downloads the most recently deployed JSON; upstream sources are fetched by the
   workflow, not by the visitor's browser.
-- The crypto index comes from CoinMarketCap's official API without a key. To use your own (free) key: set
-  the environment variable CMC_API_KEY before starting.
+- The crypto SCORE is computed locally in cryptofg.js. Yahoo Finance supplies raw price history only; no
+  third-party sentiment score, proprietary weighting or API key enters the calculation. Yahoo's chart feed
+  does not have a contractual public API/SLA, so availability and historical revision remain real limitations.
 - The market indices are computed in marketfg.js from each series' FULL dividend-adjusted daily history on
   Yahoo (23 series, ~9 MB per cold fetch, cached 15 minutes, one shared 25 s deadline). The charts go back as
   far as at least 3 of the 6 indicators exist: USA to 1994, Europe to 2005, Global to 2009, Sweden to 2014;
@@ -79,7 +83,7 @@ HOW IT WORKS
 - While the server runs it also captures the fund's holdings file every 30 minutes on its own, so a file
   day is not missed when the page is closed (a missed day merges multiple days into one net quantity change).
 
-SOURCES AND HOW THEY WERE VERIFIED (23 Aug 2026)
+SOURCES AND HOW THEY WERE VERIFIED (24 Aug 2026)
 - Fund holdings / NAV / performance: the fund's own files on wagonsetf.filepoint.live — verified to be the
   exact files wagonsetf.com loads (its page embeds that site). Rounded NAV × shares matches the holdings-file
   net-assets convention within 0.001% of the daily NAV file; market price matches Nasdaq and performance
@@ -90,8 +94,13 @@ SOURCES AND HOW THEY WERE VERIFIED (23 Aug 2026)
   The rate and its time are shown under "Price in SEK".
 - Dalal Street: SEC EDGAR 13F-HR (accession in config.json, linked from the page). Shares and values are
   typed from the filing; weights and quarter changes are computed from them, so nothing is rounded by hand.
-- Crypto Fear & Greed: CoinMarketCap's official API; identical to CMC's own page (value, time, 365-day
-  history) at verification.
+- Crypto Risk Appetite (own model): all seven configured Yahoo chart histories returned HTTP 200 on 24 Aug
+  2026. Completed daily history began 17 Sep 2014 for BTC, 9 Nov 2017 for ETH/XRP/ADA/DOGE/BNB and 10 Apr
+  2020 for SOL; every latest completed date was 23 Aug 2026. The score, component ranks and history are
+  recomputed by cryptofg.js. Known caveats: fixed present-day basket (selection/survivorship bias), equal rather
+  than market-cap weights, BTC-heavy inputs, no derivatives/funding/search/social/news data, heuristic windows
+  and category boundaries, and an undocumented Yahoo chart endpoint. It is a descriptive relative price regime,
+  not a direct emotion reading or a proven predictor.
 - Market Fear & Greed (own model): the 23 Yahoo series were checked for identity (ISIN/name), freshness and
   gaps; 20 of 23 closes were verified to the cent against Nasdaq, Cboe/FRED, Avanza, Carnegie, stoxx.com,
   Xetra and LSE. Model validation: the US version was compared ONCE with CNN's published index (a one-off
@@ -112,6 +121,8 @@ UPDATE BY HAND
 - dalalStreet: the manager-aggregated 13F (next filing due by 16 Nov 2026)
 - dates: upcoming events (the list empties itself when dates have passed)
 - names: name, flag, Avanza status per ticker (online / telefon / nej)
+- cryptoFearGreed: the frozen v1 basket and all five model windows. Changing any of these changes the model;
+  increment version instead of silently rewriting v1 history, then restart and rerun the backtest.
 - marketFearGreed: Yahoo symbols per market (index, vol, bond, hy, ig, small, large). If a series fails,
   that indicator is omitted (the index becomes the mean of those available, at least 3). Change a symbol
   here, then restart.
@@ -119,8 +130,9 @@ UPDATE BY HAND
 IF SOMETHING GOES WRONG
 - "holdings file could not be fetched" = the fund's server did not respond; the page shows the last saved file.
 - "quote missing: ..." = Yahoo did not respond for that ticker; the rest works.
-- "Fear & Greed crypto could not be fetched" = CoinMarketCap did not respond or the rate limit is hit. If a
-  previously fetched value exists it is shown with a warning until the next successful fetch.
+- "Fear & Greed crypto could not be fetched" = at least one member of the frozen seven-asset price basket
+  could not be loaded at startup. After a successful load, the last in-memory series may be reused with an
+  explicit fallback warning; no third-party sentiment index is substituted.
 - "Fear & Greed <market> could not be computed" / "index series ... missing" = Yahoo did not respond and the
   series has not been fetched since start. If a series was fetched earlier, the last successful one is reused
   (no time limit) until Yahoo responds again; the tab then shows a warning with Yahoo's error message and the
@@ -131,4 +143,4 @@ Not investment advice.
 
 LICENSE
 MIT (see LICENSE). The code is yours to use; the market data belongs to its respective sources
-(the fund, Yahoo Finance, CoinMarketCap, SEC EDGAR) and their terms apply to the data, not to this code.
+(the fund, Yahoo Finance and SEC EDGAR) and their terms apply to the data, not to this code.
