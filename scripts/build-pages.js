@@ -16,6 +16,7 @@ const OUT = path.join(ROOT, '_site');
 const API_OUT = path.join(OUT, 'api');
 const ENDPOINTS = ['config', 'holdings', 'nav', 'perf', 'quotes', 'marketfg'];
 const EXPECTED_FILES = ['.nojekyll', 'index.html', 'api/build.json', ...ENDPOINTS.map(name => `api/${name}.json`)].sort();
+const PUBLIC_POSITION_KEYS = ['currency', 'entry', 'fundTicker', 'nextReport', 'nextReportApprox', 'nextReportNote', 'secTicker', 'ticker', 'yahoo'];
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -80,11 +81,12 @@ async function waitForServer(base, child, logs) {
   throw new Error(`snapshot server did not start within 30 seconds\n${logs.text}`);
 }
 
-function validateSnapshot(data, examplePositions) {
+function validateSnapshot(data, publicPositions) {
   const { config, holdings, nav, perf, quotes, marketfg } = data;
   assert(config && typeof config === 'object', 'config is missing');
-  assert(config.positionsMeta && config.positionsMeta.demo === true && config.positionsMeta.source === 'example', 'public build did not select the demo watchlist');
-  assert(JSON.stringify(config.myPositions) === JSON.stringify(examplePositions), 'public build positions differ from data/positions.example.json');
+  assert(config.positionsMeta && config.positionsMeta.demo === false && config.positionsMeta.public === true && config.positionsMeta.source === 'public', 'public build did not select the approved public watchlist');
+  assert(JSON.stringify(config.myPositions) === JSON.stringify(publicPositions), 'public build positions differ from data/positions.public.json');
+  assert(config.myPositions.every(position => position.entry === null), 'public build exposed a non-null entry price');
   assert(!config.sources || !Object.prototype.hasOwnProperty.call(config.sources, 'fearGreed'), 'retired third-party crypto index source is still configured');
   assert(!Object.prototype.hasOwnProperty.call(config, 'cryptoFearGreed'), 'retired separate crypto model config is still present');
   assert(config.marketFearGreed && config.marketFearGreed.modelId === 'investments-unified-fear-greed' && config.marketFearGreed.version === 1, 'unified model config is missing or has drifted');
@@ -118,13 +120,13 @@ function validateSnapshot(data, examplePositions) {
   assert(crypto.asOf < new Date().toISOString().slice(0, 10), 'Crypto result includes the still-forming current UTC bar');
 }
 
-async function captureSnapshot(base, examplePositions) {
+async function captureSnapshot(base, publicPositions) {
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const pairs = await Promise.all(ENDPOINTS.map(async name => [name, await fetchJson(`${base}/api/${name}`)]));
       const data = Object.fromEntries(pairs);
-      validateSnapshot(data, examplePositions);
+      validateSnapshot(data, publicPositions);
       return data;
     } catch (error) {
       lastError = error;
@@ -191,8 +193,22 @@ async function stopChild(child) {
 }
 
 async function main() {
-  const example = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'positions.example.json'), 'utf8'));
-  assert(Array.isArray(example.myPositions), 'data/positions.example.json has no myPositions list');
+  const publicWatchlist = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'positions.public.json'), 'utf8'));
+  assert(Array.isArray(publicWatchlist.myPositions), 'data/positions.public.json has no myPositions list');
+  const expectedPublicPositions = [
+    { ticker: 'CSU.TO', fundTicker: 'CSU CN', yahoo: 'CSU.TO' },
+    { ticker: 'KSPI', fundTicker: 'KSPI', yahoo: 'KSPI' },
+    { ticker: 'HCC', fundTicker: 'HCC', yahoo: 'HCC' },
+  ];
+  assert(publicWatchlist.myPositions.length === expectedPublicPositions.length, 'public watchlist must contain exactly the three approved positions');
+  for (let index = 0; index < expectedPublicPositions.length; index++) {
+    const position = publicWatchlist.myPositions[index];
+    const expected = expectedPublicPositions[index];
+    assert(position && position.ticker === expected.ticker && position.fundTicker === expected.fundTicker && position.yahoo === expected.yahoo, `public watchlist position ${index + 1} has drifted`);
+    assert(position.entry === null, `public watchlist position ${expected.ticker} must not publish an entry price`);
+    const unexpectedKeys = Object.keys(position).filter(key => !PUBLIC_POSITION_KEYS.includes(key));
+    assert(unexpectedKeys.length === 0, `public watchlist position ${expected.ticker} contains forbidden fields: ${unexpectedKeys.join(', ')}`);
+  }
   const forbiddenSecrets = ['GH_TOKEN', 'GITHUB_TOKEN']
     .map(name => process.env[name]).filter(value => typeof value === 'string' && value.length >= 8);
 
@@ -230,14 +246,14 @@ async function main() {
     child.stderr.on('data', collectLog);
 
     await waitForServer(base, child, logs);
-    const data = await captureSnapshot(base, example.myPositions);
+    const data = await captureSnapshot(base, publicWatchlist.myPositions);
     const generatedAt = new Date().toISOString();
     const build = {
       generatedAt,
       commit: process.env.GITHUB_SHA || gitValue(['rev-parse', 'HEAD']),
       ref: process.env.GITHUB_REF_NAME || gitValue(['branch', '--show-current']),
       dataMode: 'build-time snapshot',
-      watchlist: 'demo',
+      watchlist: 'public-no-entry-prices',
       refreshTrigger: 'push to main',
     };
 

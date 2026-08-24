@@ -322,6 +322,8 @@ function renderHoldings(H,Q){
     ? (STATIC_BUILD
       ? '<b>PUBLIC DEMO watchlist.</b> These are example tickers, not verified as your positions. Private local positions are intentionally excluded from GitHub Pages.'
       : '<b>DEMO watchlist.</b> These are example tickers, not verified as your positions. Create <span class="mono">data/positions.local.json</span> and restart the server.')
+    : posMeta.source==='public'
+      ? '<b>PUBLIC focus watchlist.</b> Constellation Software, Kaspi.kz and Warrior Met Coal are tracked for Pabrai activity. Personal entry prices are intentionally not published on GitHub Pages.'
     : `<b>${CFG.myPositions.length} focus positions.</b> WAGN is checked from the fund’s daily T+1 holdings file; Dalal Street is checked separately from its delayed quarterly 13F. A quantity change is not proof of an execution date or price. All other Pabrai holdings remain visible in the full tables below.`;
   const t0=today0();
   $('#cards').innerHTML = CFG.myPositions.map(pos=>{
@@ -363,7 +365,7 @@ function renderHoldings(H,Q){
         <div><div class="l">Pabrai · Dalal Street 13F</div><div class="v">${dalalPosition}</div><div class="s">as of ${fmtDate((CFG.dalalStreet||{}).asOf)} · delayed quarterly disclosure</div></div>
         <div><div class="l">Dalal change vs prior 13F</div><div class="v">${dalalChange}</div><div class="s">Do not add WAGN and 13F quantities together</div></div>
         <div><div class="l">${qLabel}</div><div class="v big">${live?money(live,pos.currency)+' <span class="'+cls(day)+'" style="font-size:.8rem">'+pct(day,2)+'</span>':'<span class="down" style="font-size:.95rem">price unavailable</span>'}</div><div class="s">${qWhen}${day!=null?' · day change':''}</div></div>
-        <div><div class="l">${hasEntry?'Price return since entry ('+money(pos.entry,pos.currency)+')':'Return since entry'}</div><div class="v big ${hasEntry?cls(vsEntry):'flat'}">${hasEntry?pct(vsEntry,1):'No entry price entered'}</div><div class="s">${hasEntry?'Local currency; excludes FX, fees and dividends, so it differs from Avanza’s SEK result':''}</div></div>
+        <div><div class="l">${hasEntry?'Price return since entry ('+money(pos.entry,pos.currency)+')':'Return since entry'}</div><div class="v big ${hasEntry?cls(vsEntry):'flat'}">${hasEntry?pct(vsEntry,1):(posMeta.source==='public'?'Entry price not published':'No entry price entered')}</div><div class="s">${hasEntry?'Local currency; excludes FX, fees and dividends, so it differs from Avanza’s SEK result':''}</div></div>
         <div><div class="l">Price in SEK (per share)</div><div class="v">${sek?fmt(sek,0)+' kr':(live?'FX rate missing':'—')}</div><div class="s">${fxNote}</div></div>
         <div><div class="l">Next report</div><div class="v">${report}</div><div class="s">${pos.nextReportNote?esc(pos.nextReportNote):''}</div></div>
       </div></div>`;

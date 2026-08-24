@@ -1,0 +1,35 @@
+{
+  "_comment": "Public GitHub Pages focus watchlist approved by the user on 24 Aug 2026. Entry prices are deliberately omitted. Report dates are Avanza estimates from the supplied screenshot and were not company-confirmed at verification.",
+  "myPositions": [
+    {
+      "ticker": "CSU.TO",
+      "fundTicker": "CSU CN",
+      "yahoo": "CSU.TO",
+      "entry": null,
+      "currency": "CAD",
+      "nextReport": "2026-11-06",
+      "nextReportApprox": true,
+      "nextReportNote": "Avanza screenshot estimate; not company-confirmed (checked 23 Aug 2026)."
+    },
+    {
+      "ticker": "KSPI",
+      "fundTicker": "KSPI",
+      "yahoo": "KSPI",
+      "entry": null,
+      "currency": "USD",
+      "nextReport": "2026-10-28",
+      "nextReportApprox": true,
+      "nextReportNote": "Avanza screenshot estimate; not company-confirmed (checked 23 Aug 2026)."
+    },
+    {
+      "ticker": "HCC",
+      "fundTicker": "HCC",
+      "yahoo": "HCC",
+      "entry": null,
+      "currency": "USD",
+      "nextReport": "2026-10-30",
+      "nextReportApprox": true,
+      "nextReportNote": "Avanza screenshot estimate; not company-confirmed (checked 23 Aug 2026)."
+    }
+  ]
+}

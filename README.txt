@@ -15,9 +15,10 @@ publishes only _site/index.html, _site/.nojekyll and _site/api/*.json. GitHub Pa
 running. The public values therefore reflect the timestamp shown in the page header and change on the next
 successful main deployment. "Reload snapshot" only checks whether that newer deployment is available.
 
-The Pages build is deliberately forced to data/positions.example.json and visibly labels it DEMO. It never
-publishes the gitignored data/positions.local.json or data/portfolio.local.json, even when the build script is
-run on a computer where those files exist. No API key or GitHub secret is supplied to the snapshot server.
+The Pages build is deliberately forced to the approved data/positions.public.json watchlist: Constellation
+Software, Kaspi.kz and Warrior Met Coal, all with entry price set to null. It never publishes the gitignored
+data/positions.local.json or data/portfolio.local.json, even when the build script is run on a computer where
+those files exist. No API key or GitHub secret is supplied to the snapshot server.
 The generated _site directory is ignored by Git and is an explicit allowlist; research files, backend code,
 configuration files and repository metadata are not included in the deployed artifact.
 
@@ -25,8 +26,9 @@ YOUR FOCUSED WATCHLIST
 Copy data/positions.example.json to data/positions.local.json and enter display ticker, exact WAGN ticker
 (fundTicker, when different), Yahoo symbol, entry price and currency. That file is gitignored and is never
 committed, so the repo can be shared without revealing what you follow. If it is missing the app visibly
-labels the fallback list as DEMO instead of presenting the examples as your holdings. GitHub Pages always
-uses that DEMO list; the private local list is only available from the local server.
+labels the fallback list as DEMO instead of presenting the examples as your holdings. GitHub Pages uses
+data/positions.public.json, which contains the three approved public tickers but deliberately excludes your
+personal entry prices; the complete private list is available only from the local server.
 
 TABS (top of the page)
 - Pabrai  = the default tab: what Mohnish Pabrai is doing, for the positions you follow yourself:
@@ -120,6 +122,8 @@ SOURCES AND HOW THEY WERE VERIFIED (24 Aug 2026)
 UPDATE BY HAND
 - data/positions.local.json: focus tickers, exact WAGN/Yahoo symbol, entry price/currency and estimated or
   confirmed next report date (restart after editing; Update does not reload this file)
+- data/positions.public.json: the explicitly approved public GitHub Pages tickers only. Keep every entry price
+  null; the Pages build fails if a personal entry price is added.
 - dalalStreet: the manager-aggregated 13F (next filing due by 16 Nov 2026)
 - dates: upcoming events (the list empties itself when dates have passed)
 - names: name, flag, Avanza status per ticker (online / telefon / nej)

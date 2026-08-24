@@ -20,27 +20,35 @@ const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 // Your own focus list lives outside the committed config so the repo can be shared without it.
 // data/positions.local.json is gitignored; if it is missing we fall back to the example so the server still starts.
 const POSITIONS_PATH = path.join(DATA, 'positions.local.json');
+const POSITIONS_PUBLIC_PATH = path.join(DATA, 'positions.public.json');
 const POSITIONS_EXAMPLE_PATH = path.join(DATA, 'positions.example.json');
 const PUBLIC_BUILD = process.env.INVESTMENTS_PUBLIC_BUILD === '1';
+const PUBLIC_POSITION_KEYS = ['ticker', 'fundTicker', 'secTicker', 'yahoo', 'entry', 'currency', 'nextReport', 'nextReportApprox', 'nextReportNote'];
+const sanitizePublicPosition = position => Object.fromEntries(PUBLIC_POSITION_KEYS
+  .filter(key => key === 'entry' || Object.prototype.hasOwnProperty.call(position, key))
+  .map(key => [key, key === 'entry' ? null : position[key]]));
 const loadedPositions = (() => {
   let localIssue = null;
-  // A Pages build is public. Even if someone runs it on a machine that has the ignored
-  // local file, it must only ever serialize the committed example watchlist.
-  const sources = PUBLIC_BUILD ? [POSITIONS_EXAMPLE_PATH] : [POSITIONS_PATH, POSITIONS_EXAMPLE_PATH];
+  // A Pages build is public. Even if someone runs it on a machine that has the ignored local file,
+  // it may serialize only the separately approved committed public watchlist, whose entry prices are null.
+  const sources = PUBLIC_BUILD ? [POSITIONS_PUBLIC_PATH] : [POSITIONS_PATH, POSITIONS_EXAMPLE_PATH];
   for (const p of sources) {
     try {
-      const list = JSON.parse(fs.readFileSync(p, 'utf8')).myPositions;
-      if (Array.isArray(list)) {
+      const sourceList = JSON.parse(fs.readFileSync(p, 'utf8')).myPositions;
+      if (Array.isArray(sourceList)) {
         const demo = p === POSITIONS_EXAMPLE_PATH;
+        const publicWatchlist = p === POSITIONS_PUBLIC_PATH;
+        const list = publicWatchlist ? sourceList.map(sanitizePublicPosition) : sourceList;
         if (demo) console.log('data/positions.local.json unavailable — using the example watchlist. Copy the example file and enter your own.');
         return {
           list,
           meta: {
-            source: demo ? 'example' : 'local',
+            source: publicWatchlist ? 'public' : demo ? 'example' : 'local',
             demo,
-            warning: demo
-              ? (PUBLIC_BUILD ? 'Public Pages builds intentionally use data/positions.example.json' : (localIssue || 'data/positions.local.json was not found'))
-              : null,
+            public: publicWatchlist,
+            warning: publicWatchlist
+              ? 'Public watchlist intentionally omits entry prices'
+              : demo ? (localIssue || 'data/positions.local.json was not found') : null,
           },
         };
       }
