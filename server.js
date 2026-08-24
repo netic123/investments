@@ -6,8 +6,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
-const marketfg = require('./marketfg'); // own Fear & Greed model for equity markets (Sweden/USA/Europe/Global)
-const cryptofg = require('./cryptofg'); // own price-based crypto risk-appetite model
+const marketfg = require('./marketfg'); // one six-component Fear & Greed model for Crypto/Sweden/USA/Europe/Global
 
 const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
@@ -277,15 +276,18 @@ const routes = {
   '/api/nav': () => cached('nav', getNav),
   '/api/perf': () => cached('perf', getPerf),
   '/api/quotes': () => cached('quotes', getQuotes, v => Object.values(v).some(q => !q.error)),
-  '/api/feargreed': () => cached('feargreed', () => cryptofg.getCryptoFearGreed(config.cryptoFearGreed), v => v.ok && !v.stale),
-  // equity-market Fear & Greed: the Yahoo series are cached 15 min inside the module; a plain /api/refresh only recomputes,
-  // /api/refresh?force=1 (the Update button) re-fetches every configured daily series for both repository-owned models
-  '/api/marketfg': () => cached('marketfg', () => marketfg.getMarketFearGreed(config.marketFearGreed), v => v.ok),
+  // All five market tabs come from this one model response. Yahoo series are cached for 15 minutes inside the module;
+  // a plain /api/refresh recomputes, while /api/refresh?force=1 re-fetches every configured daily series.
+  '/api/marketfg': () => cached('marketfg', () => marketfg.getMarketFearGreed(config.marketFearGreed), v => {
+    const expected = Object.keys((config.marketFearGreed && config.marketFearGreed.markets) || {}).sort();
+    const actual = Object.keys((v && v.markets) || {}).sort();
+    return !!(v && v.ok) && Object.keys(v.failed || {}).length === 0 && JSON.stringify(actual) === JSON.stringify(expected);
+  }),
   '/api/config': async () => config,
   '/api/refresh': async (u) => {
     cache.clear();
     const force = u && u.searchParams.get('force') === '1';
-    if (force) { marketfg.clearCache(); cryptofg.clearCache(); }
+    if (force) marketfg.clearCache();
     return { cleared: true, forced: force };
   },
 };

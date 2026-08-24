@@ -266,11 +266,11 @@ async function load(mode){ // mode: 'manual' = Update button (re-fetch everythin
     st.className = errs.length?'err':'';
   };
   try{
-    if(mode&&!STATIC_BUILD) await getJson('/api/refresh'+(mode==='manual'?'?force=1':''),{method:'POST'}); // POST so a cross-site <img> cannot trigger it; force=1 re-fetches the raw series behind both own models
+    if(mode&&!STATIC_BUILD) await getJson('/api/refresh'+(mode==='manual'?'?force=1':''),{method:'POST'}); // POST so a cross-site <img> cannot trigger it; force=1 re-fetches the raw series behind the shared model
     if(STATIC_BUILD){ BUILD_META=await getJson('/api/build'); CFG=await getJson('/api/config'); }
     else CFG = CFG || await getJson('/api/config');
     // All requests start at once, but the Pabrai part renders as soon as it is ready — the daily series behind the market-state models must not hold it back.
-    const fgReq=[getJson('/api/feargreed'),getJson('/api/marketfg')];
+    const fgReq=getJson('/api/marketfg');
     const [h,n,p,q] = await Promise.allSettled([getJson('/api/holdings'),getJson('/api/nav'),getJson('/api/perf'),getJson('/api/quotes')]);
     const Q = q.status==='fulfilled' ? q.value : {};
     // NAV carries the actual pricing date for the T+1 holdings file. Render it first so the watch cards show that date too.
@@ -283,12 +283,10 @@ async function load(mode){ // mode: 'manual' = Update button (re-fetch everythin
     if(q.status!=='fulfilled') errs.push('quotes could not be fetched');
     else { const bad=Object.values(Q).filter(x=>x.error).map(x=>x.symbol); if(bad.length) errs.push('quote missing: '+bad.join(', ')); }
     renderDalal(); renderDates();
-    setStatus(' · computing own crypto and equity market-state models from daily series…');
-    // Fear & Greed tabs: five transparent repository-owned models. Data providers supply raw observations, not scores.
-    const [g,mf] = await Promise.allSettled(fgReq);
-    if(g.status==='fulfilled'){ setFg('crypto', normCrypto(g.value)); if(g.value.stale) errs.push('Crypto model: using fallback price history'); }
-    else { setFg('crypto', {error:g.reason.message}); errs.push('Fear & Greed crypto could not be fetched'); }
-    for(const t of FG_TABS.filter(t=>t.kind==='market')){
+    setStatus(' · computing one shared six-component market model from daily series…');
+    // All five Fear & Greed tabs come from one marketfg response and one model identity.
+    const [mf] = await Promise.allSettled([fgReq]);
+    for(const t of FG_TABS){
       if(mf.status!=='fulfilled'){ setFg(t.id, {error:mf.reason.message}); continue; }
       const M=mf.value.markets[t.market];
       if(M) setFg(t.id, normMarket(M, mf.value.model, mf.value.fetchedAt)); else { setFg(t.id, {error:(mf.value.failed||{})[t.market]||'no data'}); errs.push('Fear & Greed '+t.tab+' could not be computed'); }
@@ -455,12 +453,10 @@ function renderDates(){
   $('#dates').innerHTML = html || '<li class="empty">No upcoming dates — add to the list in data/config.json (dates).</li>';
 }
 
-// ---- Fear & Greed: one own crypto proxy + four own equity-market models. One shared renderer.
-const CRYPTO_BANDS=[[0,24,'Extreme Fear'],[25,44,'Fear'],[45,55,'Neutral'],[56,74,'Greed'],[75,100,'Extreme Greed']]; // fixed display convention for model v1
-const MARKET_BANDS=[[0,24,'Extreme Fear'],[25,44,'Fear'],[45,55,'Neutral'],[56,74,'Greed'],[75,100,'Extreme Greed']]; // as CNN
+// ---- Fear & Greed: one shared six-component model, five market mappings, one renderer.
+const MARKET_BANDS=[[0,24,'Extreme Fear'],[25,44,'Fear'],[45,55,'Neutral'],[56,74,'Greed'],[75,100,'Extreme Greed']];
 const FG_TABS=[
-  {id:'crypto',tab:'Crypto',hash:'#crypto',kind:'crypto',bands:CRYPTO_BANDS,title:'Crypto Risk Appetite — own model v1',
-   fileNote:'Crypto Risk Appetite — own transparent price-based model v1, calculated from a fixed seven-asset basket.'},
+  {id:'crypto',tab:'Crypto',forName:'the crypto market using BTC as benchmark',hash:'#crypto',kind:'market',market:'crypto',bands:MARKET_BANDS},
   {id:'sweden',tab:'Sweden',forName:'the Stockholm stock market',hash:'#sweden',kind:'market',market:'sweden',bands:MARKET_BANDS},
   {id:'usa',tab:'USA',forName:'the US stock market',hash:'#usa',kind:'market',market:'usa',bands:MARKET_BANDS},
   {id:'europe',tab:'Europe',forName:'the European stock market',hash:'#europe',kind:'market',market:'europe',bands:MARKET_BANDS},
@@ -497,7 +493,7 @@ function fgPanelHtml(t){
     <div class="card"><div class="kpi"><div class="l">Compared with earlier</div></div><div class="fg-stats" id="${id}-stats"></div></div>
   </div>
 </section>
-${t.kind==='market'||t.kind==='crypto'?`<section class="fg-data">
+${t.kind==='market'?`<section class="fg-data">
   <div class="sec-head"><h2>Indicators</h2><span class="note" id="${id}-compnote">—</span></div>
   <div class="tablewrap"><table class="fg-comps"><thead><tr><th>Indicator</th><th class="num">Value</th><th>Score 0–100</th><th>State</th><th>Series</th></tr></thead><tbody id="${id}-comps"></tbody></table></div>
 </section>`:''}
@@ -518,41 +514,10 @@ ${t.kind==='market'||t.kind==='crypto'?`<section class="fg-data">
 }
 $('#fgPanels').innerHTML = FG_TABS.map(fgPanelHtml).join('');
 
-const CRYPTO_EXPLAIN=`<div class="kpi"><div class="l">Own price-based proxy</div></div><p style="margin:8px 0 0;font-size:.9rem">The score is calculated locally from completed UTC daily prices for a fixed seven-asset basket. It is not a third-party Fear &amp; Greed index, a survey of emotions, or a prediction of returns.</p>`;
-
-// Repository-owned crypto model response → common renderer shape
-function normCrypto(G){
-  const bands=(G.model&&G.model.labels)||CRYPTO_BANDS, v=Math.max(0,Math.min(100,G.value)), P=G.previous||{};
-  const H=(G.history||[]).filter(r=>r.value!=null).map(r=>({date:r.date,value:r.value,label:fgLabel(r.label,r.value,bands)}));
-  const row=(val,date)=> val==null ? null : {value:val,label:bands[fgBand(val,bands)][2],date};
-  const previous=row(P.close,P.closeDate), week=row(P.week,P.weekDate), month=row(P.month,P.monthDate), year=row(P.year,P.yearDate);
-  const now={date:G.asOf,value:v,label:fgLabel(G.label,v,bands),live:false};
-  const [hi,lo]=hiLo(H.filter(r=>r.date>=addDays(G.asOf,-365)));
-  const delta=P.close!=null?v-P.close:null, callouts=[];
-  if(G.stale) callouts.push('Yahoo did not respond at the latest attempt — at least one last successful in-memory price history is being used.');
-  for(const warning of G.warnings||[]) callouts.push(esc(warning));
-  const order=['trend','strength','volatility','breadth','altcoinAppetite'];
-  const comps=order.map(key=>(G.components||{})[key]).filter(Boolean);
-  const seriesList=comps.map(c=>`<li><b>${esc(c.name)}</b>: ${esc(c.desc)}${c.note?' — '+esc(c.note):''}</li>`).join('');
-  const model=G.model||{}, params=model.parameters||{}, basket=(model.basket||[]).map(esc).join(', ');
-  const explain=`<div class="kpi"><div class="l">Own price-based model v${esc(model.version||1)}</div></div>
-    <p style="margin:8px 0 0;font-size:.9rem">Each raw indicator gets a causal percentile rank within at most the <b>current and previous ${(model.scoreWindow||365)-1} completed daily observations</b>; at least ${esc(model.minScorePoints||180)} valid values are required. Volatility is inverted; the five 0–100 ranks are then averaged with equal weight. There are no fitted weights and no third-party sentiment score.</p>
-    <ul class="fg-comp" style="list-style:disc">${seriesList}</ul>
-    <p class="muted" style="font-size:.82rem;margin:10px 0 0"><b>Frozen v1 basket:</b> ${basket}. Parameters: BTC trend ${esc(params.trendDays||200)} days; strength versus ${esc(params.highDays||365)}-day high; realised volatility ${esc(params.volatilityDays||30)} days versus its ${esc(params.volatilityBaselineDays||90)}-day average; breadth versus ${esc(params.breadthSmaDays||200)}-day averages; altcoin relative return ${esc(params.relativeReturnDays||30)} days. Today’s still-forming UTC candle is excluded.</p>
-    <p class="muted" style="font-size:.82rem;margin:8px 0 0">This measures a relative <b>price regime</b>, not actual human emotion. The basket, windows, equal weights and category boundaries are heuristic design choices. The basket is not the whole market and its present-day selection creates survivorship/representation bias in historical tests. A high score means risk-on conditions relative to the preceding year; it does not mean a high probability of future gains.</p>`;
-  return { bands, value:v, label:now.label, title:'Crypto Risk Appetite — own model v'+(model.version||1), note:`${esc((G.source||{}).provider||'daily prices')} raw daily prices · as of ${fmtDate(G.asOf)} · ${fetchedStr(G.fetchedAt)}`,
-    sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous completed UTC day · `:'')+'as of '+fmtDate(G.asOf),
-    kpiSub:now.label+' · '+fmtDate(G.asOf), prevLabel:'Previous day', prev:previous,
-    stats:[['Now',now],['Previous day',previous],['1 week ago',week],['1 month ago',month],['1 year ago',year],['Yearly high',hi],['Yearly low',lo]],
-    history:H, total:G.total, livePoint:false, callouts, components:comps, compnote:`${G.n} of ${G.total} indicators · ${G.assetCount} fixed-basket assets · as of ${fmtDate(G.asOf)}`,
-    explain, explnote:'repository-owned model · 0–100',
-    footer:`<p><b>Model ownership and data source are separate:</b> this repository calculates the score; Yahoo Finance supplies raw daily price histories. Yahoo’s chart feed is not a contractual public API/SLA, so source availability is a limitation. No CoinMarketCap or Alternative.me score enters the calculation.</p><p><b>Descriptive indicator only — not proven predictive and not investment advice.</b></p>` };
-}
-
-// /api/marketfg (one market) → common shape
+// One market from the shared /api/marketfg response → common renderer shape
 const MARKET_COMP_ORDER=['momentum','strength','volatility','safeHaven','credit','breadth'];
 function normMarket(M,model,fetchedAt){
-  const bands=MARKET_BANDS, v=M.score, P=M.previous||{};
+  const bands=(model&&model.labels)||MARKET_BANDS, v=M.score, P=M.previous||{};
   const H=(M.history||[]).filter(h=>h.score!=null).map(h=>({date:h.date,value:h.score,label:h.label,n:h.n}));
   const row=(val,date)=> val==null ? null : {value:val,label:bands[fgBand(val,bands)][2],date};
   const now={value:v,label:M.label,date:M.asOf,live:!!M.intraday};
@@ -566,17 +531,23 @@ function normMarket(M,model,fetchedAt){
   const comps=MARKET_COMP_ORDER.map(k=>M.components[k]).filter(Boolean);
   const realised=comps.some(c=>c.key==='volatility'&&/realised/.test(c.note||''));
   const seriesList=comps.map(c=>`<li><b>${esc(c.name)}</b>: ${c.names.map((n,i)=>esc(n)+' <span class="mono muted">('+esc(c.symbols[i])+')</span>').join(' / ')}${c.note?' — '+esc(c.note):''}</li>`).join('');
-  const explain=`<div class="kpi"><div class="l">Own model, inspired by CNN Fear &amp; Greed</div></div>
-    <p style="margin:8px 0 0;font-size:.9rem">Six indicators are computed from daily closes (Yahoo Finance, dividend-adjusted). Each indicator gets a score 0–100 = its <b>percentile within the last ${model.window} trading days</b> (≈ 1 year): 100 means "greediest in a year", 0 "most fearful". The index is the mean of the indicators (equal weight, at least ${model.minComponents} required). Labels as CNN.</p>
+  const crypto=M.key==='crypto';
+  const observationText=crypto?'completed daily observations':'trading-day observations';
+  const disclosure=crypto
+    ? `<p class="muted" style="font-size:.82rem;margin:10px 0 0"><b>Crypto mapping:</b> BTC is the benchmark, not the entire crypto market. IEF is the US Treasury safe-haven proxy; HYG/LQD measures external US corporate-credit appetite. Breadth is a fixed, daily-rebalanced non-core basket (SOL/XRP/ADA/DOGE/BNB) versus a BTC/ETH core basket. These are analytical proxies, not investable or historical market-cap indices. Selecting today’s surviving assets in August 2026 and reconstructing them backward creates hindsight-selection and survivorship bias in historical charts and backtests. The current UTC candle is excluded. Because crypto trades seven days a week, 252 observations cover about 8.3 months, not a full calendar year; US bond components carry their latest score over weekends.</p>`
+    : `<p class="muted" style="font-size:.82rem;margin:10px 0 0">No published Fear &amp; Greed index with an open data source exists for ${esc(M.name)}${M.key==='usa'?' apart from CNN’s published US index':''}, hence the own computation. Scores are relative to the last 252 observations — after a calm period a moderate pullback can read as "extreme fear".${realised?' Volatility = realised 20-observation because this market is not configured with a matching implied-volatility series; it is backward-looking and behaves differently from a VIX-style measure.':''}${M.key==='usa'?' <b>One-off comparison (23 Aug 2026):</b> against CNN’s published index over 398 trading days this model had correlation 0.88, a mean gap of 8.9 points and read on average 6 points greedier; this is a non-reproducible reasonableness check, not proof of predictive value.':' The same construction applied to the US market had correlation 0.88 in that one-off check (see the USA tab).'}</p>`;
+  const explain=`<div class="kpi"><div class="l">One shared repository model · v${esc(model.version||1)}</div></div>
+    <p style="margin:8px 0 0;font-size:.9rem">Crypto, Sweden, USA, Europe and Global use the <b>same six-component engine, ${model.window}-observation percentile scoring, equal weights, directions and labels</b>. Raw market proxies differ: volatility uses an implied-volatility level where configured and benchmark realised volatility otherwise. Each raw indicator gets a causal 0–100 percentile rank within the last ${model.window} ${observationText}; volatility is inverted and the six ranks are averaged. All ${model.minComponents} components are required. There are no fitted weights and no third-party sentiment score.</p>
     <ul class="fg-comp" style="list-style:disc">${seriesList}</ul>
-    <p class="muted" style="font-size:.82rem;margin:10px 0 0">No published Fear &amp; Greed index with an open data source exists for ${esc(M.name)}${M.key==='usa'?' apart from CNN’s (an unofficial feed whose terms forbid automated access)':''}, hence the own computation. Scores are relative to the last year — after a calm year a moderate pullback reads as "extreme fear".${realised?' Volatility = realised 20-day because this model is not configured with a matching implied-volatility series; it is backward-looking and behaves differently from a VIX-style measure.':''}${M.key==='usa'?' <b>Validation (23 Aug 2026):</b> against CNN’s published index over 398 trading days this model has correlation 0.88, a mean gap of 8.9 points and reads on average 6 points greedier; same label on 56 % of days, within one band on 93 %. The remaining gap comes from CNN’s put/call and NYSE advance/decline inputs, for which no open data exists.':' The same construction applied to the US market tracks CNN’s published index with correlation 0.88 (see the USA tab).'} Not investment advice.</p>`;
+    ${disclosure}
+    <p class="muted" style="font-size:.82rem;margin:8px 0 0">This is a descriptive relative price/risk regime, not a survey of emotion or a probability of future gains. Not investment advice.</p>`;
   return { bands, value:v, label:M.label, title:`Fear & Greed — ${M.name} (own model)`, note:`${esc(M.indexName)} · as of ${when} · ${fetchedStr(fetchedAt)}`,
-    sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous trading day · `:'')+'as of '+when,
-    kpiSub:M.label+' · '+fmtDate(M.asOf), prevLabel:'Previous day', prev:row(P.close,P.closeDate),
-    stats:[['Now',now],['Previous day',row(P.close,P.closeDate)],['1 week ago',row(P.week,P.weekDate)],['1 month ago',row(P.month,P.monthDate)],['1 year ago',row(P.year,P.yearDate)],['Yearly high',hi],['Yearly low',lo]],
+    sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous observation · `:'')+'as of '+when,
+    kpiSub:M.label+' · '+fmtDate(M.asOf), prevLabel:'Previous observation', prev:row(P.close,P.closeDate),
+    stats:[['Now',now],['Previous observation',row(P.close,P.closeDate)],['1 week ago',row(P.week,P.weekDate)],['1 month ago',row(P.month,P.monthDate)],['1 year ago',row(P.year,P.yearDate)],['Yearly high',hi],['Yearly low',lo]],
     history:H, total:M.total, livePoint:false, callouts, components:comps, compnote:`${M.n} of ${M.total} indicators · as of ${fmtDate(M.asOf)}`,
-    explain, explnote:'own model · 0–100',
-    footer:`<p>Own computation on daily data from Yahoo Finance — not CNN's or any other published index. The series can be changed in <span class="mono">data/config.json</span> (marketFearGreed).</p><p><b>Not investment advice.</b></p>` };
+    explain, explnote:`${esc(model.id||'repository model')} · 0–100`,
+    footer:`<p><b>One model, separate raw mappings:</b> this repository calculates every market score in <span class="mono">marketfg.js</span>; Yahoo Finance supplies raw daily histories, not an index score. No CoinMarketCap or Alternative.me score enters the calculation. Yahoo’s chart feed has no contractual public API SLA.</p><p><b>Descriptive indicator only — predictive value must be tested separately.</b></p>` };
 }
 
 function setFg(id,norm){ FGS[id].norm=norm; renderFg(id); if(document.body.dataset.tab===id) updateFgHeader(id); }
@@ -587,10 +558,10 @@ function renderFg(id){
   const N=S.norm;
   if(!N||N.error){
     panel.classList.add('nodata');
-    $i('title').textContent = t.kind==='crypto' ? t.title : 'Fear & Greed — '+t.tab;
+    $i('title').textContent = 'Fear & Greed — '+t.tab;
     $i('error').innerHTML=`<div class="empty">Fear &amp; Greed could not be fetched${N&&N.error?' — '+esc(N.error):''}. The page retries every 10 minutes, or press ${STATIC_BUILD?'Reload snapshot':'Update'}.</div>`;
     $i('note').textContent='—'; $i('chartnote').textContent='—'; $i('label').textContent='—'; $i('sub').textContent='—'; $i('explnote').textContent='';
-    $i('explain').innerHTML = t.kind==='crypto' ? CRYPTO_EXPLAIN : ''; $i('footer').innerHTML=''; return;
+    $i('explain').innerHTML = ''; $i('footer').innerHTML=''; return;
   }
   panel.classList.remove('nodata');
   const bands=N.bands, v=Math.max(0,Math.min(100,N.value)), b=fgBand(v,bands);
@@ -656,7 +627,7 @@ $('#fgPanels').addEventListener('click',e=>{ const b=e.target.closest('.range[da
 // header KPIs for the active Fear & Greed tab
 function updateFgHeader(id){
   const S=FGS[id]; if(!S) return; const N=S.norm, t=S.tab;
-  $('#fgFileNote').textContent = t.kind==='crypto' ? t.fileNote : `Fear & Greed for ${t.forName} — own model (CNN-inspired) on daily data from Yahoo Finance, 0–100.`;
+  $('#fgFileNote').textContent = `Fear & Greed for ${t.forName} — one shared six-component repository model on daily Yahoo data, 0–100.`;
   $('#kFgPrevL').textContent = N&&!N.error ? N.prevLabel : 'Yesterday';
   if(!N||N.error){ $('#kFg').textContent='—'; $('#kFgSub').textContent=''; $('#kFgPrev').textContent='—'; $('#kFgPrevSub').textContent=''; return; }
   $('#kFg').innerHTML=`<span class="fg-c${fgBand(N.value,N.bands)}">${fmt(N.value)}</span>`; $('#kFgSub').textContent=N.kpiSub;

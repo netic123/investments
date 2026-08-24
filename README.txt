@@ -10,7 +10,7 @@ GITHUB PAGES
 Public site: https://netic123.github.io/investments/
 
 Every push to main — including a merged pull request — runs .github/workflows/pages.yml. The workflow starts
-the local server temporarily on the GitHub runner, fetches and validates the seven public API responses, and
+the local server temporarily on the GitHub runner, fetches and validates the six public API responses, and
 publishes only _site/index.html, _site/.nojekyll and _site/api/*.json. GitHub Pages is static: it does not keep server.js
 running. The public values therefore reflect the timestamp shown in the page header and change on the next
 successful main deployment. "Reload snapshot" only checks whether that newer deployment is available.
@@ -38,23 +38,24 @@ TABS (top of the page)
   - Dalal Street's manager-aggregated 13F — static, delayed and updated by hand after each quarter
   - Upcoming dates
   Open directly: / or /#pabrai
-- Crypto  = Crypto Risk Appetite, OWN PRICE-BASED MODEL v1 (0-100): five equally weighted indicators from
-            completed UTC daily closes for a frozen seven-asset basket. Bitcoin trend (vs 200-day average),
-            strength (distance from 365-day high), volatility shock (30-day realised volatility vs its 90-day
-            average, inverted), breadth (share of the basket above its 200-day average), and altcoin appetite
-            (median 30-day alt return minus BTC). Each raw indicator is ranked only within its latest rolling
-            window of at most 365 completed observations (current observation included; at least 180 required);
-            all five indicators and all seven assets are required. The tab exposes every raw
-            value, score, formula, symbol and caveat. Open directly: /#crypto
-- Sweden, USA, Europe, Global = Fear & Greed for the equity markets, OWN MODEL (no published index with
-            open data exists for these — the US CNN index only has an unofficial feed whose terms forbid
-            automated access). Six indicators from Yahoo Finance daily data, CNN-inspired: momentum (index vs
-            125-day average), strength (distance from 52-week high), volatility (VIX where it exists, else
-            realised 20-day), safe-haven demand (stocks vs government bonds, 20 days), credit appetite (high
-            yield vs investment grade), breadth (small caps vs large caps). Each indicator = percentile within
-            the last 252 trading days (0–100); the index = the mean. Labels as CNN: 0–24 extreme fear, 25–44
-            fear, 45–55 neutral, 56–74 greed, 75–100 extreme greed. The tab shows every indicator's value
-            and score. Open directly: /#sweden /#usa /#europe /#global
+- Crypto, Sweden, USA, Europe, Global = one repository-owned unified Fear & Greed model v1 (0–100),
+            calculated by marketfg.js. Every tab uses the same six-component scoring engine, a trailing 252-observation
+            percentile window, at least 126 valid raw observations, equal weights and the same labels:
+            0–24 extreme fear, 25–44 fear, 45–55 neutral, 56–74 greed, 75–100 extreme greed. All six
+            components are required: momentum (benchmark vs SMA125), strength (distance from the trailing
+            252-observation high), volatility (configured implied volatility, else realised 20-observation
+            volatility vs its 50-observation average, inverted), safe-haven demand (benchmark minus government
+            bonds over 20 common observations), credit appetite (high yield vs investment grade relative to
+            SMA125), and breadth (configured non-core/smaller series vs core/larger series relative to SMA63).
+            Yahoo supplies raw histories only; no third-party sentiment score or fitted weight enters the model.
+            Open directly: /#crypto /#sweden /#usa /#europe /#global
+- Crypto uses BTC-USD as benchmark, not as a claim to represent the entire crypto market. Its breadth input
+            compares two transparent daily-rebalanced analytical return indices: CRYPTO-CORE-EW contains BTC
+            and ETH at equal weight; CRYPTO-NONCORE-EW contains SOL, XRP, ADA, DOGE and BNB at equal weight.
+            IEF is the external safe-haven comparator and HYG/LQD is external US corporate-credit appetite.
+            The current UTC date is excluded. Because crypto trades every day, 252 crypto observations cover
+            about 8.3 months; 252 equity trading observations cover roughly one trading year. The parameter is
+            deliberately the same, but the elapsed calendar duration is not.
 
 HOW IT WORKS
 - The fund's own daily holdings file is fetched every 5 minutes (the page refreshes every 10).
@@ -64,23 +65,20 @@ HOW IT WORKS
   They are not proof of exact execution dates/prices; the heading says when the interval spans several days.
 - The fund's file is dated one trading day AFTER the prices in it (T+1).
 - Weekends/evenings: the card shows "Last close" with a timestamp, not "Price now".
-- Locally, the Update button re-fetches EVERYTHING: fund files, Yahoo quotes, the seven fixed crypto series
-  and all 23 Yahoo series behind the equity indices (it takes a few seconds; the status line shows progress
-  and the time with seconds, and every source shows when it was fetched). The automatic 10-minute refresh is
-  gentler: it reuses daily series that are less than 15 minutes old. The crypto model admits only the previous
-  completed UTC day, while equity data changes once per trading day — so identical numbers after an Update are
-  normal until another daily bar is complete. On GitHub
+- Locally, the Update button re-fetches EVERYTHING: fund files, Yahoo quotes and the 30 unique Yahoo series
+  behind the five unified-model tabs (it takes a few seconds; the status line shows progress and the time with
+  seconds, and every source shows when it was fetched). The automatic 10-minute refresh is gentler: it reuses
+  daily series that are less than 15 minutes old. Crypto excludes the current UTC date; equity markets use their
+  configured exchange-local daily bars. Identical numbers after an Update are therefore normal until another
+  eligible daily observation is available. On GitHub
   Pages, Reload snapshot re-downloads the most recently deployed JSON; upstream sources are fetched by the
   workflow, not by the visitor's browser.
-- The crypto SCORE is computed locally in cryptofg.js. Yahoo Finance supplies raw price history only; no
-  third-party sentiment score, proprietary weighting or API key enters the calculation. Yahoo's chart feed
-  does not have a contractual public API/SLA, so availability and historical revision remain real limitations.
-- The market indices are computed in marketfg.js from each series' FULL dividend-adjusted daily history on
-  Yahoo (23 series, ~9 MB per cold fetch, cached 15 minutes, one shared 25 s deadline). The charts go back as
-  far as at least 3 of the 6 indicators exist: USA to 1994, Europe to 2005, Global to 2009, Sweden to 2014;
-  all six exist from 2008 / 2011 / 2018 / 2023 (the chart says so for the earlier stretch). During trading
-  hours today's point is a live value that can change until the close. The NAV chart covers the fund's whole
-  life (since 29 Sep 2023; price only, distributions excluded).
+- Every market score is computed locally in marketfg.js from full Yahoo daily histories. The 30 unique raw
+  model series are cached for 15 minutes and share one 25-second fetch deadline. A market history begins only
+  when all six components can be scored; there are no three-to-five-component substitutes. During equity
+  trading hours the latest exchange-local point can change until the close; Crypto uses completed UTC dates.
+  Yahoo's chart feed has no contractual public API/SLA, so availability and historical revision remain real
+  limitations. The NAV chart covers the fund's whole life (since 29 Sep 2023; price only, distributions excluded).
 - While the server runs it also captures the fund's holdings file every 30 minutes on its own, so a file
   day is not missed when the page is closed (a missed day merges multiple days into one net quantity change).
 
@@ -95,15 +93,17 @@ SOURCES AND HOW THEY WERE VERIFIED (24 Aug 2026)
   The rate and its time are shown under "Price in SEK".
 - Dalal Street: SEC EDGAR 13F-HR (accession in config.json, linked from the page). Shares and values are
   typed from the filing; weights and quarter changes are computed from them, so nothing is rounded by hand.
-- Crypto Risk Appetite (own model): all seven configured Yahoo chart histories returned HTTP 200 on 24 Aug
-  2026. Completed daily history began 17 Sep 2014 for BTC, 9 Nov 2017 for ETH/XRP/ADA/DOGE/BNB and 10 Apr
-  2020 for SOL; every latest completed date was 23 Aug 2026. The score, component ranks and history are
-  recomputed by cryptofg.js. Known caveats: fixed present-day basket (selection/survivorship bias), equal rather
-  than market-cap weights, BTC-heavy inputs, no derivatives/funding/search/social/news data, heuristic windows
-  and category boundaries, and an undocumented Yahoo chart endpoint. It is a descriptive relative price regime,
-  not a direct emotion reading or a proven predictor.
-- Market Fear & Greed (own model): the 23 Yahoo series were checked for identity (ISIN/name), freshness and
-  gaps; 20 of 23 closes were verified to the cent against Nasdaq, Cboe/FRED, Avanza, Carnegie, stoxx.com,
+- Unified Market Fear & Greed (own model): marketfg.js calculates all five tabs. Crypto's seven constituent
+  histories are BTC, ETH, SOL, XRP, ADA, DOGE and BNB; the two equal-weight return indices are reconstructed
+  from their common dated closes and rebalanced analytically every day. They are not market-cap indices,
+  investable portfolios or point-in-time constituent histories. The fixed August 2026 membership creates
+  selection/survivorship bias in retrospective results. IEF and HYG/LQD add external US Treasury and corporate-
+  credit conditions; they are not crypto-native sentiment. Weekend Crypto composites carry their latest scored
+  US-market components for at most seven calendar days. The realised-volatility raw value is annualised with
+  sqrt(252) wherever that realised-volatility mapping is used; for seven-day crypto it is not a 365-day annualised
+  volatility, although this positive constant does not change its percentile score.
+- The original 23 equity Yahoo series were checked for identity (ISIN/name), freshness and gaps on 24 Aug 2026;
+  20 of 23 closes were verified to the cent against Nasdaq, Cboe/FRED, Avanza, Carnegie, stoxx.com,
   Xetra and LSE. Model validation: the US version was compared ONCE with CNN's published index (a one-off
   manual check, not a feed): correlation 0.88 over 398 trading days, mean gap 8.9 points, ours on average
   6 points greedier, same label 56 % of days, within one band 93 %. The remaining gap is CNN's put/call and
@@ -111,7 +111,8 @@ SOURCES AND HOW THEY WERE VERIFIED (24 Aug 2026)
   is a price index (slight spring-dividend bias for Europe); Sweden/Europe use realised volatility because
   no matching implied series is configured (Europe does have VSTOXX for Euro STOXX 50 options, but this
   model applies backward-looking realised volatility to STOXX Europe 600); the global credit ETFs
-  (HYLD.L/CORP.L) are thinly traded, so that indicator is noisier.
+  (HYLD.L/CORP.L) are thinly traded, so that indicator is noisier. Those dated checks do not guarantee future
+  Yahoo availability or prove that the composite predicts returns.
 - Event dates: six confirmed by primary sources (Kaspi EGM/record date, TCMB, Pareto, WAGN call, 13F rule,
   RIG/VAL filings). Q3 report dates are NOT announced yet — they are expectations from last year's cadence,
   marked "~" / "expected" on the page; re-check the companies' IR pages in mid-October.
@@ -122,22 +123,20 @@ UPDATE BY HAND
 - dalalStreet: the manager-aggregated 13F (next filing due by 16 Nov 2026)
 - dates: upcoming events (the list empties itself when dates have passed)
 - names: name, flag, Avanza status per ticker (online / telefon / nej)
-- cryptoFearGreed: the frozen v1 basket and all five model windows. Changing any of these changes the model;
-  increment version instead of silently rewriting v1 history, then restart and rerun the backtest.
-- marketFearGreed: Yahoo symbols per market (index, vol, bond, hy, ig, small, large). If a series fails,
-  that indicator is omitted (the index becomes the mean of those available, at least 3). Change a symbol
-  here, then restart.
+- marketFearGreed: the one active model ID/version, shared 252/126/6 parameters, Yahoo symbols per market and
+  Crypto's fixed CORE-EW/NONCORE-EW constituents. A cold calculation requires all six components. Changing a
+  parameter, proxy or synthetic constituent changes the model; increment the model version, restart and rerun
+  the schema-3 backtest instead of silently rewriting the definition.
 
 IF SOMETHING GOES WRONG
 - "holdings file could not be fetched" = the fund's server did not respond; the page shows the last saved file.
 - "quote missing: ..." = Yahoo did not respond for that ticker; the rest works.
-- "Fear & Greed crypto could not be fetched" = at least one member of the frozen seven-asset price basket
-  could not be loaded at startup. After a successful load, the last in-memory series may be reused with an
-  explicit fallback warning; no third-party sentiment index is substituted.
 - "Fear & Greed <market> could not be computed" / "index series ... missing" = Yahoo did not respond and the
-  series has not been fetched since start. If a series was fetched earlier, the last successful one is reused
-  (no time limit) until Yahoo responds again; the tab then shows a warning with Yahoo's error message and the
-  indicator is marked "fallback data".
+  required raw series could not be fetched, or a required synthetic series could not be constructed, since
+  startup. Crypto requires BTC, ETH, SOL, XRP, ADA,
+  DOGE, BNB, IEF, HYG and LQD; the other tabs require their configured sources. If a raw series was fetched
+  earlier, the last successful in-memory copy may be reused with an explicit warning. No third-party sentiment
+  index is substituted.
 - If snapshots.json breaks, a copy is saved (snapshots.json.broken-<time>) and the history starts over.
 
 Not investment advice.

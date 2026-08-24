@@ -10,12 +10,20 @@ const crypto = require('crypto');
 const ROOT = path.resolve(__dirname, '..');
 const CONFIG_PATH = path.join(ROOT, 'data', 'config.json');
 const MARKET_FG_PATH = path.join(ROOT, 'marketfg.js');
-const CRYPTO_FG_PATH = path.join(ROOT, 'cryptofg.js');
 const PROTOCOL_PATH = path.join(__dirname, 'FEAR_GREED_PROTOCOL.md');
 const DEFAULT_ARTIFACT_ROOT = path.join(__dirname, 'artifacts');
 const HORIZONS = [1, 5, 21, 63];
 const HOLDOUT_FRACTION = 0.40;
-const REQUIRED_COMPONENTS = { equity: 6, crypto: 5 };
+const REQUIRED_COMPONENTS = 6;
+const MODEL_CONTRACT = {
+  id: 'investments-unified-fear-greed', version: 1,
+  window: 252, minWindowPoints: 126, minComponents: 6, fillDays: 7,
+};
+const EXPECTED_CRYPTO_MAPPING = {
+  index: 'BTC-USD', vol: null, bond: 'IEF', hy: 'HYG', ig: 'LQD',
+  small: { id: 'CRYPTO-NONCORE-EW', method: 'equalWeightReturns', symbols: ['SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'] },
+  large: { id: 'CRYPTO-CORE-EW', method: 'equalWeightReturns', symbols: ['BTC-USD', 'ETH-USD'] },
+};
 const TRANSACTION_COST = 0.001;
 const WALK_FORWARD_BLOCK = 21;
 const USER_AGENT = 'InvestmentsFearGreedBacktest/1.0 (+local reproducible research)';
@@ -26,7 +34,7 @@ const MARKET_SPECS = [
   { key: 'usa', name: 'USA', target: 'SPY', kind: 'equity', annualization: 252, investable: true },
   { key: 'europe', name: 'Europe', target: '^STOXX', kind: 'equity', annualization: 252, investable: false },
   { key: 'global', name: 'Global', target: 'ACWI', kind: 'equity', annualization: 252, investable: true },
-  { key: 'crypto', name: 'Crypto (BTC assumed target)', target: 'BTC-USD', kind: 'crypto', annualization: 365, investable: true },
+  { key: 'crypto', name: 'Crypto (BTC benchmark)', target: 'BTC-USD', kind: 'crypto', annualization: 365, investable: true },
 ];
 
 const RULES = [
@@ -90,6 +98,30 @@ function canonicalize(value) {
 
 function canonicalJson(value) {
   return JSON.stringify(canonicalize(value), null, 2) + '\n';
+}
+
+function assertRuntimeModelContract(model, context) {
+  const expected = MODEL_CONTRACT;
+  if (!model || model.id !== expected.id || Number(model.version) !== expected.version ||
+      Number(model.window) !== expected.window || Number(model.minWindowPoints) !== expected.minWindowPoints ||
+      Number(model.minComponents) !== expected.minComponents || Number(model.fillDays) !== expected.fillDays) {
+    throw new Error(`${context}: unified model identity/parameters have drifted`);
+  }
+}
+
+function assertCryptoMapping(symbols, context) {
+  const actual = symbols || {};
+  const expected = EXPECTED_CRYPTO_MAPPING;
+  for (const key of ['index', 'vol', 'bond', 'hy', 'ig']) {
+    if (actual[key] !== expected[key]) throw new Error(`${context}: Crypto ${key} mapping drifted`);
+  }
+  for (const key of ['small', 'large']) {
+    const a = actual[key] || {};
+    const e = expected[key];
+    if (a.id !== e.id || a.method !== e.method || JSON.stringify(a.symbols) !== JSON.stringify(e.symbols)) {
+      throw new Error(`${context}: Crypto ${key} basket mapping drifted`);
+    }
+  }
 }
 
 function runStamp(date = new Date()) {
@@ -199,67 +231,53 @@ async function collectLiveSnapshot() {
   const fetchedAt = new Date().toISOString();
   const configRaw = fs.readFileSync(CONFIG_PATH);
   const config = JSON.parse(configRaw.toString('utf8'));
-  for (const spec of MARKET_SPECS.filter(row => row.kind === 'equity')) {
+  const marketConfig = config.marketFearGreed || {};
+  const configuredMarketKeys = Object.keys(marketConfig.markets || {}).sort();
+  const expectedMarketKeys = MARKET_SPECS.map(spec => spec.key).sort();
+  if (JSON.stringify(configuredMarketKeys) !== JSON.stringify(expectedMarketKeys)) {
+    throw new Error(`shared-model market set drifted: ${configuredMarketKeys.join(', ') || 'missing'}`);
+  }
+  if (marketConfig.modelId !== MODEL_CONTRACT.id || Number(marketConfig.version) !== MODEL_CONTRACT.version ||
+      Number(marketConfig.window) !== MODEL_CONTRACT.window || Number(marketConfig.minWindowPoints) !== MODEL_CONTRACT.minWindowPoints ||
+      Number(marketConfig.minComponents) !== MODEL_CONTRACT.minComponents || Number(marketConfig.fillDays) !== MODEL_CONTRACT.fillDays) {
+    throw new Error('shared-model config identity/parameters have drifted from the frozen schema-3 protocol');
+  }
+  for (const spec of MARKET_SPECS) {
     const configured = config.marketFearGreed && config.marketFearGreed.markets && config.marketFearGreed.markets[spec.key];
     const configuredTarget = configured && configured.symbols && configured.symbols.index;
     if (configuredTarget !== spec.target) {
       throw new Error(`target/config drift for ${spec.key}: runner=${spec.target}, config index=${configuredTarget || 'missing'}`);
     }
   }
-  const cryptoConfig = config.cryptoFearGreed || {};
-  const cryptoSpec = MARKET_SPECS.find(row => row.kind === 'crypto');
-  if (!cryptoSpec || cryptoConfig.benchmark !== cryptoSpec.target) {
-    throw new Error(`target/config drift for crypto: runner=${cryptoSpec && cryptoSpec.target}, config benchmark=${cryptoConfig.benchmark || 'missing'}`);
-  }
+  if (config.cryptoFearGreed) throw new Error('retired cryptoFearGreed config is still present; one shared model is required');
+  const configuredCrypto = marketConfig.markets.crypto;
+  if (configuredCrypto.barPolicy !== 'completed-utc-date') throw new Error('Crypto completed-UTC-date bar policy has drifted');
+  assertCryptoMapping(configuredCrypto.symbols, 'live config');
   const marketfg = require(MARKET_FG_PATH);
-  const cryptofg = require(CRYPTO_FG_PATH);
   marketfg.clearCache();
-  cryptofg.clearCache();
-  const equity = await marketfg.getMarketFearGreed({
-    ...(config.marketFearGreed || {}),
+  const unified = await marketfg.getMarketFearGreed({
+    ...marketConfig,
     historyPoints: 100000,
     timeoutMs: Math.max(60000, Number(config.marketFearGreed && config.marketFearGreed.timeoutMs) || 0),
   });
-  if (!equity.ok) throw new Error(`equity Fear & Greed failed: ${JSON.stringify(equity.failed || {})}`);
-  const missing = MARKET_SPECS.filter(x => x.kind === 'equity' && !equity.markets[x.key]);
-  if (missing.length) throw new Error(`missing equity markets: ${missing.map(x => x.key).join(', ')}; failures=${JSON.stringify(equity.failed || {})}`);
-  const cryptoModel = await cryptofg.getCryptoFearGreed({
-    ...cryptoConfig,
-    historyPoints: 100000,
-    timeoutMs: Math.max(60000, Number(cryptoConfig.timeoutMs) || 0),
-  });
-  if (!cryptoModel.ok) throw new Error('repository-owned crypto model failed');
+  if (!unified.ok) throw new Error(`unified Fear & Greed failed: ${JSON.stringify(unified.failed || {})}`);
+  assertRuntimeModelContract(unified.model, 'live model output');
+  const missing = MARKET_SPECS.filter(x => !unified.markets[x.key]);
+  if (missing.length) throw new Error(`missing markets: ${missing.map(x => x.key).join(', ')}; failures=${JSON.stringify(unified.failed || {})}`);
 
   const yahooSeries = await mapLimit(MARKET_SPECS, 3, spec => fetchYahooSeries(spec.target, fetchedAt));
   const yahooBySymbol = new Map(yahooSeries.map(series => [series.symbol, series]));
 
   const markets = MARKET_SPECS.map(spec => {
     const prices = yahooBySymbol.get(spec.target);
-    if (spec.kind === 'crypto') {
-      return {
-        ...spec,
-        signalIdentity: 'Repository-owned five-component crypto risk-appetite model, recomputed by cryptofg.js',
-        providerBands: 'Repository model v1: 0-24 Extreme Fear, 25-44 Fear, 45-55 Neutral, 56-74 Greed, 75-100 Extreme Greed',
-        configuredSymbols: cryptoConfig.symbols,
-        requiredComponents: REQUIRED_COMPONENTS.crypto,
-        requiredAssetCount: cryptoConfig.symbols.length,
-        signals: cryptoModel.history.map(row => ({
-          date: row.date,
-          score: Number(row.score),
-          label: row.label || equityBand(Number(row.score)),
-          componentCount: Number(row.n),
-          assetCount: Number(row.assetCount),
-        })),
-        prices,
-      };
-    }
-    const source = equity.markets[spec.key];
+    const source = unified.markets[spec.key];
     return {
       ...spec,
-      signalIdentity: 'Repository-owned CNN-inspired six-component equity model, recomputed by marketfg.js',
-      providerBands: 'Repository equity model: 0-24 Extreme Fear, 25-44 Fear, 45-55 Neutral, 56-74 Greed, 75-100 Extreme Greed',
+      signalIdentity: 'Repository-owned unified six-component market model, recomputed by marketfg.js',
+      providerBands: 'Repository unified model v1: 0-24 Extreme Fear, 25-44 Fear, 45-55 Neutral, 56-74 Greed, 75-100 Extreme Greed',
       configuredSymbols: config.marketFearGreed.markets[spec.key].symbols,
-      requiredComponents: REQUIRED_COMPONENTS.equity,
+      modelMapping: source.mapping,
+      requiredComponents: REQUIRED_COMPONENTS,
       modelComponentCarryDays: Number(config.marketFearGreed.fillDays || 7),
       signals: source.history.map(row => ({
         date: row.date,
@@ -272,7 +290,7 @@ async function collectLiveSnapshot() {
   });
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     createdAt: fetchedAt,
     purpose: 'Frozen normalized inputs for the Fear & Greed predictive backtest',
     sourceCode: {
@@ -280,8 +298,6 @@ async function collectLiveSnapshot() {
       platform: `${process.platform}-${process.arch}`,
       marketfgPath: path.relative(ROOT, MARKET_FG_PATH).replace(/\\/g, '/'),
       marketfgSha256: sha256File(MARKET_FG_PATH),
-      cryptofgPath: path.relative(ROOT, CRYPTO_FG_PATH).replace(/\\/g, '/'),
-      cryptofgSha256: sha256File(CRYPTO_FG_PATH),
       configPath: path.relative(ROOT, CONFIG_PATH).replace(/\\/g, '/'),
       configSha256: sha256Buffer(configRaw),
       backtestPath: path.relative(ROOT, __filename).replace(/\\/g, '/'),
@@ -290,20 +306,13 @@ async function collectLiveSnapshot() {
       protocolSha256: sha256File(PROTOCOL_PATH),
     },
     sources: {
-      equity: {
+      unifiedModel: {
         identity: 'marketfg.js output using data/config.json and current Yahoo daily histories',
-        fetchedAt: equity.fetchedAt,
-        model: equity.model,
-        failedMarkets: equity.failed,
-        symbolErrors: equity.symbolErrors,
+        fetchedAt: unified.fetchedAt,
+        model: unified.model,
+        failedMarkets: unified.failed,
+        symbolErrors: unified.symbolErrors,
         yahooEndpointTemplate: YAHOO_CHART_TEMPLATE,
-      },
-      cryptoModel: {
-        identity: 'Repository-owned Crypto Risk Appetite model v1 from completed UTC Yahoo daily closes',
-        fetchedAt: cryptoModel.fetchedAt,
-        model: cryptoModel.model,
-        source: cryptoModel.source,
-        warnings: cryptoModel.warnings,
       },
       targetPrices: {
         identity: 'Yahoo Finance chart daily adjusted closes where supplied as a complete series',
@@ -313,9 +322,9 @@ async function collectLiveSnapshot() {
       },
     },
     assumptions: {
-      cryptoTarget: 'BTC-USD is the model benchmark and an explicit return target; the seven-asset fixed-basket score is not the same thing as a BTC-only position.',
-      equityPrimarySample: 'Only rows with all six configured components (componentCount === 6).',
-      cryptoPrimarySample: 'Only completed UTC rows with all five components and all seven frozen-basket assets.',
+      cryptoTarget: 'BTC-USD is the configured Crypto benchmark and the explicit return target; it is not a total-crypto-market index.',
+      primarySample: 'Every market uses only rows with all six configured components (componentCount === 6).',
+      cryptoMapping: 'BTC benchmark; BTC realised volatility; IEF safe-haven comparator; HYG/LQD US macro credit; daily-rebalanced fixed NONCORE-EW/CORE-EW breadth proxy.',
       timing: 'Signal on target bar t; enter at close t+1; exit at close t+1+h. Exact signal/target date match required.',
       vintage: 'Current downloaded histories are not point-in-time vintages; historical revisions and survivorship effects cannot be ruled out.',
       investability: '^OMXSBGI and ^STOXX are non-investable index diagnostics.',
@@ -340,7 +349,30 @@ function readSnapshot(file) {
   const bytes = fs.readFileSync(file);
   const digest = sha256Buffer(bytes);
   const snapshot = JSON.parse(bytes.toString('utf8'));
-  if (snapshot.schemaVersion !== 2 || !Array.isArray(snapshot.markets)) throw new Error('unsupported or invalid snapshot (the active runner requires an own-model v2 snapshot; retired v1 CMC snapshots remain archival only)');
+  if (snapshot.schemaVersion !== 3 || !Array.isArray(snapshot.markets)) throw new Error('unsupported or invalid snapshot (the active runner requires unified-model schema v3; schema v1 CMC and schema v2 five-component-Crypto snapshots are archival only)');
+  assertRuntimeModelContract(snapshot.sources && snapshot.sources.unifiedModel && snapshot.sources.unifiedModel.model, 'snapshot');
+  if ((snapshot.sources && snapshot.sources.cryptoModel) ||
+      (snapshot.sourceCode && (snapshot.sourceCode.cryptofgPath || snapshot.sourceCode.cryptofgSha256))) {
+    throw new Error('snapshot contains retired separate-Crypto model metadata');
+  }
+  const marketKeys = snapshot.markets.map(market => market.key).sort();
+  const expectedKeys = MARKET_SPECS.map(spec => spec.key).sort();
+  if (JSON.stringify(marketKeys) !== JSON.stringify(expectedKeys)) throw new Error('snapshot market set does not match the frozen schema-3 design');
+  for (const market of snapshot.markets) {
+    const spec = MARKET_SPECS.find(candidate => candidate.key === market.key);
+    if (!spec || market.target !== spec.target) throw new Error(`snapshot target drift for ${market.key || 'unknown'}`);
+    if (Number(market.requiredComponents) !== REQUIRED_COMPONENTS || Number(market.modelComponentCarryDays) !== MODEL_CONTRACT.fillDays || !Array.isArray(market.signals) ||
+        Object.prototype.hasOwnProperty.call(market, 'requiredAssetCount') ||
+        market.signals.some(row => Number(row.componentCount) !== REQUIRED_COMPONENTS || Object.prototype.hasOwnProperty.call(row, 'assetCount'))) {
+      throw new Error(`snapshot ${market.key || 'unknown'} signal history is not uniformly six-component`);
+    }
+  }
+  const cryptoMarket = snapshot.markets.find(market => market.key === 'crypto');
+  assertCryptoMapping(cryptoMarket && cryptoMarket.configuredSymbols, 'snapshot');
+  if (!cryptoMarket.modelMapping || cryptoMarket.modelMapping.barPolicy !== 'completed-utc-date') {
+    throw new Error('snapshot Crypto completed-UTC-date bar policy is missing or drifted');
+  }
+  assertCryptoMapping(cryptoMarket.modelMapping.symbols, 'snapshot resolved mapping');
   const candidates = [file.replace(/\.json$/i, '.sha256'), `${file}.sha256`];
   const checksumFile = candidates.find(candidate => fs.existsSync(candidate)) || null;
   let checksumVerified = null;
@@ -547,16 +579,14 @@ function computeControls(prices, index, annualization) {
 function buildObservations(market, horizon) {
   const prices = market.prices.rows;
   const priceIndex = new Map(prices.map((row, index) => [row.date, index]));
-  const requiredComponents = Number(market.requiredComponents || REQUIRED_COMPONENTS[market.kind]);
-  const requiredAssetCount = market.kind === 'crypto' ? Number(market.requiredAssetCount || 0) : null;
+  if (Number(market.requiredComponents) !== REQUIRED_COMPONENTS) throw new Error(`${market.key}: primary sample must require all six components`);
+  const requiredComponents = REQUIRED_COMPONENTS;
   const strictSignals = market.signals.filter(row =>
-    Number.isFinite(row.score) && row.componentCount === requiredComponents &&
-    (market.kind !== 'crypto' || row.assetCount === requiredAssetCount));
+    Number.isFinite(row.score) && row.componentCount === requiredComponents);
   const audit = {
     allSignalRows: market.signals.length,
     strictSignalRows: strictSignals.length,
     requiredComponents,
-    requiredAssetCount,
     droppedDefinitionChangingRows: market.signals.length - strictSignals.length,
     exactPriceDateMissing: 0,
     futureBarsMissing: 0,
@@ -972,7 +1002,7 @@ function analyzeSnapshot(snapshot, inputInfo, execution) {
   }
 
   const result = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt,
     execution,
     inputSnapshot: {
@@ -991,7 +1021,6 @@ function analyzeSnapshot(snapshot, inputInfo, execution) {
       holdoutFraction: HOLDOUT_FRACTION,
       splitOverlapPurge: 'Training observations must have exitIndex <= first holdout entryIndex; the original 60% boundary still defines the holdout and incremental forecast slice.',
       componentsRequired: REQUIRED_COMPONENTS,
-      cryptoAssetsRequired: 7,
       forwardReturn: 'simple close-to-close return from t+1 entry close to t+1+h exit close',
       neweyWest: 'OLS score scaled per 10 points; Bartlett HAC bandwidth max(horizon, floor(4*(N/100)^(2/9))), capped N-3; two-sided asymptotic normal p-value',
       fdr: 'Benjamini-Hochberg over exactly 20 holdout slope tests',
@@ -999,16 +1028,19 @@ function analyzeSnapshot(snapshot, inputInfo, execution) {
       strategies: RULES.map(rule => rule.name),
       strategyCost: '10 basis points per absolute 0/1 position change, including initial entry; zero cash return',
       missingSignals: 'Never backfilled; fixed-rule strategy is in cash for a period lacking a strict signal',
-      completeBarPolicy: snapshot.sources.targetPrices.partialBarPolicy,
+      targetBarPolicy: snapshot.sources.targetPrices.partialBarPolicy,
+      signalBarPolicies: Object.fromEntries(snapshot.markets.map(market => [market.key, market.modelMapping && market.modelMapping.barPolicy || 'exchange-local daily bars'])),
       primaryHypothesis: 'Higher greed predicts lower future return; statistical p-values are two-sided',
     },
     caveats: [
-      'The equity series are repository-owned CNN-inspired composites, not CNN historical indices.',
-      'The crypto score is a repository-owned fixed-basket price proxy; BTC-USD is both its benchmark input and the tested return target, but it is not the whole basket.',
+      'All five signal series are repository-owned outputs from the same six-component engine; they are not CNN historical indices or third-party Fear & Greed series.',
+      'For Crypto, BTC-USD is both the configured benchmark and tested return target; it is not a total-crypto-market index.',
+      'Crypto safe-haven and credit inputs are IEF and HYG/LQD US-market proxies, not crypto-native bond or credit series.',
+      'Crypto breadth uses present-day frozen CORE-EW and NONCORE-EW constituent groups, creating explicit hindsight-selection and survivorship risk.',
+      'A 252-observation window spans about one equity trading year but only about 8.3 calendar months for seven-day crypto data.',
       '^OMXSBGI and ^STOXX are indices and are not directly investable.',
       'Inputs are current-history downloads, not point-in-time vintages; historical revisions and survivorship effects cannot be excluded.',
-      'The equity model may carry an individual component score for up to seven calendar days across source-market holidays.',
-      'The v1 crypto basket was selected in August 2026 from surviving assets, so its historical test has explicit hindsight-selection and survivorship risk.',
+      'The shared model may carry an individual component score for up to seven calendar days across source-market holidays; Crypto macro inputs therefore lag on weekends.',
       'Yahoo chart data are convenient research inputs, not an exchange-grade execution feed.',
       'Costs omit spreads, slippage, taxes, funding/cash yield, borrow/custody, and venue constraints.',
       'Multiple descriptive band and strategy views are secondary; only the declared 20 slope tests receive BH adjustment.',
@@ -1115,7 +1147,7 @@ function markdownReport(results) {
     const market = results.markets[spec.key];
     const h = market.horizons[1];
     const snapshotMarket = results._snapshotMarkets && results._snapshotMarkets[spec.key];
-    lines.push(`| ${spec.name} | ${spec.kind === 'crypto' ? 'repo five-component model v1' : 'repo six-component model'} | ${spec.target}${spec.investable ? '' : ' (non-investable index)'} | ${snapshotMarket ? snapshotMarket.priceRows : 'see JSON'} | ${h.audit.allSignalRows} | ${h.audit.strictSignalRows} | ${h.audit.eligible} | ${market.priceAdjustment} |`);
+    lines.push(`| ${spec.name} | repo unified six-component model v1 | ${spec.target}${spec.investable ? '' : ' (non-investable index)'} | ${snapshotMarket ? snapshotMarket.priceRows : 'see JSON'} | ${h.audit.allSignalRows} | ${h.audit.strictSignalRows} | ${h.audit.eligible} | ${market.priceAdjustment} |`);
   }
   lines.push('');
   lines.push('Input snapshot: `' + results.inputSnapshot.path + '`');
@@ -1124,14 +1156,15 @@ function markdownReport(results) {
   lines.push('');
   lines.push('Analysis fingerprint: `' + results.analysisFingerprintSha256 + '` (compare this across live and saved-snapshot runs)');
   lines.push('');
-  lines.push('Equity identity: the repository recomputes a CNN-inspired score from current Yahoo histories. It is not a licensed or archived CNN series. The strict primary sample requires all six configured components; the model can carry an individual component score across a source-market holiday for up to seven calendar days.');
+  lines.push('Shared-model identity: the repository recomputes all five market scores through one `marketfg.js` six-component engine with the same trailing 252-observation percentile scoring, 126-observation warm-up, directions, equal weights, bands, and all-six requirement. Raw proxies differ; volatility is an implied-volatility level where configured and benchmark realised volatility otherwise. These are not licensed or archived CNN or third-party Fear & Greed histories. An individual component can be carried across a source-market holiday for up to seven calendar days.');
   lines.push('');
-  lines.push('Crypto identity: the repository recomputes its frozen five-component v1 score from completed UTC daily Yahoo closes for BTC plus six fixed altcoins. The strict primary sample requires all five components and all seven assets. `BTC-USD` is both the model benchmark and the tested return target, but it does not represent the whole basket.');
+  lines.push('Crypto mapping: `BTC-USD` is the benchmark and tested return target; BTC supplies momentum, strength and realised volatility; `IEF` is the safe-haven comparator; `HYG/LQD` is US macro credit appetite; and daily-rebalanced fixed `NONCORE-EW/CORE-EW` groups proxy breadth. This is not a total-crypto-market index, true point-in-time breadth, or crypto-native credit. A 252-observation Crypto window spans about 8.3 calendar months, not one year.');
   lines.push('');
   lines.push('## Timing and limitations');
   lines.push('');
   lines.push('- Exact signal/target date match only. A score on bar t enters at close t+1 and exits at close t+1+h.');
   lines.push('- The retrieval-local current target bar is excluded to avoid a partially formed Yahoo candle.');
+  lines.push('- Crypto signal inputs exclude the current UTC date; weekday-only IEF/HYG/LQD component scores can carry forward for at most seven calendar days.');
   lines.push('- Current-history downloads are not point-in-time vintages. Provider revisions, adjusted-close restatements, and symbol survivorship cannot be ruled out.');
   lines.push('- `^OMXSBGI` and `^STOXX` are non-investable indices. A real implementation needs an identified tradable vehicle and tracking/currency/cost analysis.');
   lines.push('- The backtest omits bid/ask spreads, slippage, tax, cash yield, custody/funding, and operational constraints.');
@@ -1141,8 +1174,7 @@ function markdownReport(results) {
   lines.push('## Sources');
   lines.push('');
   lines.push(`- Yahoo chart endpoint template: ${YAHOO_CHART_TEMPLATE}`);
-  lines.push('- Local crypto construction: `cryptofg.js` plus `data/config.json`; their hashes and the frozen model definition are in the snapshot.');
-  lines.push('- Local equity construction: `marketfg.js` plus `data/config.json`; their hashes are in the snapshot.');
+  lines.push('- Local shared-model construction for all five markets: `marketfg.js` plus `data/config.json`; their hashes and the frozen model definition are in the snapshot.');
   return lines.join('\n');
 }
 

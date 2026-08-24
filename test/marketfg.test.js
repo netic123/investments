@@ -1,0 +1,211 @@
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {
+  computeMarket, equalWeightReturnSeries, labelOf, pctScores,
+} = require('../marketfg');
+
+const CRYPTO = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'];
+const RAW_SYMBOLS = [...CRYPTO, 'IEF', 'HYG', 'LQD'];
+
+function dateAt(index) {
+  const date = new Date('2020-01-01T00:00:00Z');
+  date.setUTCDate(date.getUTCDate() + index);
+  return date.toISOString().slice(0, 10);
+}
+
+function fixture(days = 1000) {
+  const map = new Map();
+  RAW_SYMBOLS.forEach((symbol, assetIndex) => {
+    const rows = [];
+    let close = 25 + assetIndex * 8;
+    for (let i = 0; i < days; i++) {
+      const cyclical = 0.0018 * Math.sin(i / (13 + assetIndex)) + 0.0012 * Math.cos(i / (31 + assetIndex));
+      const shock = i % (91 + assetIndex) === 0 ? -0.035 + assetIndex * 0.001 : 0;
+      close *= Math.exp(0.0007 + assetIndex * 0.000015 + cyclical + shock);
+      rows.push({ date: dateAt(i), close });
+    }
+    map.set(symbol, {
+      symbol, name: symbol, currency: 'USD', tz: 'UTC', rows,
+      lastDate: rows.at(-1).date, fetchedAt: '2026-08-24T00:00:00Z', adjusted: true, intraday: false,
+    });
+  });
+  return map;
+}
+
+const MARKET = {
+  name: 'Crypto — BTC benchmark',
+  currency: 'USD',
+  barPolicy: 'completed-utc-date',
+  symbols: {
+    index: 'BTC-USD', vol: null, bond: 'IEF', hy: 'HYG', ig: 'LQD',
+    small: {
+      id: 'CRYPTO-NONCORE-EW', name: 'Non-core basket', method: 'equalWeightReturns',
+      symbols: ['SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'],
+    },
+    large: {
+      id: 'CRYPTO-CORE-EW', name: 'Core basket', method: 'equalWeightReturns',
+      symbols: ['BTC-USD', 'ETH-USD'],
+    },
+  },
+};
+
+const OPTIONS = {
+  window: 252, minWindowPoints: 126, minComponents: 6, fillDays: 7, historyPoints: 8000,
+};
+
+test('midrank percentiles use only the trailing window', () => {
+  assert.deepEqual(pctScores([1, 2, 3, 1000], 3, 1).map(x => Math.round(x * 10) / 10), [50, 75, 83.3, 83.3]);
+});
+
+test('daily-rebalanced equal-weight series uses the arithmetic mean constituent return', () => {
+  const source = new Map([
+    ['A', { symbol: 'A', name: 'A', currency: 'USD', adjusted: true, rows: [
+      { date: '2026-01-01', close: 100 }, { date: '2026-01-02', close: 110 }, { date: '2026-01-03', close: 110 },
+    ] }],
+    ['B', { symbol: 'B', name: 'B', currency: 'USD', adjusted: true, rows: [
+      { date: '2026-01-01', close: 100 }, { date: '2026-01-02', close: 100 }, { date: '2026-01-03', close: 90 },
+    ] }],
+  ]);
+  const result = equalWeightReturnSeries({ id: 'EW', method: 'equalWeightReturns', symbols: ['A', 'B'] }, source);
+  assert.deepEqual(result.rows.map(row => [row.date, Number(row.close.toFixed(4))]), [
+    ['2026-01-01', 100], ['2026-01-02', 105], ['2026-01-03', 99.75],
+  ]);
+});
+
+test('all markets use one bounded, labelled, exactly equal-weighted six-component engine', () => {
+  const series = fixture();
+  const crypto = computeMarket('crypto', MARKET, series, OPTIONS);
+  const sameInputsDifferentKey = computeMarket('control', { ...MARKET, name: 'Control' }, series, OPTIONS);
+  assert.equal(crypto.total, 6);
+  assert.equal(crypto.n, 6);
+  assert.ok(crypto.history.length > 300);
+  assert.ok(crypto.score >= 0 && crypto.score <= 100);
+  assert.equal(crypto.label, labelOf(crypto.score));
+  assert.deepEqual(crypto.history, sameInputsDifferentKey.history);
+  assert.deepEqual(Object.keys(crypto.components).sort(), ['breadth', 'credit', 'momentum', 'safeHaven', 'strength', 'volatility']);
+  for (const row of crypto.history) {
+    assert.ok(Number.isFinite(row.score));
+    assert.ok(row.score >= 0 && row.score <= 100);
+    assert.equal(row.label, labelOf(row.score));
+    assert.equal(row.n, 6);
+  }
+  const displayedMean = Object.values(crypto.components).reduce((sum, component) => sum + component.score, 0) / 6;
+  assert.ok(Math.abs(crypto.score - displayedMean) <= 0.11, `rounded equal-weight mean differs: ${crypto.score} vs ${displayedMean}`);
+  assert.equal(crypto.components.volatility.dir, -1);
+});
+
+test('unified model v1 deterministic golden vector stays frozen', () => {
+  const result = computeMarket('crypto', MARKET, fixture(), OPTIONS);
+  const projection = {
+    score: result.score, label: result.label, n: result.n, total: result.total,
+    components: Object.fromEntries(Object.entries(result.components).sort().map(([key, value]) => [key, {
+      raw: value.raw, score: value.score, asOf: value.asOf, symbols: value.symbols,
+    }])),
+    history: result.history,
+  };
+  const digest = crypto.createHash('sha256').update(JSON.stringify(projection)).digest('hex');
+  assert.equal(digest, 'e5a925ac3093410ee9dced72c7ce571e374046b1089eec678fcd7e4c9cf0186b', 'unified model behavior changed: bump the model version and deliberately replace the golden vector');
+});
+
+test('future observations cannot change earlier shared-model scores', () => {
+  const original = fixture();
+  const changed = fixture();
+  for (const series of changed.values()) {
+    for (let i = 900; i < series.rows.length; i++) series.rows[i].close *= 1 + (i - 899) * 0.15;
+  }
+  const first = computeMarket('crypto', MARKET, original, OPTIONS);
+  const second = computeMarket('crypto', MARKET, changed, OPTIONS);
+  const cutoff = dateAt(899);
+  assert.deepEqual(
+    second.history.filter(row => row.date <= cutoff),
+    first.history.filter(row => row.date <= cutoff),
+  );
+});
+
+test('a missing frozen breadth constituent cannot silently change the model', () => {
+  const missing = fixture();
+  missing.delete('SOL-USD');
+  assert.throws(() => computeMarket('crypto', MARKET, missing, OPTIONS), /too few indicators with data/);
+});
+
+test('Crypto completed-UTC policy excludes the current and future UTC dates', () => {
+  const result = computeMarket('crypto', MARKET, fixture(2600), OPTIONS);
+  const utcToday = new Date().toISOString().slice(0, 10);
+  assert.ok(result.asOf < utcToday);
+  assert.ok(result.history.every(row => row.date < utcToday));
+  assert.equal(result.intraday, false);
+  assert.equal(result.mapping.barPolicy, 'completed-utc-date');
+});
+
+test('weekday macro components carry over a Crypto weekend without changing their as-of dates', () => {
+  const series = fixture(999); // 2022-09-25, a Sunday
+  for (const symbol of ['IEF', 'HYG', 'LQD']) {
+    const source = series.get(symbol);
+    source.rows = source.rows.filter(row => {
+      const day = new Date(`${row.date}T00:00:00Z`).getUTCDay();
+      return day !== 0 && day !== 6;
+    });
+    source.lastDate = source.rows.at(-1).date;
+  }
+  const result = computeMarket('crypto', MARKET, series, OPTIONS);
+  assert.equal(new Date(`${result.asOf}T00:00:00Z`).getUTCDay(), 0);
+  assert.equal(result.components.momentum.asOf, result.asOf);
+  assert.equal(result.components.breadth.asOf, result.asOf);
+  assert.equal(new Date(`${result.components.safeHaven.asOf}T00:00:00Z`).getUTCDay(), 5);
+  assert.equal(new Date(`${result.components.credit.asOf}T00:00:00Z`).getUTCDay(), 5);
+  assert.equal(result.components.safeHaven.lag, true);
+  assert.equal(result.components.credit.lag, true);
+  assert.equal(result.n, 6);
+});
+
+test('configured volatility, investment-grade and core inputs never silently fall back', () => {
+  const series = fixture();
+  const addAlias = (source, alias) => {
+    const original = series.get(source);
+    series.set(alias, { ...original, symbol: alias, name: alias, rows: original.rows.map(row => ({ ...row })) });
+  };
+  addAlias('ETH-USD', 'VOL');
+  addAlias('BTC-USD', 'LARGE');
+  const configured = {
+    ...MARKET,
+    symbols: { ...MARKET.symbols, vol: 'VOL', large: 'LARGE' },
+  };
+  assert.equal(computeMarket('control', configured, series, OPTIONS).n, 6);
+
+  for (const symbol of ['VOL', 'LQD', 'LARGE']) {
+    const missing = new Map(series);
+    missing.delete(symbol);
+    assert.throws(
+      () => computeMarket('control', configured, missing, OPTIONS),
+      /too few indicators with data/,
+      `${symbol} was silently replaced by another series`,
+    );
+  }
+});
+
+test('display-rounded label boundaries are stable', () => {
+  assert.equal(labelOf(24.4), 'Extreme Fear');
+  assert.equal(labelOf(24.5), 'Fear');
+  assert.equal(labelOf(44.4), 'Fear');
+  assert.equal(labelOf(44.5), 'Neutral');
+  assert.equal(labelOf(55.4), 'Neutral');
+  assert.equal(labelOf(55.5), 'Greed');
+  assert.equal(labelOf(74.4), 'Greed');
+  assert.equal(labelOf(74.5), 'Extreme Greed');
+});
+
+test('config exposes one model identity and five market mappings', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'config.json'), 'utf8'));
+  assert.equal(Object.prototype.hasOwnProperty.call(config, 'cryptoFearGreed'), false);
+  assert.equal(config.marketFearGreed.modelId, 'investments-unified-fear-greed');
+  assert.equal(config.marketFearGreed.version, 1);
+  assert.equal(config.marketFearGreed.minComponents, 6);
+  assert.deepEqual(Object.keys(config.marketFearGreed.markets).sort(), ['crypto', 'europe', 'global', 'sweden', 'usa']);
+  assert.equal(config.marketFearGreed.markets.crypto.symbols.index, 'BTC-USD');
+  assert.equal(config.marketFearGreed.markets.crypto.symbols.small.method, 'equalWeightReturns');
+});

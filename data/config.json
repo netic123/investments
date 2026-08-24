@@ -7,28 +7,46 @@
     "monthlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_MonthlyPerformance.csv",
     "quarterlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_QuarterlyPerformance.csv"
   },
-  "cryptoFearGreed": {
-    "modelId": "investments-crypto-risk-appetite",
-    "version": 1,
-    "benchmark": "BTC-USD",
-    "symbols": ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "ADA-USD", "DOGE-USD", "BNB-USD"],
-    "range": "max",
-    "scoreWindow": 365,
-    "minScorePoints": 180,
-    "trendDays": 200,
-    "highDays": 365,
-    "volatilityDays": 30,
-    "volatilityBaselineDays": 90,
-    "breadthSmaDays": 200,
-    "relativeReturnDays": 30,
-    "requiredComponents": 5,
-    "historyPoints": 8000,
-    "timeoutMs": 30000,
-    "concurrency": 3
-  },
   "marketFearGreed": {
-    "range": "max", "window": 252, "minWindowPoints": 126, "minComponents": 3,
+    "modelId": "investments-unified-fear-greed", "version": 1,
+    "range": "max", "window": 252, "minWindowPoints": 126, "minComponents": 6, "fillDays": 7,
     "markets": {
+      "crypto": {
+        "name": "Crypto — BTC benchmark",
+        "currency": "USD",
+        "barPolicy": "completed-utc-date",
+        "symbols": {
+          "index": "BTC-USD",
+          "vol": null,
+          "bond": "IEF",
+          "hy": "HYG",
+          "ig": "LQD",
+          "small": {
+            "id": "CRYPTO-NONCORE-EW",
+            "name": "Non-core crypto equal-weight basket",
+            "method": "equalWeightReturns",
+            "currency": "USD",
+            "timezone": "UTC",
+            "symbols": ["SOL-USD", "XRP-USD", "ADA-USD", "DOGE-USD", "BNB-USD"]
+          },
+          "large": {
+            "id": "CRYPTO-CORE-EW",
+            "name": "BTC and ETH equal-weight core basket",
+            "method": "equalWeightReturns",
+            "currency": "USD",
+            "timezone": "UTC",
+            "symbols": ["BTC-USD", "ETH-USD"]
+          }
+        },
+        "components": {
+          "momentum": { "desc": "BTC close relative to its 125-observation moving average" },
+          "strength": { "desc": "BTC distance from its trailing 252-observation high" },
+          "volatility": { "desc": "BTC 20-observation realised volatility relative to its 50-observation average" },
+          "safeHaven": { "desc": "BTC 20-common-session return minus 7–10 year US Treasuries", "note": "IEF is an external US Treasury proxy; on weekends its latest score is carried forward" },
+          "credit": { "desc": "US high-yield vs investment-grade corporate bonds, relative to 125-observation average", "note": "HYG/LQD measures external US credit conditions, not crypto-native credit" },
+          "breadth": { "desc": "Fixed non-core crypto basket vs BTC/ETH core basket, relative to 63-observation average", "note": "daily-rebalanced equal-weight analytical baskets; not market-cap indices or investable portfolios" }
+        }
+      },
       "sweden": { "name": "Sweden", "currency": "SEK", "symbols": { "index": "^OMXSBGI", "vol": null,  "bond": "XACT-OBLIGATION.ST", "hy": "0P0001C87Y.ST", "ig": "0P00000KIW.ST",      "small": "XACT-SMABOLAG.ST", "large": "XACT-SVERIGE.ST" } },
       "usa":    { "name": "USA",     "currency": "USD", "symbols": { "index": "SPY",     "vol": "^VIX", "bond": "IEF",                "hy": "HYG",           "ig": "LQD",                "small": "IWM",              "large": null } },
       "europe": { "name": "Europe",  "currency": "EUR", "symbols": { "index": "^STOXX",  "vol": null,   "bond": "SXRQ.DE",            "hy": "IHYG.L",        "ig": "IEAC.L",             "small": "EXSE.DE",          "large": "EXSA.DE" } },

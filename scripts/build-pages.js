@@ -14,11 +14,34 @@ const { spawn, execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, '_site');
 const API_OUT = path.join(OUT, 'api');
-const ENDPOINTS = ['config', 'holdings', 'nav', 'perf', 'quotes', 'feargreed', 'marketfg'];
+const ENDPOINTS = ['config', 'holdings', 'nav', 'perf', 'quotes', 'marketfg'];
 const EXPECTED_FILES = ['.nojekyll', 'index.html', 'api/build.json', ...ENDPOINTS.map(name => `api/${name}.json`)].sort();
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const EXPECTED_MARKET_SYMBOLS = {
+  crypto: {
+    index: 'BTC-USD', vol: null, bond: 'IEF', hy: 'HYG', ig: 'LQD',
+    small: { id: 'CRYPTO-NONCORE-EW', method: 'equalWeightReturns', symbols: ['SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'] },
+    large: { id: 'CRYPTO-CORE-EW', method: 'equalWeightReturns', symbols: ['BTC-USD', 'ETH-USD'] },
+  },
+  sweden: { index: '^OMXSBGI', vol: null, bond: 'XACT-OBLIGATION.ST', hy: '0P0001C87Y.ST', ig: '0P00000KIW.ST', small: 'XACT-SMABOLAG.ST', large: 'XACT-SVERIGE.ST' },
+  usa: { index: 'SPY', vol: '^VIX', bond: 'IEF', hy: 'HYG', ig: 'LQD', small: 'IWM', large: null },
+  europe: { index: '^STOXX', vol: null, bond: 'SXRQ.DE', hy: 'IHYG.L', ig: 'IEAC.L', small: 'EXSE.DE', large: 'EXSA.DE' },
+  global: { index: 'ACWI', vol: '^VIX', bond: 'IEF', hy: 'HYLD.L', ig: 'CORP.L', small: 'WSML.L', large: 'IWDA.L' },
+};
+
+function normalizedMapping(symbols) {
+  const actual = symbols || {};
+  return Object.fromEntries(['index', 'vol', 'bond', 'hy', 'ig', 'small', 'large'].map(key => {
+    const value = actual[key];
+    return [key, value && typeof value === 'object' ? { id: value.id, method: value.method, symbols: value.symbols } : value == null ? null : value];
+  }));
+}
+
+function assertMarketMapping(name, symbols, context) {
+  assert(JSON.stringify(normalizedMapping(symbols)) === JSON.stringify(EXPECTED_MARKET_SYMBOLS[name]), `${context}: ${name} raw-series mapping drifted`);
+}
 
 function gitValue(args, fallback = 'unknown') {
   try { return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || fallback; }
@@ -58,31 +81,41 @@ async function waitForServer(base, child, logs) {
 }
 
 function validateSnapshot(data, examplePositions) {
-  const { config, holdings, nav, perf, quotes, feargreed, marketfg } = data;
+  const { config, holdings, nav, perf, quotes, marketfg } = data;
   assert(config && typeof config === 'object', 'config is missing');
   assert(config.positionsMeta && config.positionsMeta.demo === true && config.positionsMeta.source === 'example', 'public build did not select the demo watchlist');
   assert(JSON.stringify(config.myPositions) === JSON.stringify(examplePositions), 'public build positions differ from data/positions.example.json');
   assert(!config.sources || !Object.prototype.hasOwnProperty.call(config.sources, 'fearGreed'), 'retired third-party crypto index source is still configured');
-  assert(config.cryptoFearGreed && config.cryptoFearGreed.modelId === 'investments-crypto-risk-appetite' && config.cryptoFearGreed.version === 1, 'own crypto model config is missing or has drifted');
+  assert(!Object.prototype.hasOwnProperty.call(config, 'cryptoFearGreed'), 'retired separate crypto model config is still present');
+  assert(config.marketFearGreed && config.marketFearGreed.modelId === 'investments-unified-fear-greed' && config.marketFearGreed.version === 1, 'unified model config is missing or has drifted');
+  assert(config.marketFearGreed.window === 252 && config.marketFearGreed.minWindowPoints === 126 && config.marketFearGreed.minComponents === 6 && config.marketFearGreed.fillDays === 7, 'unified model parameters have drifted');
+  assert(JSON.stringify(Object.keys(config.marketFearGreed.markets || {}).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa']), 'unified config must contain exactly five markets');
+  assert(config.marketFearGreed.markets.crypto.barPolicy === 'completed-utc-date', 'Crypto completed-bar policy has drifted');
+  for (const name of ['crypto', 'sweden', 'usa', 'europe', 'global']) assertMarketMapping(name, config.marketFearGreed.markets[name].symbols, 'config');
 
   assert(holdings && holdings.latest && typeof holdings.latest.date === 'string', 'holdings has no usable latest snapshot');
   assert(holdings.latest.rows && typeof holdings.latest.rows === 'object', 'holdings rows are missing');
   assert(nav && typeof nav.date === 'string' && Array.isArray(nav.history) && nav.history.length > 1, 'NAV data is incomplete');
   assert(perf && Array.isArray(perf.monthly) && perf.monthly.length > 0, 'performance data is incomplete');
   assert(quotes && typeof quotes === 'object' && Object.values(quotes).some(q => q && Number.isFinite(q.price)), 'all quotes are missing');
-  assert(feargreed && feargreed.ok === true && Number.isFinite(feargreed.value) && feargreed.value >= 0 && feargreed.value <= 100, 'own crypto model is invalid');
-  assert(feargreed.model && feargreed.model.id === 'investments-crypto-risk-appetite' && feargreed.model.version === 1 && feargreed.model.owner === 'repository', 'crypto result is not identified as the repository-owned v1 model');
-  assert(feargreed.source && feargreed.source.provider === 'Yahoo Finance', 'crypto raw-price provider metadata is missing');
-  assert(feargreed.n === 5 && feargreed.total === 5 && feargreed.assetCount === 7, 'crypto model does not have the frozen five components and seven-asset basket');
-  assert(feargreed.components && Object.keys(feargreed.components).length === 5, 'crypto component details are incomplete');
-  assert(Array.isArray(feargreed.history) && feargreed.history.length > 100, 'own crypto model history is missing');
-  assert(feargreed.history.every(row => Number.isFinite(row.value) && row.value >= 0 && row.value <= 100 && row.n === 5 && row.assetCount === 7), 'crypto history contains an invalid or definition-changing row');
   assert(marketfg && marketfg.ok === true && marketfg.markets && typeof marketfg.markets === 'object', 'market Fear & Greed is invalid');
-  for (const name of ['sweden', 'usa', 'europe', 'global']) {
+  assert(marketfg.model && marketfg.model.id === 'investments-unified-fear-greed' && marketfg.model.version === 1 && marketfg.model.owner === 'repository', 'market result does not identify the unified repository model');
+  assert(marketfg.model.window === 252 && marketfg.model.minWindowPoints === 126 && marketfg.model.minComponents === 6 && marketfg.model.fillDays === 7, 'unified result parameters have drifted');
+  assert(JSON.stringify(Object.keys(marketfg.markets).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa']), 'unified model must return exactly the five configured markets');
+  const componentKeys = ['breadth', 'credit', 'momentum', 'safeHaven', 'strength', 'volatility'];
+  for (const name of ['crypto', 'sweden', 'usa', 'europe', 'global']) {
     const market = marketfg.markets[name];
     assert(market && Number.isFinite(market.score) && market.score >= 0 && market.score <= 100, `market Fear & Greed is missing ${name}`);
     assert(Array.isArray(market.history) && market.history.length > 1, `market Fear & Greed history is incomplete for ${name}`);
+    assert(market.n === 6 && market.total === 6, `${name} is not using all six unified-model components`);
+    assert(JSON.stringify(Object.keys(market.components || {}).sort()) === JSON.stringify(componentKeys), `${name} component contract is incomplete`);
+    assert(Object.values(market.components).every(component => Number.isFinite(component.score) && component.asOf), `${name} has an unavailable current component`);
+    assert(market.history.every(row => Number.isFinite(row.score) && row.score >= 0 && row.score <= 100 && row.n === 6), `${name} history changes the unified model definition`);
+    assertMarketMapping(name, market.mapping && market.mapping.symbols, 'result');
   }
+  const crypto = marketfg.markets.crypto;
+  assert(crypto.mapping && crypto.mapping.barPolicy === 'completed-utc-date' && crypto.intraday === false, 'Crypto result does not prove completed UTC bars');
+  assert(crypto.asOf < new Date().toISOString().slice(0, 10), 'Crypto result includes the still-forming current UTC bar');
 }
 
 async function captureSnapshot(base, examplePositions) {
@@ -138,7 +171,7 @@ function verifyArtifact(forbiddenSecrets) {
       assert(!bytes.includes(Buffer.from(secret)), `an environment secret was found in ${relative}`);
     }
   }
-  for (const retiredMarker of ['pro-api.coinmarketcap.com', 'CMC_API_KEY']) {
+  for (const retiredMarker of ['pro-api.coinmarketcap.com', 'CMC_API_KEY', '/api/feargreed', 'cryptoFearGreed', 'five equally weighted indicators']) {
     for (const relative of actual) {
       const bytes = fs.readFileSync(path.join(OUT, relative));
       assert(!bytes.includes(Buffer.from(retiredMarker)), `retired crypto-index integration marker found in ${relative}`);
