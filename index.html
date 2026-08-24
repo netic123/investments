@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="investments-mode" content="local">
 <title>Investments</title>
+<link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap">
@@ -239,16 +241,34 @@ const timeStr = ()=> new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minut
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const today0 = ()=>{ const t=new Date(); t.setHours(0,0,0,0); return t; };
 
-let CFG=null, TR_WEIGHT=null;
-async function getJson(u,opt){ const r=await fetch(u,{cache:'no-store',...opt}); const j=await r.json().catch(()=>({error:'invalid response'})); if(!r.ok) throw new Error(j.error||r.statusText); return j; }
+const APP_MODE=document.querySelector('meta[name="investments-mode"]')?.content||'local';
+const STATIC_BUILD=APP_MODE==='static';
+let CFG=null, TR_WEIGHT=null, BUILD_META=null;
+const apiUrl=u=>{
+  if(!STATIC_BUILD||!u.startsWith('/api/')) return u;
+  const name=u.slice('/api/'.length).split('?')[0];
+  if(!/^[a-z0-9_-]+$/.test(name)) throw new Error('invalid static API path');
+  return './api/'+name+'.json';
+};
+async function getJson(u,opt){ const r=await fetch(apiUrl(u),{cache:'no-store',...opt}); const j=await r.json().catch(()=>({error:'invalid response'})); if(!r.ok) throw new Error(j.error||r.statusText); return j; }
+
+if(STATIC_BUILD){
+  $('#btnRefresh').textContent='Reload snapshot';
+  $('#btnRefresh').title='Checks whether a newer snapshot has been published from main';
+}
 
 async function load(mode){ // mode: 'manual' = Update button (re-fetch everything), 'auto' = 10-minute timer, undefined = first load
-  const st=$('#status'); st.className=''; st.textContent = mode ? 'refreshing… fund files, NAV, quotes' : 'loading…'; $('#btnRefresh').disabled=true;
+  const st=$('#status'); st.className=''; st.textContent = STATIC_BUILD ? (mode?'checking published snapshot…':'loading published snapshot…') : (mode ? 'refreshing… fund files, NAV, quotes' : 'loading…'); $('#btnRefresh').disabled=true;
   const t0=Date.now(), errs=[];
-  const setStatus=extra=>{ st.textContent = 'updated '+timeStr()+(errs.length?' — '+errs.join(' · '):'')+(extra||''); st.className = errs.length?'err':''; };
+  const setStatus=extra=>{
+    const published=BUILD_META&&BUILD_META.generatedAt ? new Date(BUILD_META.generatedAt).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'medium'}) : 'unknown time';
+    st.textContent = (STATIC_BUILD ? 'published '+published+' · checked '+timeStr() : 'updated '+timeStr())+(errs.length?' — '+errs.join(' · '):'')+(extra||'');
+    st.className = errs.length?'err':'';
+  };
   try{
-    if(mode) await getJson('/api/refresh'+(mode==='manual'?'?force=1':''),{method:'POST'}); // POST so a cross-site <img> cannot trigger it; force=1: server re-fetches all 23 Yahoo series and lets CoinMarketCap be asked again
-    CFG = CFG || await getJson('/api/config');
+    if(mode&&!STATIC_BUILD) await getJson('/api/refresh'+(mode==='manual'?'?force=1':''),{method:'POST'}); // POST so a cross-site <img> cannot trigger it; force=1: server re-fetches all 23 Yahoo series and lets CoinMarketCap be asked again
+    if(STATIC_BUILD){ BUILD_META=await getJson('/api/build'); CFG=await getJson('/api/config'); }
+    else CFG = CFG || await getJson('/api/config');
     // All requests start at once, but the Pabrai part renders as soon as it is ready — Fear & Greed (Yahoo, 23 series) must not hold it back.
     const fgReq=[getJson('/api/feargreed'),getJson('/api/marketfg')];
     const [h,n,p,q] = await Promise.allSettled([getJson('/api/holdings'),getJson('/api/nav'),getJson('/api/perf'),getJson('/api/quotes')]);
@@ -274,7 +294,7 @@ async function load(mode){ // mode: 'manual' = Update button (re-fetch everythin
       if(M) setFg(t.id, normMarket(M, mf.value.model, mf.value.fetchedAt)); else { setFg(t.id, {error:(mf.value.failed||{})[t.market]||'no data'}); errs.push('Fear & Greed '+t.tab+' could not be computed'); }
     }
     if(mf.status!=='fulfilled') errs.push('Fear & Greed for the markets could not be fetched');
-    setStatus(mode==='manual' ? ` · all sources re-fetched in ${((Date.now()-t0)/1000).toFixed(1)} s` : '');
+    setStatus(!STATIC_BUILD&&mode==='manual' ? ` · all sources re-fetched in ${((Date.now()-t0)/1000).toFixed(1)} s` : '');
   }catch(e){ st.className='err'; st.textContent='error: '+e.message; }
   $('#btnRefresh').disabled=false;
 }
@@ -301,7 +321,9 @@ function renderHoldings(H,Q){
   const posMeta=CFG.positionsMeta||{};
   $('#mineNote').textContent = CFG.myPositions.length+' watched'+(P?' · WAGN vs '+fmtDate(P.date):' · first WAGN snapshot');
   $('#watchNote').innerHTML = posMeta.demo
-    ? '<b>DEMO watchlist.</b> These are example tickers, not verified as your positions. Create <span class="mono">data/positions.local.json</span> and restart the server.'
+    ? (STATIC_BUILD
+      ? '<b>PUBLIC DEMO watchlist.</b> These are example tickers, not verified as your positions. Private local positions are intentionally excluded from GitHub Pages.'
+      : '<b>DEMO watchlist.</b> These are example tickers, not verified as your positions. Create <span class="mono">data/positions.local.json</span> and restart the server.')
     : `<b>${CFG.myPositions.length} focus positions.</b> WAGN is checked from the fund’s daily T+1 holdings file; Dalal Street is checked separately from its delayed quarterly 13F. A quantity change is not proof of an execution date or price. All other Pabrai holdings remain visible in the full tables below.`;
   const t0=today0();
   $('#cards').innerHTML = CFG.myPositions.map(pos=>{
@@ -409,7 +431,7 @@ function renderPerf(Pf){
   const order=['WAGN NAV','WAGN MKT','SPTR2','SPXEWTR']; const label={'WAGN NAV':'Pabrai (NAV)','WAGN MKT':'Pabrai (market price)','SPTR2':'S&P 500 TR','SPXEWTR':'S&P 500 equal weight'};
   const rows=order.map(k=>m.find(r=>r.ticker===k)).filter(Boolean);
   const c=v=>`<td class="num ${cls(v)}">${pct(v,2)}</td>`;
-  $('#tblPerf tbody').innerHTML=rows.map(r=>`<tr><td><b>${label[r.ticker]||r.ticker}</b></td>${c(r.m1)}${c(r.m3)}${c(r.m6)}${c(r.ytd)}${c(r.y1)}${c(r.sinceAnn)}${c(r.sinceCum)}</tr>`).join('');
+  $('#tblPerf tbody').innerHTML=rows.map(r=>`<tr><td><b>${esc(label[r.ticker]||r.ticker)}</b></td>${c(r.m1)}${c(r.m3)}${c(r.m6)}${c(r.ytd)}${c(r.y1)}${c(r.sinceAnn)}${c(r.sinceCum)}</tr>`).join('');
 }
 function renderDalal(){
   const D=CFG.dalalStreet; $('#dalalNote').textContent='as of '+fmtDate(D.asOf)+' · filed '+fmtDate(D.filed);
@@ -566,7 +588,7 @@ function renderFg(id){
   if(!N||N.error){
     panel.classList.add('nodata');
     $i('title').textContent = t.kind==='crypto' ? t.title : 'Fear & Greed — '+t.tab;
-    $i('error').innerHTML=`<div class="empty">Fear &amp; Greed could not be fetched${N&&N.error?' — '+esc(N.error):''}. The page retries every 10 minutes, or press Update.</div>`;
+    $i('error').innerHTML=`<div class="empty">Fear &amp; Greed could not be fetched${N&&N.error?' — '+esc(N.error):''}. The page retries every 10 minutes, or press ${STATIC_BUILD?'Reload snapshot':'Update'}.</div>`;
     $i('note').textContent='—'; $i('chartnote').textContent='—'; $i('label').textContent='—'; $i('sub').textContent='—'; $i('explnote').textContent='';
     $i('explain').innerHTML = t.kind==='crypto' ? CRYPTO_EXPLAIN : ''; $i('footer').innerHTML=''; return;
   }

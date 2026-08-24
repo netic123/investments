@@ -11,7 +11,9 @@ const marketfg = require('./marketfg'); // own Fear & Greed model for equity mar
 const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
 const CONFIG_PATH = path.join(DATA, 'config.json');
-const SNAP_PATH = path.join(DATA, 'snapshots.json');
+const SNAP_PATH = process.env.INVESTMENTS_SNAPSHOT_PATH
+  ? path.resolve(process.env.INVESTMENTS_SNAPSHOT_PATH)
+  : path.join(DATA, 'snapshots.json');
 
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 
@@ -19,9 +21,13 @@ const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 // data/positions.local.json is gitignored; if it is missing we fall back to the example so the server still starts.
 const POSITIONS_PATH = path.join(DATA, 'positions.local.json');
 const POSITIONS_EXAMPLE_PATH = path.join(DATA, 'positions.example.json');
+const PUBLIC_BUILD = process.env.INVESTMENTS_PUBLIC_BUILD === '1';
 const loadedPositions = (() => {
   let localIssue = null;
-  for (const p of [POSITIONS_PATH, POSITIONS_EXAMPLE_PATH]) {
+  // A Pages build is public. Even if someone runs it on a machine that has the ignored
+  // local file, it must only ever serialize the committed example watchlist.
+  const sources = PUBLIC_BUILD ? [POSITIONS_EXAMPLE_PATH] : [POSITIONS_PATH, POSITIONS_EXAMPLE_PATH];
+  for (const p of sources) {
     try {
       const list = JSON.parse(fs.readFileSync(p, 'utf8')).myPositions;
       if (Array.isArray(list)) {
@@ -32,7 +38,9 @@ const loadedPositions = (() => {
           meta: {
             source: demo ? 'example' : 'local',
             demo,
-            warning: demo ? (localIssue || 'data/positions.local.json was not found') : null,
+            warning: demo
+              ? (PUBLIC_BUILD ? 'Public Pages builds intentionally use data/positions.example.json' : (localIssue || 'data/positions.local.json was not found'))
+              : null,
           },
         };
       }

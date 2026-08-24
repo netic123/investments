@@ -6,11 +6,27 @@ Stop:    close the black window (or Ctrl+C in it)
 
 Requires Node.js 18+. No other dependencies, no installation.
 
+GITHUB PAGES
+Public site: https://netic123.github.io/investments/
+
+Every push to main — including a merged pull request — runs .github/workflows/pages.yml. The workflow starts
+the local server temporarily on the GitHub runner, fetches and validates the seven public API responses, and
+publishes only _site/index.html, _site/.nojekyll and _site/api/*.json. GitHub Pages is static: it does not keep server.js
+running. The public values therefore reflect the timestamp shown in the page header and change on the next
+successful main deployment. "Reload snapshot" only checks whether that newer deployment is available.
+
+The Pages build is deliberately forced to data/positions.example.json and visibly labels it DEMO. It never
+publishes the gitignored data/positions.local.json or data/portfolio.local.json, even when the build script is
+run on a computer where those files exist. No API key or GitHub secret is supplied to the snapshot server.
+The generated _site directory is ignored by Git and is an explicit allowlist; research files, backend code,
+configuration files and repository metadata are not included in the deployed artifact.
+
 YOUR FOCUSED WATCHLIST
 Copy data/positions.example.json to data/positions.local.json and enter display ticker, exact WAGN ticker
 (fundTicker, when different), Yahoo symbol, entry price and currency. That file is gitignored and is never
 committed, so the repo can be shared without revealing what you follow. If it is missing the app visibly
-labels the fallback list as DEMO instead of presenting the examples as your holdings.
+labels the fallback list as DEMO instead of presenting the examples as your holdings. GitHub Pages always
+uses that DEMO list; the private local list is only available from the local server.
 
 TABS (top of the page)
 - Pabrai  = the default tab: what Mohnish Pabrai is doing, for the positions you follow yourself:
@@ -44,12 +60,14 @@ HOW IT WORKS
   They are not proof of exact execution dates/prices; the heading says when the interval spans several days.
 - The fund's file is dated one trading day AFTER the prices in it (T+1).
 - Weekends/evenings: the card shows "Last close" with a timestamp, not "Price now".
-- The Update button re-fetches EVERYTHING: fund files, Yahoo quotes, CoinMarketCap and all 23 Yahoo series
+- Locally, the Update button re-fetches EVERYTHING: fund files, Yahoo quotes, CoinMarketCap and all 23 Yahoo series
   behind the market indices (it takes a few seconds; the status line shows progress and the time with
   seconds, and every source shows when it was fetched). The automatic 10-minute refresh is gentler: it
   reuses Yahoo series that are less than 15 minutes old. CoinMarketCap is never asked more than once per
   10 seconds; its live value only changes every 15 minutes anyway, and the daily market data only changes
-  once per trading day — so identical numbers after an Update are normal outside trading hours.
+  once per trading day — so identical numbers after an Update are normal outside trading hours. On GitHub
+  Pages, Reload snapshot re-downloads the most recently deployed JSON; upstream sources are fetched by the
+  workflow, not by the visitor's browser.
 - The crypto index comes from CoinMarketCap's official API without a key. To use your own (free) key: set
   the environment variable CMC_API_KEY before starting.
 - The market indices are computed in marketfg.js from each series' FULL dividend-adjusted daily history on
