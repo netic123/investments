@@ -48,7 +48,16 @@ jobs:
           done
 
       - name: Test repository-owned market models
-        run: node --test test/*.test.js
+        # Two research suites byte-verify frozen inputs under gitignored
+        # research/local-artifacts/, which never exist on a fresh clone. Their
+        # test files are hash-pinned by the frozen proxy-v2 protocol chain, so
+        # skip guards cannot be added inside them without breaking the freeze;
+        # they are excluded here instead and run in full on machines that hold
+        # the frozen artifacts.
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test $(ls test/*.test.js | grep -v -E 'five_market_proxy_data_v2|universal_volatility_overlay_proxy_splitter_v2')
 
       - name: Build and validate public snapshot
         env:
