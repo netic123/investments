@@ -5,6 +5,11 @@ name: Deploy GitHub Pages
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    # WAGN's holdings file is normally published overnight and the matching
+    # NAV file later in the morning UTC. A daily build also detects a newly
+    # filed Dalal Street 13F without requiring a code commit.
+    - cron: '15 9 * * *'
 
 permissions: {}
 
@@ -46,6 +51,8 @@ jobs:
         run: node --test test/*.test.js
 
       - name: Build and validate public snapshot
+        env:
+          INVESTMENTS_PREVIOUS_PUBLIC_HOLDINGS_URL: https://netic123.github.io/investments/api/holdings.json
         run: node scripts/build-pages.js
 
       - name: Upload Pages artifact

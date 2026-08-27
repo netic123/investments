@@ -1,0 +1,19 @@
+{
+  "frozenAt": "2026-08-25T17:54:20.227Z",
+  "status": "FROZEN_BEFORE_CANONICAL_OUTCOME",
+  "candidate": "MA10-LF-50",
+  "primaryCostBps": 50,
+  "sourceFiles": {
+    "research/FEAR_GREED_MA10_REPLICATION_PROTOCOL.md": "850563710d7a11b3983a354379872883a1d627e87e6001616ed590b589d1c06a",
+    "research/fear_greed_ma10_replication.js": "6e5868fe88004a4b00e93aacf750607780a2e8a0693a2d0443ae6063d9ac0728",
+    "test/fear_greed_ma10_replication.test.js": "e2f6f4035a0c82ef3a6c91aa38d332a09d1a0292ecfe5b4fc14aaa81bf9122df"
+  },
+  "input": {
+    "path": "research/local-artifacts/v2-validation-final/inputs/fear-greed-v2-validation-input-2026-08-25T12-44-22Z.json",
+    "sha256": "ac025aec6096147aeabba61f270e2fdd9e1032068b10c474fea73cbf4999444d"
+  },
+  "preOutcomeChecks": {
+    "syntheticTests": "6/6 passed",
+    "canonicalOutcomeRead": false
+  }
+}

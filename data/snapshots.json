@@ -284,5 +284,623 @@
    "TRY": -1508400.54,
    "Cash&Other": -1223289.98
   }
+ },
+ {
+  "date": "2026-08-25",
+  "fileDate": "08/25/2026",
+  "account": "WAGN",
+  "netAssets": 281177571.66,
+  "sharesOutstanding": 17920814,
+  "creationUnits": 1792.08,
+  "rows": {
+   "AMR": {
+    "cusip": "020764106",
+    "shares": 63841,
+    "price": 209.93,
+    "mv": 13402141.13,
+    "weight": 4.77,
+    "name": "Alpha Metallurgical Resources Inc"
+   },
+   "CSU CN": {
+    "cusip": "B15C4L6",
+    "shares": 5735,
+    "price": 3098.67,
+    "mv": 12834198.14,
+    "weight": 4.56,
+    "name": "Constellation Software Inc/Canada"
+   },
+   "DAC": {
+    "cusip": "Y1968P121",
+    "shares": 86596,
+    "price": 150.5,
+    "mv": 13032698,
+    "weight": 4.64,
+    "name": "Danaos Corp"
+   },
+   "EDEL IN": {
+    "cusip": "B291KM9",
+    "shares": 14572000,
+    "price": 125.41,
+    "mv": 19086643.29,
+    "weight": 6.79,
+    "name": "Edelweiss Financial Services Ltd"
+   },
+   "FXFXX": {
+    "cusip": "31846V328",
+    "shares": 2962045.51,
+    "price": 100,
+    "mv": 2962045.51,
+    "weight": 1.05,
+    "name": "First American Treasury Obligations Fund 01/01/2040"
+   },
+   "GMTAS TI": {
+    "cusip": "BMQ89N7",
+    "shares": 16569895.878795,
+    "price": 42.4,
+    "mv": 14613907.13,
+    "weight": 5.2,
+    "name": "Gimat Magazacilik Sanayi Ve Ticaret AS"
+   },
+   "HCC": {
+    "cusip": "93627C101",
+    "shares": 254389,
+    "price": 106.6,
+    "mv": 27117867.4,
+    "weight": 9.64,
+    "name": "Warrior Met Coal Inc"
+   },
+   "KSPI": {
+    "cusip": "48581R205",
+    "shares": 128878,
+    "price": 106.46,
+    "mv": 13720351.88,
+    "weight": 4.88,
+    "name": "Kaspi.KZ JSC"
+   },
+   "LMN CN": {
+    "cusip": "BNKCF01",
+    "shares": 708511,
+    "price": 24.9,
+    "mv": 12741070.96,
+    "weight": 4.53,
+    "name": "Lumine Group Inc"
+   },
+   "NE": {
+    "cusip": "G65431127",
+    "shares": 285317,
+    "price": 45.98,
+    "mv": 13118875.66,
+    "weight": 4.67,
+    "name": "Noble Corp PLC"
+   },
+   "NUVAMA IN": {
+    "cusip": "BP955R2",
+    "shares": 520420,
+    "price": 1750,
+    "mv": 9511965.22,
+    "weight": 3.38,
+    "name": "Nuvama Wealth Management Ltd"
+   },
+   "ODL NO": {
+    "cusip": "BDX87W2",
+    "shares": 100,
+    "price": 92.9,
+    "mv": 997.8,
+    "weight": 0,
+    "name": "Odfjell Drilling Ltd"
+   },
+   "RIG": {
+    "cusip": "H8817H100",
+    "shares": 4128872,
+    "price": 5.77,
+    "mv": 23823591.44,
+    "weight": 8.47,
+    "name": "Transocean Ltd"
+   },
+   "RYGYO TI": {
+    "cusip": "B3VKHD1",
+    "shares": 35302294,
+    "price": 43.6,
+    "mv": 32016225.03,
+    "weight": 11.39,
+    "name": "Reysas Gayrimenkul Yatirim Ortakligi AS"
+   },
+   "RYSAS TI": {
+    "cusip": "B0YBSZ9",
+    "shares": 19461689,
+    "price": 24.08,
+    "mv": 9748049.32,
+    "weight": 3.47,
+    "name": "Reysas Tasimacilik ve Lojistik Ticaret AS"
+   },
+   "SGN PW": {
+    "cusip": "5096747",
+    "shares": 184728,
+    "price": 86,
+    "mv": 4302224.15,
+    "weight": 1.53,
+    "name": "Sygnity SA"
+   },
+   "TABGD TI": {
+    "cusip": "BLC8HQ3",
+    "shares": 2368623,
+    "price": 255,
+    "mv": 12563678.94,
+    "weight": 4.47,
+    "name": "TAB Gida Sanayi Ve Ticaret AS"
+   },
+   "TAVHL TI": {
+    "cusip": "B1RMFT9",
+    "shares": 2978173,
+    "price": 276,
+    "mv": 17097779.47,
+    "weight": 6.08,
+    "name": "TAV Havalimanlari Holding AS"
+   },
+   "TOI CN": {
+    "cusip": "BNGJNT1",
+    "shares": 171736,
+    "price": 103.73,
+    "mv": 12865471.62,
+    "weight": 4.58,
+    "name": "Topicus.com Inc"
+   },
+   "VAL": {
+    "cusip": "G9460G101",
+    "shares": 149887,
+    "price": 85.81,
+    "mv": 12861803.47,
+    "weight": 4.57,
+    "name": "Valaris Ltd"
+   }
+  },
+  "cash": {
+   "CAD": -46574.22,
+   "PLN": -50172.48,
+   "TRY": -1314397.58,
+   "Cash&Other": 5189553.16
+  },
+  "source": {
+   "provider": "Pabrai Wagons ETF / FilePoint",
+   "fileDate": "2026-08-25",
+   "url": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_ETF_Holdings.csv",
+   "officialPage": "https://www.wagonsetf.com/fund-summary",
+   "capturedAt": "2026-08-25T23:28:20.290Z",
+   "lastModified": "Tue, 25 Aug 2026 00:02:24 GMT",
+   "etag": "\"b18b6a22534dd1:0\"",
+   "sha256": "47d0a35f99bc6a72d9156805033751103b2918c05a6731625346a574a7fde744",
+   "schema": [
+    "Date",
+    "Account",
+    "StockTicker",
+    "CUSIP",
+    "SecurityName",
+    "Shares",
+    "Price",
+    "MarketValue",
+    "Weightings",
+    "NetAssets",
+    "SharesOutstanding",
+    "CreationUnits",
+    "MoneyMarketFlag"
+   ],
+   "rowCount": 24,
+   "securityCount": 20,
+   "cashRowCount": 4,
+   "marketValueGapPct": 0.007974597642213309,
+   "weightSum": 100.00999999999999
+  }
+ },
+ {
+  "date": "2026-08-26",
+  "fileDate": "08/26/2026",
+  "account": "WAGN",
+  "netAssets": 283865693.76,
+  "sharesOutstanding": 17920814,
+  "creationUnits": 1792.08,
+  "rows": {
+   "AMR": {
+    "cusip": "020764106",
+    "shares": 63841,
+    "price": 215.63,
+    "mv": 13766034.83,
+    "weight": 4.85,
+    "name": "Alpha Metallurgical Resources Inc"
+   },
+   "CSU CN": {
+    "cusip": "B15C4L6",
+    "shares": 5735,
+    "price": 3078.66,
+    "mv": 12766532.97,
+    "weight": 4.5,
+    "name": "Constellation Software Inc/Canada"
+   },
+   "DAC": {
+    "cusip": "Y1968P121",
+    "shares": 86596,
+    "price": 152.58,
+    "mv": 13212817.68,
+    "weight": 4.65,
+    "name": "Danaos Corp"
+   },
+   "EDEL IN": {
+    "cusip": "B291KM9",
+    "shares": 14572000,
+    "price": 128.15,
+    "mv": 19570852.31,
+    "weight": 6.89,
+    "name": "Edelweiss Financial Services Ltd"
+   },
+   "FXFXX": {
+    "cusip": "31846V328",
+    "shares": 2962045.51,
+    "price": 100,
+    "mv": 2962045.51,
+    "weight": 1.04,
+    "name": "First American Treasury Obligations Fund 01/01/2040"
+   },
+   "GMTAS TI": {
+    "cusip": "BMQ89N7",
+    "shares": 16569895.878795,
+    "price": 46.64,
+    "mv": 16071035.63,
+    "weight": 5.66,
+    "name": "Gimat Magazacilik Sanayi Ve Ticaret AS"
+   },
+   "HCC": {
+    "cusip": "93627C101",
+    "shares": 254389,
+    "price": 105.29,
+    "mv": 26784617.81,
+    "weight": 9.44,
+    "name": "Warrior Met Coal Inc"
+   },
+   "KSPI": {
+    "cusip": "48581R205",
+    "shares": 128878,
+    "price": 108.75,
+    "mv": 14015482.5,
+    "weight": 4.94,
+    "name": "Kaspi.KZ JSC"
+   },
+   "LMN CN": {
+    "cusip": "BNKCF01",
+    "shares": 708511,
+    "price": 24.37,
+    "mv": 12484752.76,
+    "weight": 4.4,
+    "name": "Lumine Group Inc"
+   },
+   "NE": {
+    "cusip": "G65431127",
+    "shares": 285317,
+    "price": 45.86,
+    "mv": 13084637.62,
+    "weight": 4.61,
+    "name": "Noble Corp PLC"
+   },
+   "NUVAMA IN": {
+    "cusip": "BP955R2",
+    "shares": 520420,
+    "price": 1754.6,
+    "mv": 9569826.63,
+    "weight": 3.37,
+    "name": "Nuvama Wealth Management Ltd"
+   },
+   "ODL NO": {
+    "cusip": "BDX87W2",
+    "shares": 45848,
+    "price": 92.4,
+    "mv": 455566.15,
+    "weight": 0.16,
+    "name": "Odfjell Drilling Ltd"
+   },
+   "RIG": {
+    "cusip": "H8817H100",
+    "shares": 4128872,
+    "price": 5.75,
+    "mv": 23741014,
+    "weight": 8.36,
+    "name": "Transocean Ltd"
+   },
+   "RYGYO TI": {
+    "cusip": "B3VKHD1",
+    "shares": 35825318,
+    "price": 44.16,
+    "mv": 32899148.8,
+    "weight": 11.59,
+    "name": "Reysas Gayrimenkul Yatirim Ortakligi AS"
+   },
+   "RYSAS TI": {
+    "cusip": "B0YBSZ9",
+    "shares": 19461689,
+    "price": 23.68,
+    "mv": 9583579.92,
+    "weight": 3.38,
+    "name": "Reysas Tasimacilik ve Lojistik Ticaret AS"
+   },
+   "SGN PW": {
+    "cusip": "5096747",
+    "shares": 185839,
+    "price": 86.5,
+    "mv": 4362121.89,
+    "weight": 1.54,
+    "name": "Sygnity SA"
+   },
+   "TABGD TI": {
+    "cusip": "BLC8HQ3",
+    "shares": 2368623,
+    "price": 250.25,
+    "mv": 12326380.54,
+    "weight": 4.34,
+    "name": "TAB Gida Sanayi Ve Ticaret AS"
+   },
+   "TAVHL TI": {
+    "cusip": "B1RMFT9",
+    "shares": 2978173,
+    "price": 285.25,
+    "mv": 17666117.63,
+    "weight": 6.22,
+    "name": "TAV Havalimanlari Holding AS"
+   },
+   "TOI CN": {
+    "cusip": "BNGJNT1",
+    "shares": 171736,
+    "price": 104.24,
+    "mv": 12944150.86,
+    "weight": 4.56,
+    "name": "Topicus.com Inc"
+   },
+   "VAL": {
+    "cusip": "G9460G101",
+    "shares": 149887,
+    "price": 85.72,
+    "mv": 12848313.64,
+    "weight": 4.53,
+    "name": "Valaris Ltd"
+   }
+  },
+  "cash": {
+   "NOK": -1000.02,
+   "PLN": -32900.99,
+   "TRY": -682126.15,
+   "Cash&Other": 3457111.34
+  },
+  "source": {
+   "provider": "Pabrai Wagons ETF / FilePoint",
+   "fileDate": "2026-08-26",
+   "url": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_ETF_Holdings.csv",
+   "officialPage": "https://www.wagonsetf.com/fund-summary",
+   "capturedAt": "2026-08-26T06:22:30.153Z",
+   "lastModified": "Wed, 26 Aug 2026 00:02:30 GMT",
+   "etag": "\"107b1130ee34dd1:0\"",
+   "sha256": "02bf48170c15536e08e12e362364ee2b50f4ee6bce1f622af54e7b2d8a36a47e",
+   "schema": [
+    "Date",
+    "Account",
+    "StockTicker",
+    "CUSIP",
+    "SecurityName",
+    "Shares",
+    "Price",
+    "MarketValue",
+    "Weightings",
+    "NetAssets",
+    "SharesOutstanding",
+    "CreationUnits",
+    "MoneyMarketFlag"
+   ],
+   "rowCount": 24,
+   "securityCount": 20,
+   "cashRowCount": 4,
+   "marketValueGapPct": 0.0033748001997505497,
+   "weightSum": 100
+  }
+ },
+ {
+  "date": "2026-08-27",
+  "fileDate": "08/27/2026",
+  "account": "WAGN",
+  "netAssets": 285645196.08,
+  "sharesOutstanding": 18170814,
+  "creationUnits": 1817.08,
+  "rows": {
+   "AMR": {
+    "cusip": "020764106",
+    "shares": 63841,
+    "price": 217.92,
+    "mv": 13912230.72,
+    "weight": 4.87,
+    "name": "Alpha Metallurgical Resources Inc"
+   },
+   "CSU CN": {
+    "cusip": "B15C4L6",
+    "shares": 5735,
+    "price": 3070.03,
+    "mv": 12686257.2,
+    "weight": 4.44,
+    "name": "Constellation Software Inc/Canada"
+   },
+   "DAC": {
+    "cusip": "Y1968P121",
+    "shares": 86596,
+    "price": 147.78,
+    "mv": 12797156.88,
+    "weight": 4.48,
+    "name": "Danaos Corp"
+   },
+   "EDEL IN": {
+    "cusip": "B291KM9",
+    "shares": 14572000,
+    "price": 127.47,
+    "mv": 19467003.85,
+    "weight": 6.82,
+    "name": "Edelweiss Financial Services Ltd"
+   },
+   "FXFXX": {
+    "cusip": "31846V328",
+    "shares": 2114578.48,
+    "price": 100,
+    "mv": 2114578.48,
+    "weight": 0.74,
+    "name": "First American Treasury Obligations Fund 01/01/2040"
+   },
+   "GMTAS TI": {
+    "cusip": "BMQ89N7",
+    "shares": 16569895.878795,
+    "price": 45.54,
+    "mv": 15686130.21,
+    "weight": 5.49,
+    "name": "Gimat Magazacilik Sanayi Ve Ticaret AS"
+   },
+   "HCC": {
+    "cusip": "93627C101",
+    "shares": 254389,
+    "price": 105.22,
+    "mv": 26766810.58,
+    "weight": 9.37,
+    "name": "Warrior Met Coal Inc"
+   },
+   "KSPI": {
+    "cusip": "48581R205",
+    "shares": 128878,
+    "price": 107.68,
+    "mv": 13877583.04,
+    "weight": 4.86,
+    "name": "Kaspi.KZ JSC"
+   },
+   "LMN CN": {
+    "cusip": "BNKCF01",
+    "shares": 708511,
+    "price": 24.08,
+    "mv": 12293075.53,
+    "weight": 4.3,
+    "name": "Lumine Group Inc"
+   },
+   "NE": {
+    "cusip": "G65431127",
+    "shares": 285317,
+    "price": 45.18,
+    "mv": 12890622.06,
+    "weight": 4.51,
+    "name": "Noble Corp PLC"
+   },
+   "NUVAMA IN": {
+    "cusip": "BP955R2",
+    "shares": 520420,
+    "price": 1779.3,
+    "mv": 9704543.78,
+    "weight": 3.4,
+    "name": "Nuvama Wealth Management Ltd"
+   },
+   "ODL NO": {
+    "cusip": "BDX87W2",
+    "shares": 123304,
+    "price": 92.4,
+    "mv": 1219205.19,
+    "weight": 0.43,
+    "name": "Odfjell Drilling Ltd"
+   },
+   "RIG": {
+    "cusip": "H8817H100",
+    "shares": 4128872,
+    "price": 5.6,
+    "mv": 23121683.2,
+    "weight": 8.09,
+    "name": "Transocean Ltd"
+   },
+   "RYGYO TI": {
+    "cusip": "B3VKHD1",
+    "shares": 36446211,
+    "price": 44.56,
+    "mv": 33759855.36,
+    "weight": 11.82,
+    "name": "Reysas Gayrimenkul Yatirim Ortakligi AS"
+   },
+   "RYSAS TI": {
+    "cusip": "B0YBSZ9",
+    "shares": 19461689,
+    "price": 23.68,
+    "mv": 9579993.98,
+    "weight": 3.35,
+    "name": "Reysas Tasimacilik ve Lojistik Ticaret AS"
+   },
+   "SGN PW": {
+    "cusip": "5096747",
+    "shares": 187300,
+    "price": 89.8,
+    "mv": 4544838.95,
+    "weight": 1.59,
+    "name": "Sygnity SA"
+   },
+   "TABGD TI": {
+    "cusip": "BLC8HQ3",
+    "shares": 2368623,
+    "price": 247,
+    "mv": 12161745.34,
+    "weight": 4.26,
+    "name": "TAB Gida Sanayi Ve Ticaret AS"
+   },
+   "TAVHL TI": {
+    "cusip": "B1RMFT9",
+    "shares": 2978173,
+    "price": 284.25,
+    "mv": 17597598.53,
+    "weight": 6.16,
+    "name": "TAV Havalimanlari Holding AS"
+   },
+   "TOI CN": {
+    "cusip": "BNGJNT1",
+    "shares": 171736,
+    "price": 103.13,
+    "mv": 12761561.9,
+    "weight": 4.47,
+    "name": "Topicus.com Inc"
+   },
+   "VAL": {
+    "cusip": "G9460G101",
+    "shares": 154887,
+    "price": 83.6,
+    "mv": 12948553.2,
+    "weight": 4.53,
+    "name": "Valaris Ltd"
+   }
+  },
+  "cash": {
+   "NOK": -454990.56,
+   "PLN": -26258.93,
+   "TRY": -481251.74,
+   "Cash&Other": 6708056.6
+  },
+  "source": {
+   "provider": "Pabrai Wagons ETF / FilePoint",
+   "fileDate": "2026-08-27",
+   "url": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_ETF_Holdings.csv",
+   "officialPage": "https://www.wagonsetf.com/fund-summary",
+   "capturedAt": "2026-08-27T00:12:16.693Z",
+   "lastModified": "Thu, 27 Aug 2026 00:02:32 GMT",
+   "etag": "\"cdb88f5bb735dd1:0\"",
+   "sha256": "591b98894279c9f0ec9c135be947213c4c86fa466e8f0dce601d2c9fc4e6d3d6",
+   "schema": [
+    "Date",
+    "Account",
+    "StockTicker",
+    "CUSIP",
+    "SecurityName",
+    "Shares",
+    "Price",
+    "MarketValue",
+    "Weightings",
+    "NetAssets",
+    "SharesOutstanding",
+    "CreationUnits",
+    "MoneyMarketFlag"
+   ],
+   "rowCount": 24,
+   "securityCount": 20,
+   "cashRowCount": 4,
+   "marketValueGapPct": 0.003015184613014436,
+   "weightSum": 99.98999999999998
+  }
  }
 ]

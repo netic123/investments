@@ -11,6 +11,10 @@ const {
 
 const CRYPTO = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'];
 const RAW_SYMBOLS = [...CRYPTO, 'IEF', 'HYG', 'LQD'];
+const CRYPTO_INDEX = {
+  id: 'CRYPTO-BROAD-EW', name: 'Broad crypto equal-weight basket', method: 'equalWeightReturns',
+  currency: 'USD', timezone: 'UTC', symbols: CRYPTO,
+};
 
 function dateAt(index) {
   const date = new Date('2020-01-01T00:00:00Z');
@@ -38,11 +42,11 @@ function fixture(days = 1000) {
 }
 
 const MARKET = {
-  name: 'Crypto — BTC benchmark',
+  name: 'Crypto — broad 7-asset index',
   currency: 'USD',
   barPolicy: 'completed-utc-date',
   symbols: {
-    index: 'BTC-USD', vol: null, bond: 'IEF', hy: 'HYG', ig: 'LQD',
+    index: CRYPTO_INDEX, vol: null, bond: 'IEF', hy: 'HYG', ig: 'LQD',
     small: {
       id: 'CRYPTO-NONCORE-EW', name: 'Non-core basket', method: 'equalWeightReturns',
       symbols: ['SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'],
@@ -97,9 +101,15 @@ test('all markets use one bounded, labelled, exactly equal-weighted six-componen
   const displayedMean = Object.values(crypto.components).reduce((sum, component) => sum + component.score, 0) / 6;
   assert.ok(Math.abs(crypto.score - displayedMean) <= 0.11, `rounded equal-weight mean differs: ${crypto.score} vs ${displayedMean}`);
   assert.equal(crypto.components.volatility.dir, -1);
+  assert.equal(crypto.indexSymbol, 'CRYPTO-BROAD-EW');
+  assert.equal(crypto.indexName, 'Broad crypto equal-weight basket');
+  for (const component of ['momentum', 'strength', 'volatility']) {
+    assert.deepEqual(crypto.components[component].symbols, ['CRYPTO-BROAD-EW']);
+  }
+  assert.deepEqual(crypto.components.safeHaven.symbols, ['CRYPTO-BROAD-EW', 'IEF']);
 });
 
-test('unified model v1 deterministic golden vector stays frozen', () => {
+test('unified model v2 deterministic golden vector stays frozen', () => {
   const result = computeMarket('crypto', MARKET, fixture(), OPTIONS);
   const projection = {
     score: result.score, label: result.label, n: result.n, total: result.total,
@@ -109,7 +119,7 @@ test('unified model v1 deterministic golden vector stays frozen', () => {
     history: result.history,
   };
   const digest = crypto.createHash('sha256').update(JSON.stringify(projection)).digest('hex');
-  assert.equal(digest, 'e5a925ac3093410ee9dced72c7ce571e374046b1089eec678fcd7e4c9cf0186b', 'unified model behavior changed: bump the model version and deliberately replace the golden vector');
+  assert.equal(digest, 'ff834603b4ee8c842e4d47feb730aa9897201252315ba2770bf69dd46d2e8110', 'unified model behavior changed: bump the model version and deliberately replace the golden vector');
 });
 
 test('future observations cannot change earlier shared-model scores', () => {
@@ -127,10 +137,26 @@ test('future observations cannot change earlier shared-model scores', () => {
   );
 });
 
-test('a missing frozen breadth constituent cannot silently change the model', () => {
+test('causal component history is opt-in research data and does not change public rows', () => {
+  const series = fixture();
+  const publicResult = computeMarket('crypto', MARKET, series, OPTIONS);
+  const researchResult = computeMarket('crypto', MARKET, series, { ...OPTIONS, includeHistoryParts: true });
+  assert.equal(publicResult.history.some(row => Object.prototype.hasOwnProperty.call(row, 'parts')), false);
+  assert.ok(researchResult.history.length > 300);
+  for (const row of researchResult.history) {
+    assert.deepEqual(Object.keys(row.parts).sort(), ['breadth', 'credit', 'momentum', 'safeHaven', 'strength', 'volatility']);
+    assert.ok(Object.values(row.parts).every(part => Number.isFinite(part.score) && Number.isFinite(part.raw)));
+  }
+  assert.deepEqual(
+    researchResult.history.map(({ parts, ...row }) => row),
+    publicResult.history,
+  );
+});
+
+test('a missing broad-index constituent cannot silently narrow the Crypto benchmark', () => {
   const missing = fixture();
   missing.delete('SOL-USD');
-  assert.throws(() => computeMarket('crypto', MARKET, missing, OPTIONS), /too few indicators with data/);
+  assert.throws(() => computeMarket('crypto', MARKET, missing, OPTIONS), /index series \(CRYPTO-BROAD-EW\) missing/);
 });
 
 test('Crypto completed-UTC policy excludes the current and future UTC dates', () => {
@@ -203,9 +229,16 @@ test('config exposes one model identity and five market mappings', () => {
   const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'config.json'), 'utf8'));
   assert.equal(Object.prototype.hasOwnProperty.call(config, 'cryptoFearGreed'), false);
   assert.equal(config.marketFearGreed.modelId, 'investments-unified-fear-greed');
-  assert.equal(config.marketFearGreed.version, 1);
+  assert.equal(config.marketFearGreed.version, 2);
   assert.equal(config.marketFearGreed.minComponents, 6);
   assert.deepEqual(Object.keys(config.marketFearGreed.markets).sort(), ['crypto', 'europe', 'global', 'sweden', 'usa']);
-  assert.equal(config.marketFearGreed.markets.crypto.symbols.index, 'BTC-USD');
+  assert.deepEqual(config.marketFearGreed.markets.crypto.symbols.index, {
+    id: 'CRYPTO-BROAD-EW',
+    name: 'Broad crypto equal-weight basket',
+    method: 'equalWeightReturns',
+    currency: 'USD',
+    timezone: 'UTC',
+    symbols: CRYPTO,
+  });
   assert.equal(config.marketFearGreed.markets.crypto.symbols.small.method, 'equalWeightReturns');
 });

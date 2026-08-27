@@ -24,7 +24,7 @@ const lastGood = new Map();            // symbol -> last successful series (fall
 
 // range 'max' = each series' full history on Yahoo (SPY since 1993, ^VIX since 1990 …); the composite reaches back as far as ≥ minComponents indicators exist
 const DEFAULTS = {
-  modelId: 'investments-unified-fear-greed', version: 1,
+  modelId: 'investments-unified-fear-greed', version: 2,
   range: 'max', window: 252, minWindowPoints: 126, minComponents: 6,
   fillDays: 7, historyPoints: 8000, timeoutMs: 25000, concurrency: 6,
 };
@@ -331,7 +331,19 @@ function computeMarket(key, m, S, opt) {
       year: year ? round1(year.score) : null, yearDate: year ? year.date : null },
     components, warnings,
     mapping: { barPolicy: m.barPolicy || 'exchange-local daily bars', symbols: sym },
-    history: history.slice(-opt.historyPoints).map(h => ({ date: h.date, score: round1(h.score), label: labelOf(h.score), n: h.n })),
+    history: history.slice(-opt.historyPoints).map(h => {
+      const row = { date: h.date, score: round1(h.score), label: labelOf(h.score), n: h.n };
+      // Research runs can request the causal component observations used for each
+      // composite row. The public/server contract stays compact by default.
+      if (opt.includeHistoryParts) {
+        row.parts = Object.fromEntries(Object.entries(h.parts).map(([component, value]) => [component, {
+          score: value.score,
+          raw: value.raw,
+          asOf: value.asOf,
+        }]));
+      }
+      return row;
+    }),
   };
 }
 

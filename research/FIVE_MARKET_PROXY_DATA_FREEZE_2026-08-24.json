@@ -1,0 +1,210 @@
+{
+  "asOfDate": "2026-08-24",
+  "cash": {
+    "executable": false,
+    "firstDate": "2008-01-03",
+    "lastDate": "2026-08-24",
+    "normalizedRowsSha256": "2cd3c860511d7ebc3ed5b4461c14e7a75618535182786c5f6e8cb00601955c21",
+    "rawPayloadSha256": "0907b7c8ae0d047ff73ac231601b8d12e43f8e34cf42587c1bf9873f4aeb8bb4",
+    "retrievedAt": "2026-08-25T18:56:17.352Z",
+    "returnType": "RECONSTRUCTED_91_DAY_TBILL_ACCRUAL_PROXY",
+    "rowCount": 6809,
+    "sourceArtifactSha256": "4a9b5cda4fcd78c30a5a0b346d17f483ea16aaa07ecb5cc9bf7795dff2a27b08",
+    "sourceUrl": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3&cosd=2008-01-01&coed=2026-08-24",
+    "ticker": "DTB3-91D-ACCRUAL"
+  },
+  "containsStrategyOutcomes": false,
+  "historyPanels": {
+    "fiveMarketPrimary": {
+      "claimBoundary": "Four live USD ETF total-return proxies plus one non-investable backcast crypto price index; never five investable total-return markets.",
+      "members": [
+        "CMBITM",
+        "EWD",
+        "IYY",
+        "IEV",
+        "ACWI"
+      ],
+      "strictCommonHistory": {
+        "calendarYears": 7.148675195246994,
+        "datesSha256": "aa7b9b53bd0f47b8de6da980f5d188dcb4eb5651d89bc0eb3449a7424a008481",
+        "firstDate": "2019-07-01",
+        "lastDate": "2026-08-24",
+        "rowCount": 1797
+      }
+    },
+    "investableEquityPrimaryLongHistory": {
+      "claimBoundary": "Four live USD ETF total-return proxies; overlapping markets; retrospective current-vintage data.",
+      "members": [
+        "EWD",
+        "IYY",
+        "IEV",
+        "ACWI"
+      ],
+      "strictCommonHistory": {
+        "calendarYears": 18.406948807983735,
+        "datesSha256": "1626c6fc91efa55d71c67a10941a432104dd5e1cc2a467bf666dde341bce2ccf",
+        "firstDate": "2008-03-28",
+        "lastDate": "2026-08-24",
+        "rowCount": 4631
+      }
+    }
+  },
+  "input": {
+    "adjacentSha256Path": "research/local-artifacts/five-market-proxy-data/five-market-proxy-input-2026-08-24.json.sha256",
+    "bytes": 5588602,
+    "fileSha256": "a7a1e895ff4dbda68849beaead5f86cabad4493f89db43ec05e6a805847a329c",
+    "path": "research/local-artifacts/five-market-proxy-data/five-market-proxy-input-2026-08-24.json"
+  },
+  "primarySeries": [
+    {
+      "executable": false,
+      "firstDate": "2019-07-01",
+      "key": "crypto",
+      "lastDate": "2026-08-24",
+      "normalizedRowsSha256": "f8519b927bde51b9329417dc1f9e31ce0e67920a4c2bb9f3935a0d23e6b92729",
+      "rawPayloadSha256": "fe7d5b99e1b6c4cb1f989df6c78123fc5457c582becff86354c4cffb242f5f7e",
+      "retrievedAt": "2026-08-24T22:13:44.154Z",
+      "returnType": "PRICE_RETURN_NONINVESTABLE_BACKCAST",
+      "rowCount": 2612,
+      "sourceArtifactSha256": "9d42777cc8ad7de6394cb0045e24fa0b588c1e31915acadbc49af55842579b7c",
+      "sourceUrl": "https://indexes.coinmetrics.io/api/indexes?index=cmbitm&frequency=1d-ny-close&timezone=America%2FNew_York",
+      "ticker": "CMBITM"
+    },
+    {
+      "executable": true,
+      "firstDate": "1996-03-18",
+      "key": "sweden",
+      "lastDate": "2026-08-24",
+      "normalizedRowsSha256": "2580ba27aa7d31a1f2d6f41a986092f00461f09f71326472748042421206223e",
+      "rawPayloadSha256": "0127d2948dfe4a79753c9b5280a390d25e9d13f6dd27fb5f444cde16791eed2b",
+      "retrievedAt": "2026-08-25T18:56:17.352Z",
+      "returnType": "USD_ETF_ADJUSTED_CLOSE_TOTAL_RETURN_PROXY",
+      "rowCount": 7658,
+      "sourceArtifactSha256": "4a9b5cda4fcd78c30a5a0b346d17f483ea16aaa07ecb5cc9bf7795dff2a27b08",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/EWD?period1=788918400&period2=1787616000&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "ticker": "EWD"
+    },
+    {
+      "executable": true,
+      "firstDate": "2000-06-16",
+      "key": "usa",
+      "lastDate": "2026-08-24",
+      "normalizedRowsSha256": "108dcfd1c3b5f05bd71ccf4b16e7008ca4c369113bfe10ce92a590a202d8d3bc",
+      "rawPayloadSha256": "0c881ef398ac8f34fda4976063fd912a60b3ea073f3fe1125fa768686555ad92",
+      "retrievedAt": "2026-08-25T18:56:17.352Z",
+      "returnType": "USD_ETF_ADJUSTED_CLOSE_TOTAL_RETURN_PROXY",
+      "rowCount": 6585,
+      "sourceArtifactSha256": "4a9b5cda4fcd78c30a5a0b346d17f483ea16aaa07ecb5cc9bf7795dff2a27b08",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/IYY?period1=788918400&period2=1787616000&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "ticker": "IYY"
+    },
+    {
+      "executable": true,
+      "firstDate": "2000-07-28",
+      "key": "europe",
+      "lastDate": "2026-08-24",
+      "normalizedRowsSha256": "8b61a4eb0acfea35c0a54d8426280c484a19e3f6458693dd8d974bce54ec7d25",
+      "rawPayloadSha256": "1cd419d89766efbaca5b903523cd80b38f5e4c57a1ef50ed26804875dbd4950f",
+      "retrievedAt": "2026-08-25T18:56:17.352Z",
+      "returnType": "USD_ETF_ADJUSTED_CLOSE_TOTAL_RETURN_PROXY",
+      "rowCount": 6556,
+      "sourceArtifactSha256": "4a9b5cda4fcd78c30a5a0b346d17f483ea16aaa07ecb5cc9bf7795dff2a27b08",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/IEV?period1=788918400&period2=1787616000&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "ticker": "IEV"
+    },
+    {
+      "executable": true,
+      "firstDate": "2008-03-28",
+      "key": "global",
+      "lastDate": "2026-08-24",
+      "normalizedRowsSha256": "9307603c3c78b5fff46fd0563fb8395421e53beceb2faa153ef2f4c03b8491da",
+      "rawPayloadSha256": "94a61e38d1fcb1ee44d0870452d3f4cebfb014cc9b90cff9453cc6f732557761",
+      "retrievedAt": "2026-08-25T18:56:17.352Z",
+      "returnType": "USD_ETF_ADJUSTED_CLOSE_TOTAL_RETURN_PROXY",
+      "rowCount": 4631,
+      "sourceArtifactSha256": "4a9b5cda4fcd78c30a5a0b346d17f483ea16aaa07ecb5cc9bf7795dff2a27b08",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/ACWI?period1=788918400&period2=1787616000&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "ticker": "ACWI"
+    }
+  ],
+  "robustnessSeries": [
+    {
+      "executable": true,
+      "firstDate": "1993-01-29",
+      "key": "usa_large_cap",
+      "lastDate": "2026-08-24",
+      "normalizedRowsSha256": "63c7ed0f134e85d7a3346108c7fd02fc6d4c967d9cea131a9f65522ad9014b06",
+      "rawPayloadSha256": "c2c9386e798e8e2ef5c54d3fc8e94e4a1a37246203b56ad3a053f61c0f130ff5",
+      "retrievedAt": "2026-08-25T19:12:30.253Z",
+      "returnType": "USD_ETF_ADJUSTED_CLOSE_TOTAL_RETURN_PROXY",
+      "role": "PREDECLARED_ROBUSTNESS_ONLY_NEVER_POST_RESULT_PRIMARY_REPLACEMENT",
+      "rowCount": 8449,
+      "sourceArtifactSha256": "dc4e8a6cd9fdc14c5c0efc94eacdd0dcd5185e3c672b2f2e774330901d133bdc",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/SPY?period1=631152000&period2=1787616000&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "ticker": "SPY"
+    },
+    {
+      "executable": true,
+      "firstDate": "2005-03-10",
+      "key": "europe_broader",
+      "lastDate": "2026-08-24",
+      "normalizedRowsSha256": "a08d69f5c24af5afff1dd1ea3b20b714945702c2a03c3f049cebbc6bdf507d74",
+      "rawPayloadSha256": "3e630d90b0362b08edfcc1900cf55fb54375500252f1de262a7295670b05b69d",
+      "retrievedAt": "2026-08-25T19:12:30.253Z",
+      "returnType": "USD_ETF_ADJUSTED_CLOSE_TOTAL_RETURN_PROXY",
+      "role": "PREDECLARED_ROBUSTNESS_ONLY_NEVER_POST_RESULT_PRIMARY_REPLACEMENT",
+      "rowCount": 5398,
+      "sourceArtifactSha256": "dc4e8a6cd9fdc14c5c0efc94eacdd0dcd5185e3c672b2f2e774330901d133bdc",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/VGK?period1=631152000&period2=1787616000&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "ticker": "VGK"
+    },
+    {
+      "executable": true,
+      "firstDate": "2012-03-05",
+      "key": "global_including_small_cap",
+      "lastDate": "2026-08-24",
+      "normalizedRowsSha256": "2f5688031fea83d7c9aad6963c05992144a930ce19b8aa8a56ae141d4f9e21b6",
+      "rawPayloadSha256": "6efa440fb48c02d03fb7266402ac423830727fcede0ba6346886c06f234f195f",
+      "retrievedAt": "2026-08-25T19:12:30.253Z",
+      "returnType": "USD_ETF_ADJUSTED_CLOSE_TOTAL_RETURN_PROXY",
+      "role": "PREDECLARED_ROBUSTNESS_ONLY_NEVER_POST_RESULT_PRIMARY_REPLACEMENT",
+      "rowCount": 3639,
+      "sourceArtifactSha256": "dc4e8a6cd9fdc14c5c0efc94eacdd0dcd5185e3c672b2f2e774330901d133bdc",
+      "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/SPGM?period1=631152000&period2=1787616000&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "ticker": "SPGM"
+    }
+  ],
+  "schema": "five-market-proxy-freeze-manifest-v1",
+  "sourceArtifacts": [
+    {
+      "bytes": 16958138,
+      "createdAt": "2026-08-24T22:13:44.154Z",
+      "fileSha256": "9d42777cc8ad7de6394cb0045e24fa0b588c1e31915acadbc49af55842579b7c",
+      "path": "research/local-artifacts/final-frozen/inputs/fear-greed-model-search-input-2026-08-24T22-13-44Z.json",
+      "role": "CMBITM_SCHEMA4_CACHE_ACTUAL_SOURCE",
+      "schemaVersion": 4
+    },
+    {
+      "bytes": 2648315,
+      "fileSha256": "4a9b5cda4fcd78c30a5a0b346d17f483ea16aaa07ecb5cc9bf7795dff2a27b08",
+      "path": "research/local-artifacts/equity-rotation-panel/input-2026-08-24.json",
+      "retrievedAt": "2026-08-25T18:56:17.352Z",
+      "role": "PRIMARY_ETFS_AND_DTB3_CACHE",
+      "schema": "equity-rotation-panel-input-v1"
+    },
+    {
+      "bytes": 2433296,
+      "fileSha256": "dc4e8a6cd9fdc14c5c0efc94eacdd0dcd5185e3c672b2f2e774330901d133bdc",
+      "path": "research/local-artifacts/five-market-proxy-data/robustness-yahoo-2026-08-24.json",
+      "retrievedAt": "2026-08-25T19:12:30.253Z",
+      "role": "PREDECLARED_ROBUSTNESS_ETF_RAW_CACHE",
+      "schema": "five-market-robustness-yahoo-cache-v1"
+    }
+  ],
+  "sourceCorrection": {
+    "action": "CMBITM is sourced only from the actual earlier schemaVersion 4 final-frozen snapshot identified and hashed above.",
+    "fact": "The frozen schemaVersion 5 v2-validation snapshot contains CRYPTO-BROAD-EW and no CMBITM rows.",
+    "prohibitedDescription": "Do not describe CMBITM as sourced from schemaVersion 5."
+  },
+  "status": "RETROSPECTIVE_PROXY_DATA_ONLY_NOT_CONFIRMATORY"
+}

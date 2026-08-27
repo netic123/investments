@@ -7,6 +7,13 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const marketfg = require('./marketfg'); // one six-component Fear & Greed model for Crypto/Sweden/USA/Europe/Global
+const {
+  fetchDalalStreet13f,
+  fetchResource: fetchSourceResource,
+  diffWagnSnapshots,
+  normalizeWagnHoldings,
+  selectWagnNavObservation,
+} = require('./pabrai');
 
 const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
@@ -143,34 +150,74 @@ function saveSnapshots(list) {
 }
 
 // ---------- holdings ----------
-async function getHoldings() {
-  const cashSet = new Set(config.cashTickers || []);
-  let live = null, fetchError = null;
-  try {
-    const rows = parseCsv(await fetchText(config.sources.holdings));
-    if (!rows.length) throw new Error('empty holdings file');
-    const fileDate = rows[0].Date;
-    const date = isoFromUs(fileDate);
-    if (!date) throw new Error(`unexpected date format: ${fileDate}`);
-    const snap = { date, fileDate, netAssets: num(rows[0].NetAssets), rows: {}, cash: {} };
-    for (const r of rows) {
-      const t = r.StockTicker;
-      if (!t) continue;
-      if (cashSet.has(t)) { snap.cash[t] = num(r.MarketValue); continue; }
-      snap.rows[t] = {
-        shares: num(r.Shares), price: num(r.Price), mv: num(r.MarketValue), weight: num(r.Weightings),
-        name: r.SecurityName || '',
-      };
-    }
-    if (!Object.keys(snap.rows).length) throw new Error('no holdings in the file');
-    live = snap;
-  } catch (e) { fetchError = String(e.message || e); }
+const dayNumber = iso => Date.parse(`${iso}T00:00:00Z`) / 864e5;
+let holdingsInFlight = null;
 
+async function getHoldingsOnce() {
+  const cashSet = new Set(config.cashTickers || []);
   const snaps = loadSnapshots();
+  snaps.sort((a, b) => a.date.localeCompare(b.date));
+  const savedLatestBeforeFetch = snaps[snaps.length - 1] || null;
+  let live = null, fetchError = null;
+  let source = { status: 'unavailable', url: config.sources.holdings, officialPage: config.sources.holdingsPage || null };
+  try {
+    const retrievedAt = new Date().toISOString();
+    const receipt = await fetchSourceResource(config.sources.holdings, { userAgent: UA, timeoutMs: 20000 });
+    live = normalizeWagnHoldings(receipt.text, {
+      cashTickers: [...cashSet],
+      sourceUrl: config.sources.holdings,
+      officialPage: config.sources.holdingsPage,
+      retrievedAt,
+      lastModified: receipt.lastModified,
+      etag: receipt.etag,
+    });
+    source = { status: 'verified', ...live.source, fileDate: live.date, retrievedAt };
+    const utcToday = new Date().toISOString().slice(0, 10);
+    const ageDays = Math.floor(dayNumber(utcToday) - dayNumber(live.date));
+    source.ageDays = ageDays;
+    if (ageDays < -1) throw new Error(`official holdings source has a future date (${live.date})`);
+    if (ageDays > 5) throw new Error(`official holdings source is stale (${live.date}, ${ageDays} calendar days old)`);
+    if (savedLatestBeforeFetch && live.date < savedLatestBeforeFetch.date) {
+      throw new Error(`official holdings source regressed from saved ${savedLatestBeforeFetch.date} to ${live.date}`);
+    }
+  } catch (e) {
+    fetchError = String(e.message || e);
+    // A response that failed freshness, regression or schema validation must
+    // never be saved merely because parsing had already produced an object.
+    if (live) {
+      source = { ...source, status: 'rejected', rejection: fetchError };
+      live = null;
+    }
+  }
+
   if (live) {
     const i = snaps.findIndex(s => s.date === live.date);
-    const changed = i === -1 || JSON.stringify(snaps[i]) !== JSON.stringify(live);
-    if (i === -1) snaps.push(live); else snaps[i] = live; // same day: the latest file wins
+    const existing = i === -1 ? null : snaps[i];
+    const sameReceipt = !!(existing && existing.source && existing.source.sha256 && existing.source.sha256 === live.source.sha256);
+    const needsMetadataUpgrade = !!(sameReceipt && (
+      existing.source.fileDate !== live.source.fileDate ||
+      !Number.isFinite(existing.sharesOutstanding) ||
+      Object.values(existing.rows || {}).some(row => !row || !row.cusip)
+    ));
+    const changed = i === -1 || !sameReceipt || needsMetadataUpgrade;
+    if (i === -1) snaps.push(live);
+    else if (sameReceipt && !needsMetadataUpgrade) live = existing;
+    else if (sameReceipt) {
+      if (existing.source.capturedAt) live.source.capturedAt = existing.source.capturedAt;
+      if (Array.isArray(existing.revisions) && existing.revisions.length) live.revisions = existing.revisions;
+      snaps[i] = live;
+    }
+    else {
+      const revisions = Array.isArray(existing.revisions) ? [...existing.revisions] : [];
+      const existingSha = existing.source && existing.source.sha256;
+      const revisionHasSha = revision => (revision.source && revision.source.sha256) === existingSha || revision.sha256 === existingSha;
+      if (existingSha && !revisions.some(revisionHasSha)) {
+        const { revisions: ignoredPriorRevisions, ...priorReceipt } = existing;
+        revisions.push({ ...priorReceipt, replacedAt: live.source.capturedAt });
+      }
+      if (revisions.length) live.revisions = revisions;
+      snaps[i] = live;
+    }
     if (changed) {
       try { saveSnapshots(snaps); }
       catch (e) { console.error('could not save snapshots.json:', e.message); fetchError = 'could not save snapshot (' + e.message + ')'; }
@@ -187,34 +234,24 @@ async function getHoldings() {
 
   return {
     ok: !!live, fetchError, fetchedAt: new Date().toISOString(),
+    source: { ...source, status: live ? 'verified' : source.status === 'verified' ? 'rejected' : source.status },
     latest, previous, first,
     changesVsPrevious: previous && latest ? diff(previous, latest) : [],
     changesVsFirst: first && latest && first !== latest ? diff(first, latest) : [],
     snapshotDates: snaps.map(s => s.date),
+    snapshots: snaps,
     log,
   };
 }
 
+function getHoldings() {
+  if (holdingsInFlight) return holdingsInFlight;
+  holdingsInFlight = getHoldingsOnce().finally(() => { holdingsInFlight = null; });
+  return holdingsInFlight;
+}
+
 function diff(a, b) {
-  const out = [];
-  const cashLike = new Set(config.cashLike || []);
-  const tickers = new Set([...Object.keys(a.rows), ...Object.keys(b.rows)]);
-  for (const t of tickers) {
-    const ra = a.rows[t], rb = b.rows[t];
-    const sa = (ra && ra.shares) || 0, sb = (rb && rb.shares) || 0;
-    const delta = sb - sa;
-    if (Math.abs(delta) < 0.5) continue;
-    const price = (rb && rb.price) || (ra && ra.price) || 0;
-    const usdPerShare = rb && rb.mv && rb.shares ? rb.mv / rb.shares : (ra && ra.mv && ra.shares ? ra.mv / ra.shares : 0);
-    out.push({
-      ticker: t, from: a.date, to: b.date, sharesFrom: sa, sharesTo: sb, delta,
-      pct: sa ? delta / sa * 100 : null,
-      kind: !ra ? 'NEW' : !rb ? 'SOLD OUT' : delta > 0 ? 'INCREASE' : 'DECREASE',
-      localPrice: price, approxUsd: Math.abs(delta) * usdPerShare, absValue: Math.abs(delta) * usdPerShare,
-      cashLike: cashLike.has(t), // money-market fund etc. — shown in the table but not counted as a position change
-    });
-  }
-  return out.sort((x, y) => y.absValue - x.absValue);
+  return diffWagnSnapshots(a, b, { cashLike: config.cashLike || [] });
 }
 
 // ---------- NAV / performance ----------
@@ -225,14 +262,15 @@ async function getNav() {
   ]);
   const d = daily[0] || {};
   const history = hist.map(r => ({
-    date: isoFromUs(r['Rate Date']), nav: num(r.NAV), price: num(r['Market Price']), prem: num(r['Premium/Discount Percentage']),
+    date: isoFromUs(r['Rate Date']), nav: num(r.NAV), price: num(r['Market Price']), premium: num(r['Premium/Discount Percentage']),
   })).filter(r => r.date && r.nav != null).sort((a, b) => a.date.localeCompare(b.date));
-  return {
+  const current = selectWagnNavObservation({
     date: isoFromUs(d['Rate Date']), nav: num(d.NAV), navChgPct: num(d['NAV Change Percentage']),
     price: num(d['Market Price']), premium: num(d['Premium/Discount Percentage']),
     netAssets: num(d['Net Assets']), sharesOut: num(d['Shares Outstanding']), spread: num(d['Median 30 Day Spread Percentage']),
-    history, // the fund's full daily series since inception (29 Sep 2023) — price only, no distributions
-  };
+  }, history);
+  if (!current) throw new Error('official WAGN NAV files contain no usable observation');
+  return { ...current, history }; // full daily series since inception (29 Sep 2023) — price only, no distributions
 }
 async function getPerf() {
   const [m, q] = await Promise.all([
@@ -245,6 +283,26 @@ async function getPerf() {
     sinceAnn: num(r['Since Inception Annualized']), date: isoFromUs(r.Date),
   }));
   return { monthly: shape(m), quarterly: shape(q) };
+}
+
+// ---------- Dalal Street 13F ----------
+async function getDalalStreet() {
+  try {
+    return await fetchDalalStreet13f(config.dalalStreet, { timeoutMs: 30000 });
+  } catch (error) {
+    // SEC sometimes rate-limits or blocks shared cloud IPs. Keep the last
+    // manually verified filing visible locally, but label it unambiguously as
+    // a fallback. The Pages build accepts only the exact dated fallback through
+    // its stated filing deadline and never labels it as newly verified data.
+    return {
+      ...config.dalalStreet,
+      ok: false,
+      fallback: true,
+      sourceStatus: 'manual fallback — SEC verification unavailable',
+      fetchError: String(error && error.message || error),
+      fetchedAt: new Date().toISOString(),
+    };
+  }
 }
 
 // ---------- quotes (Yahoo) ----------
@@ -281,6 +339,7 @@ function send(res, code, body, type = 'application/json; charset=utf-8') {
 }
 const routes = {
   '/api/holdings': () => cached('holdings', getHoldings, v => v.ok), // a failed fetch is not cached
+  '/api/dalal': () => cached('dalal', getDalalStreet, v => v.ok), // fail closed for publishing; local UI may show labelled fallback
   '/api/nav': () => cached('nav', getNav),
   '/api/perf': () => cached('perf', getPerf),
   '/api/quotes': () => cached('quotes', getQuotes, v => Object.values(v).some(q => !q.error)),

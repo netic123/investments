@@ -1,0 +1,15 @@
+{
+  "recordedAt": "2026-08-25T18:03:58.440Z",
+  "status": "POST_OUTCOME_AUDIT_CORRECTION_NOT_A_PREOUTCOME_FREEZE",
+  "candidate": "MA10-LF-50",
+  "supersedesSecondaryHalfDiagnosticsOnly": true,
+  "primaryVerdictUnchanged": "FAIL_NO_COMMON_WINNER_1_OF_5",
+  "correctedSourceFiles": {
+    "research/fear_greed_ma10_replication.js": "a49dd41615ec698f1370d3b224c6bcfcdcb7578355c00246c24c5523b14b73eb",
+    "test/fear_greed_ma10_replication.test.js": "ed0114d3b2a2903364b050e5bbf8613a685a34989e77b46f4d04bfa5bda6354a",
+    "research/MA10_REPLICATION_AUDIT_2026-08-25.md": "9f40d3f01d04752094e3319b11e44ac4285b2c3276d2a76755939d8af40de6f1"
+  },
+  "originalPreOutcomeFreeze": "research/FEAR_GREED_MA10_REPLICATION_FREEZE.json",
+  "originalCanonicalResultPreserved": "research/local-artifacts/ma10-replication-final/fear-greed-ma10-replication-2026-08-25T12-42-53-927Z.json",
+  "correctedTests": "7/7 passed"
+}

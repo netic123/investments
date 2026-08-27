@@ -1,6 +1,7 @@
 {
   "port": 8765,
   "sources": {
+    "holdingsPage": "https://www.wagonsetf.com/fund-summary",
     "holdings": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_ETF_Holdings.csv",
     "navDaily": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_DailyNAV.csv",
     "navHistory": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_DailyNAVHistorical.csv",
@@ -8,15 +9,22 @@
     "quarterlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_QuarterlyPerformance.csv"
   },
   "marketFearGreed": {
-    "modelId": "investments-unified-fear-greed", "version": 1,
+    "modelId": "investments-unified-fear-greed", "version": 2,
     "range": "max", "window": 252, "minWindowPoints": 126, "minComponents": 6, "fillDays": 7,
     "markets": {
       "crypto": {
-        "name": "Crypto — BTC benchmark",
+        "name": "Crypto — broad 7-asset index",
         "currency": "USD",
         "barPolicy": "completed-utc-date",
         "symbols": {
-          "index": "BTC-USD",
+          "index": {
+            "id": "CRYPTO-BROAD-EW",
+            "name": "Broad crypto equal-weight basket",
+            "method": "equalWeightReturns",
+            "currency": "USD",
+            "timezone": "UTC",
+            "symbols": ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "ADA-USD", "DOGE-USD", "BNB-USD"]
+          },
           "vol": null,
           "bond": "IEF",
           "hy": "HYG",
@@ -39,10 +47,10 @@
           }
         },
         "components": {
-          "momentum": { "desc": "BTC close relative to its 125-observation moving average" },
-          "strength": { "desc": "BTC distance from its trailing 252-observation high" },
-          "volatility": { "desc": "BTC 20-observation realised volatility relative to its 50-observation average" },
-          "safeHaven": { "desc": "BTC 20-common-session return minus 7–10 year US Treasuries", "note": "IEF is an external US Treasury proxy; on weekends its latest score is carried forward" },
+          "momentum": { "desc": "Broad 7-asset crypto index relative to its 125-observation moving average" },
+          "strength": { "desc": "Broad 7-asset crypto index distance from its trailing 252-observation high" },
+          "volatility": { "desc": "Broad 7-asset crypto index 20-observation realised volatility relative to its 50-observation average" },
+          "safeHaven": { "desc": "Broad 7-asset crypto index 20-common-session return minus 7–10 year US Treasuries", "note": "IEF is an external US Treasury proxy; on weekends its latest score is carried forward" },
           "credit": { "desc": "US high-yield vs investment-grade corporate bonds, relative to 125-observation average", "note": "HYG/LQD measures external US credit conditions, not crypto-native credit" },
           "breadth": { "desc": "Fixed non-core crypto basket vs BTC/ETH core basket, relative to 63-observation average", "note": "daily-rebalanced equal-weight analytical baskets; not market-cap indices or investable portfolios" }
         }
@@ -55,17 +63,31 @@
   },
   "fx": { "USD": "USDSEK=X", "CAD": "CADSEK=X" },
   "dalalStreet": {
+    "cik": "0001549575",
+    "managerName": "Dalal Street, LLC",
+    "manualVerifiedAt": "2026-08-26",
     "asOf": "2026-06-30",
     "filed": "2026-08-13",
+    "accepted": "2026-08-13T11:50:17.000Z",
+    "accession": "0001549575-26-000015",
+    "entryTotal": 4,
     "portfolioValueUsd": 326749980,
     "nextFilingWindow": "by 16 Nov 2026",
+    "nextFilingDeadline": "2026-11-16",
     "source": "SEC EDGAR 13F-HR, accession 0001549575-26-000015 (Dalal Street LLC, CIK 0001549575); previous quarter 0001549575-26-000009",
-    "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/",
+    "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/0001549575-26-000015-index.html",
+    "previous": {
+      "asOf": "2026-03-31",
+      "filed": "2026-05-14",
+      "accepted": "2026-05-14T15:00:59.000Z",
+      "accession": "0001549575-26-000009",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957526000009/0001549575-26-000009-index.html"
+    },
     "holdings": [
-      { "ticker": "HCC",  "name": "Warrior Met Coal",     "shares": 1744050,  "prevShares": 1810831,  "valueUsd": 141547098 },
-      { "ticker": "RIG",  "name": "Transocean",           "shares": 20398659, "prevShares": 20392672, "valueUsd": 99749443 },
-      { "ticker": "AMR",  "name": "Alpha Metallurgical",  "shares": 517194,   "prevShares": 579738,   "valueUsd": 85305978 },
-      { "ticker": "KSPI", "name": "Kaspi.kz",             "shares": 1702,     "prevShares": null,     "valueUsd": 147461 }
+      { "ticker": "HCC",  "name": "Warrior Met Coal",     "cusip": "93627C101", "shares": 1744050,  "prevShares": 1810831,  "valueUsd": 141547098 },
+      { "ticker": "RIG",  "name": "Transocean",           "cusip": "H8817H100", "shares": 20398659, "prevShares": 20392672, "valueUsd": 99749443 },
+      { "ticker": "AMR",  "name": "Alpha Metallurgical",  "cusip": "020764106", "shares": 517194,   "prevShares": 579738,   "valueUsd": 85305978 },
+      { "ticker": "KSPI", "name": "Kaspi.kz",             "cusip": "48581R205", "shares": 1702,     "prevShares": null,     "valueUsd": 147461 }
     ]
   },
   "dates": [
