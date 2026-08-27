@@ -1,0 +1,15 @@
+{
+ "activatedAt": "2026-08-27T14:47:26.869Z",
+ "activationRecord": "research/EUROPE_LOCKBOX_V1_ACTIVATION.md",
+ "candidate": "EUROPE-MONTHLY-CONTRARIAN-V1",
+ "candidateProtocolSha256": "f94c185c16cbe0c50f74715ba9f3c1aae2355d4f508fd51655229e37f2fbe43b",
+ "configSha256": "c4eeae263da7052d1c16b38a829841aa6ca8cf43e6caffc407fd880d18cca7c7",
+ "instrument": {
+  "name": "Xtrackers Stoxx Europe 600 UCITS ETF 1C (accumulating; price series is total return)",
+  "symbol": "XSX6.DE"
+ },
+ "marketfgSha256": "018954b001df8738d3d152969abd98764b7683516e97f7afecd8b786a9d22090",
+ "note": "Entries are append-only, revision-zero-primary, and chained by SHA-256. Nothing in this store is an outcome claim.",
+ "rule": "decide on the last trading day of each calendar month: sell when displayed integer >= 85, buy when <= 35; execution next close; primary endpoint after >= 60 prospective monthly decisions",
+ "schema": "europe-lockbox-genesis-v1"
+}

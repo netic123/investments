@@ -5,7 +5,12 @@
      CANDIDATE for the prospective lockbox (FEAR_GREED_V3_PROSPECTIVE_LOCKBOX_PROTOCOL.md).
      It activates nothing and validates nothing. -->
 
-Status: `PREREGISTRATION_CANDIDATE_NOT_ACTIVATED`
+Status: `COLLECTING_NO_OUTCOME_READ` (amended 2026-08-27, pre-collection: prospective
+collection activated through the scoped collector EUROPE-LOCKBOX-V1 — see
+EUROPE_LOCKBOX_V1_ACTIVATION.md. The instrument gate is resolved: `XSX6.DE`, an
+accumulating STOXX Europe 600 UCITS ETF whose price series is total return by
+construction. The activation is scoped to this candidate; the full five-market lockbox
+design remains `NOT_ACTIVATED`.)
 
 Forbidden labels anywhere in connection with this candidate until the prospective primary
 endpoint is met: `PASS`, `VALIDATED`, `CONFIRMED`, `DEPLOYABLE`.
