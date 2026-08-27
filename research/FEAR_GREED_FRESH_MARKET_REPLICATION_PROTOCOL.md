@@ -2,9 +2,16 @@
 
 <!-- FRESH-MARKET-REPLICATION-FROZEN 2026-08-28 : rule, markets, mappings, gates and stop
      rule declared and committed BEFORE any outcome on any fresh market was computed. The
-     runner refuses to run unless this file is committed and byte-identical to HEAD. -->
+     runner refuses to run unless this file is committed and byte-identical to HEAD.
+     SUPERSEDED-V2 2026-08-28, PRE-OUTCOME: the first run attempt failed during score
+     computation because Yahoo's max-range history for EWGS is defective (returns a single
+     day), so the germany market is UNCOMPUTABLE under its frozen mapping. No strategy
+     outcome had been computed for any market at that point (the runner computes all
+     scores before any evaluation and aborted on the germany failure). Germany is dropped
+     for data availability — not for its result, which never existed — and the gates are
+     rescaled from 4 to 3 markets below. No other change. -->
 
-Status before the run: `FROZEN_AWAITING_SINGLE_RUN`
+Status before the run: `FROZEN_AWAITING_SINGLE_RUN` (V2)
 
 ## Why this test exists
 
@@ -39,7 +46,10 @@ small-cap ETF vs the core ETF (large null → index).
 | japan | EWJ | SCJ | null | IEF | HYG | LQD |
 | uk | EWU | EWUS | null | IEF | HYG | LQD |
 | em | EEM | EEMS | null | IEF | HYG | LQD |
-| germany | EWG | EWGS | null | IEF | HYG | LQD |
+| ~~germany~~ | ~~EWG~~ | ~~EWGS~~ | — | — | — | — |
+
+(germany removed pre-outcome: EWGS full history is unavailable from the data source; see
+the supersession note in the freeze marker.)
 
 Eligible window per market: ETF price rows from the date of the 21st score observation
 (schema-6 warm-up convention) through the last completed session at run time.
@@ -49,10 +59,10 @@ Eligible window per market: ETF price rows from the date of the 21st score obser
 Per market: terminal wealth ratio vs buy-and-hold at base and stress cost, trade count,
 and a same-rule 99-shift circular timing placebo (finite-sample p, floor 0.01).
 
-Verdict (exactly one, mechanical):
-- `REPLICATION_SUPPORTED`: ≥ 3 of 4 markets with base-cost ratio > 1 AND ≥ 2 of 4 with
+Verdict (exactly one, mechanical; V2 gates for 3 markets):
+- `REPLICATION_SUPPORTED`: ≥ 2 of 3 markets with base-cost ratio > 1 AND ≥ 2 of 3 with
   placebo p ≤ 0.10.
-- `REPLICATION_FAILED`: ≤ 1 of 4 markets with base-cost ratio > 1.
+- `REPLICATION_FAILED`: ≤ 1 of 3 markets with base-cost ratio > 1.
 - `REPLICATION_MIXED`: anything else.
 
 Interpretation bounds, declared in advance: data is retrospective and current-vintage
