@@ -1,0 +1,64 @@
+name: Prospective lockbox collection
+
+# EUROPE-LOCKBOX-V1: records one append-only entry per UTC day with the
+# production europe Fear & Greed score, the executable instrument's recent
+# closes (XSX6.DE) and the DTB3 cash rate, then verifies the whole chain and
+# commits. 22:30 UTC is after the Xetra and US closes. Commits carry
+# [skip ci] so they do not trigger a Pages redeploy. Activation record:
+# research/EUROPE_LOCKBOX_V1_ACTIVATION.md.
+
+on:
+  schedule:
+    - cron: '30 22 * * 1-5'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: lockbox
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - name: Test lockbox scripts
+        run: node --test test/lockbox.test.js
+
+      - name: Collect today's entry (append-only)
+        run: node scripts/lockbox-collect.js
+
+      - name: Verify the full chain
+        run: node scripts/lockbox-verify.js
+
+      - name: Commit and push new entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lockbox
+          if git diff --cached --quiet; then
+            echo "no new entry (already collected today)"
+            exit 0
+          fi
+          git commit -m "Lockbox: record $(date -u +%F) [skip ci]"
+          for attempt in 1 2 3; do
+            if git push origin main; then exit 0; fi
+            git pull --rebase origin main
+          done
+          echo "::error::could not push lockbox entry after 3 attempts"
+          exit 1

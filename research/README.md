@@ -87,8 +87,15 @@ total-return correction), with max-of-family placebo p = 0.01 and
 uncorrected fear-day forward-return support that does not survive
 multiplicity. That candidate — and nothing else from the battery — is
 preregistered for prospective validation in
-[`FEAR_GREED_EUROPE_MONTHLY_CONTRARIAN_LOCKBOX_PROTOCOL.md`](FEAR_GREED_EUROPE_MONTHLY_CONTRARIAN_LOCKBOX_PROTOCOL.md)
-(status `PREREGISTRATION_CANDIDATE_NOT_ACTIVATED`).
+[`FEAR_GREED_EUROPE_MONTHLY_CONTRARIAN_LOCKBOX_PROTOCOL.md`](FEAR_GREED_EUROPE_MONTHLY_CONTRARIAN_LOCKBOX_PROTOCOL.md).
+Since 2026-08-27 that candidate is actively COLLECTING through the scoped
+append-only collector EUROPE-LOCKBOX-V1
+([`EUROPE_LOCKBOX_V1_ACTIVATION.md`](EUROPE_LOCKBOX_V1_ACTIVATION.md),
+`scripts/lockbox-collect.js`/`lockbox-verify.js`, daily GitHub workflow):
+one hash-chained entry per weekday with the production europe score, the
+accumulating XSX6.DE total-return instrument and DTB3 cash, toward the
+candidate's ≥ 60 prospective monthly decisions. The full five-market
+lockbox design remains `NOT_ACTIVATED`.
 
 Finally, [`FG_EXTREMES_RETRO_V1.md`](FG_EXTREMES_RETRO_V1.md) /
 [`fear_greed_extremes_retro_model.js`](fear_greed_extremes_retro_model.js)
