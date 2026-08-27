@@ -9,11 +9,14 @@ Requires Node.js 18+. No other dependencies, no installation.
 GITHUB PAGES
 Public site: https://netic123.github.io/investments/
 
-Every push to main — including a merged pull request — runs .github/workflows/pages.yml. The workflow starts
-the local server temporarily on the GitHub runner, fetches and validates the six public API responses, and
+Every push to main — including a merged pull request — plus a manual dispatch and the daily 09:15 UTC schedule
+runs .github/workflows/pages.yml. The workflow starts the local server temporarily on the GitHub runner, fetches
+and validates the seven public API responses, and
 publishes only _site/index.html, _site/.nojekyll and _site/api/*.json. GitHub Pages is static: it does not keep server.js
 running. The public values therefore reflect the timestamp shown in the page header and change on the next
-successful main deployment. "Reload snapshot" only checks whether that newer deployment is available.
+successful deployment. "Reload snapshot" only checks whether that newer deployment is available. Each scheduled
+build imports the previously published WAGN snapshots before adding the newest receipt, so history survives static
+Pages rebuilds instead of resetting to the few snapshots committed in the repository.
 
 The Pages build is deliberately forced to the approved data/positions.public.json watchlist: Constellation
 Software, Kaspi.kz and Warrior Met Coal, all with entry price set to null. It never publishes the gitignored
@@ -37,10 +40,14 @@ TABS (top of the page)
   - Every net quantity change in the ETF between the two latest saved files, plus the full log
   - The whole ETF portfolio sorted by weight, with Avanza status (online / by phone / not available)
   - Fund performance vs S&P 500 and the NAV curve
-  - Dalal Street's manager-aggregated 13F — static, delayed and updated by hand after each quarter
+  - Dalal Street's manager-aggregated 13F — fetched automatically from official SEC submissions + filing XML,
+    with declared row count and total value validated before publication. The config copy is a clearly labelled
+    fallback only when SEC cannot be reached. A Pages build accepts only that exact dated fallback and only through
+    its stated next-filing deadline; the page never labels fallback as newly verified. While fallback is displayed,
+    the visitor's browser also asks the CORS-enabled official SEC submissions endpoint whether a newer accession exists.
   - Upcoming dates
   Open directly: / or /#pabrai
-- Crypto, Sweden, USA, Europe, Global = one repository-owned unified Fear & Greed model v1 (0–100),
+- Crypto, Sweden, USA, Europe, Global = one repository-owned unified Fear & Greed model v2 (0–100),
             calculated by marketfg.js. Every tab uses the same six-component scoring engine, a trailing 252-observation
             percentile window, at least 126 valid raw observations, equal weights and the same labels:
             0–24 extreme fear, 25–44 fear, 45–55 neutral, 56–74 greed, 75–100 extreme greed. All six
@@ -51,21 +58,27 @@ TABS (top of the page)
             SMA125), and breadth (configured non-core/smaller series vs core/larger series relative to SMA63).
             Yahoo supplies raw histories only; no third-party sentiment score or fitted weight enters the model.
             Open directly: /#crypto /#sweden /#usa /#europe /#global
-- Crypto uses BTC-USD as benchmark, not as a claim to represent the entire crypto market. Its breadth input
-            compares two transparent daily-rebalanced analytical return indices: CRYPTO-CORE-EW contains BTC
-            and ETH at equal weight; CRYPTO-NONCORE-EW contains SOL, XRP, ADA, DOGE and BNB at equal weight.
+- Crypto uses CRYPTO-BROAD-EW, a transparent daily-rebalanced equal-weight return index of BTC, ETH, SOL,
+            XRP, ADA, DOGE and BNB. It is broader than BTC alone but is not literally every coin, market-cap
+            weighted, investable or a point-in-time total-market history. Its breadth input compares two further
+            analytical return indices: CRYPTO-CORE-EW contains BTC and ETH at equal weight; CRYPTO-NONCORE-EW
+            contains SOL, XRP, ADA, DOGE and BNB at equal weight.
             IEF is the external safe-haven comparator and HYG/LQD is external US corporate-credit appetite.
             The current UTC date is excluded. Because crypto trades every day, 252 crypto observations cover
             about 8.3 months; 252 equity trading observations cover roughly one trading year. The parameter is
             deliberately the same, but the elapsed calendar duration is not.
 
 HOW IT WORKS
-- The fund's own daily holdings file is fetched every 5 minutes (the page refreshes every 10).
+- The fund's own daily holdings file is fetched on load/update and by the local server's 30-minute background
+  capture. Successful API results have a 5-minute in-memory cache; the page refreshes every 10 minutes.
 - Every new file day is saved as a snapshot in data/snapshots.json. Changes = the difference in NUMBER OF
-  SHARES between two snapshots. Weight in percent moves with prices and means nothing.
+  SHARES between two snapshots. When both receipts include fund SharesOutstanding, the page also adjusts the
+  position signal for ETF creations/redemptions and shows the raw inventory change underneath. Weight moves with
+  prices and is not itself evidence of buying or selling.
 - If Investments is not run every weekday, several days' net quantity changes are merged under "Changes".
   They are not proof of exact execution dates/prices; the heading says when the interval spans several days.
-- The fund's file is dated one trading day AFTER the prices in it (T+1).
+- The fund file's displayed date is later than its valuation date. The page claims a pricing date only when the
+  holdings NetAssets and SharesOutstanding reconcile to rounded NAV × SharesOutstanding from the official NAV file.
 - Weekends/evenings: the card shows "Last close" with a timestamp, not "Price now".
 - Locally, the Update button re-fetches EVERYTHING: fund files, Yahoo quotes and the 30 unique Yahoo series
   behind the five unified-model tabs (it takes a few seconds; the status line shows progress and the time with
@@ -84,19 +97,26 @@ HOW IT WORKS
 - While the server runs it also captures the fund's holdings file every 30 minutes on its own, so a file
   day is not missed when the page is closed (a missed day merges multiple days into one net quantity change).
 
-SOURCES AND HOW THEY WERE VERIFIED (24 Aug 2026)
+SOURCES AND HOW THEY WERE VERIFIED (26 Aug 2026)
 - Fund holdings / NAV / performance: the fund's own files on wagonsetf.filepoint.live — verified to be the
-  exact files wagonsetf.com loads (its page embeds that site). Rounded NAV × shares matches the holdings-file
-  net-assets convention within 0.001% of the daily NAV file; market price matches Nasdaq and performance
-  matches the fund's published table.
-  The holdings file is dated T+1: "dated 24 Aug" means priced at the 21 Aug close (the page says so).
+  exact five FilePoint files loaded by wagonsetf.com's embedded fund page. The 25 Aug holdings receipt was HTTP
+  200, contained 20 securities plus four cash/currency rows, and its parsed rows matched the upstream file exactly.
+  It reported $281,177,571.66 NetAssets and 17,920,814 SharesOutstanding; rounded 24 Aug NAV $15.69 × 17,920,814
+  reconciles to that convention. Schema, consistent row dates/account/totals, CUSIPs, value/weight tolerances,
+  freshness, regression and SHA-256 provenance are now checked before a receipt is accepted.
 - Quotes (your tickers + the ETF's): Yahoo Finance, verified to the cent against Nasdaq's and TSX's own quote
   services. FX (USD/SEK, CAD/SEK): Yahoo's last tick; differs from the ECB/Riksbank daily fix by ~0.1 %.
   The rate and its time are shown under "Price in SEK".
-- Dalal Street: SEC EDGAR 13F-HR (accession in config.json, linked from the page). Shares and values are
-  typed from the filing; weights and quarter changes are computed from them, so nothing is rounded by hand.
+- Dalal Street: official SEC EDGAR submissions for CIK 0001549575 select the newest two 13F-HR report quarters;
+  primary_doc.xml and infotable.xml are fetched and cross-checked for manager identity, report date, amendment
+  state, declared entry count and declared total value. As checked 26 Aug, latest accession
+  0001549575-26-000015 (filed 13 Aug, report date 30 Jun) has four rows totalling $326,749,980 and exactly matches
+  the labelled config fallback. An amendment stops automatic publication for manual review. This still cannot be
+  live trading data: 13F is quarterly, may arrive up to 45 days after quarter-end, and omits cash, shorts and many
+  non-US or otherwise non-reportable positions. It is manager-submitted data; SEC publication is not an SEC audit
+  or certification that the filing is accurate and complete.
 - Unified Market Fear & Greed (own model): marketfg.js calculates all five tabs. Crypto's seven constituent
-  histories are BTC, ETH, SOL, XRP, ADA, DOGE and BNB; the two equal-weight return indices are reconstructed
+  histories are BTC, ETH, SOL, XRP, ADA, DOGE and BNB; the three equal-weight return indices are reconstructed
   from their common dated closes and rebalanced analytically every day. They are not market-cap indices,
   investable portfolios or point-in-time constituent histories. The fixed August 2026 membership creates
   selection/survivorship bias in retrospective results. IEF and HYG/LQD add external US Treasury and corporate-
@@ -114,7 +134,8 @@ SOURCES AND HOW THEY WERE VERIFIED (24 Aug 2026)
   no matching implied series is configured (Europe does have VSTOXX for Euro STOXX 50 options, but this
   model applies backward-looking realised volatility to STOXX Europe 600); the global credit ETFs
   (HYLD.L/CORP.L) are thinly traded, so that indicator is noisier. Those dated checks do not guarantee future
-  Yahoo availability or prove that the composite predicts returns.
+  Yahoo availability or prove that the composite predicts returns. The frozen Crypto backtests evaluated model
+  v1 with BTC as target; they do not validate production v2's broad benchmark.
 - Event dates: six confirmed by primary sources (Kaspi EGM/record date, TCMB, Pareto, WAGN call, 13F rule,
   RIG/VAL filings). Q3 report dates are NOT announced yet — they are expectations from last year's cadence,
   marked "~" / "expected" on the page; re-check the companies' IR pages in mid-October.
@@ -124,16 +145,22 @@ UPDATE BY HAND
   confirmed next report date (restart after editing; Update does not reload this file)
 - data/positions.public.json: the explicitly approved public GitHub Pages tickers only. Keep every entry price
   null; the Pages build fails if a personal entry price is added.
-- dalalStreet: the manager-aggregated 13F (next filing due by 16 Nov 2026)
+- dalalStreet: verified CUSIP-to-display-ticker mapping and last-known fallback only. Official SEC data updates
+  automatically; after a new filing, review any unknown CUSIP label and update this mapping rather than retyping
+  official share/value totals.
 - dates: upcoming events (the list empties itself when dates have passed)
 - names: name, flag, Avanza status per ticker (online / telefon / nej)
 - marketFearGreed: the one active model ID/version, shared 252/126/6 parameters, Yahoo symbols per market and
-  Crypto's fixed CORE-EW/NONCORE-EW constituents. A cold calculation requires all six components. Changing a
-  parameter, proxy or synthetic constituent changes the model; increment the model version, restart and rerun
-  the schema-3 backtest instead of silently rewriting the definition.
+  Crypto's fixed BROAD-EW/CORE-EW/NONCORE-EW constituents. A cold calculation requires all six components.
+  Changing a parameter, proxy or synthetic constituent changes the model; increment the model version, restart
+  and preregister a new out-of-sample test. Never rewrite the frozen schema-3/schema-4 model-v1 BTC results to
+  describe a later production model.
 
 IF SOMETHING GOES WRONG
 - "holdings file could not be fetched" = the fund's server did not respond; the page shows the last saved file.
+- "SEC live verification unavailable" = the SEC request or XML validation failed. The page shows the exact dated
+  manual fallback and separately tries to confirm the latest accession from SEC in the visitor's browser. The Pages
+  build rejects altered fallback data and refuses to republish it after its stated next-filing deadline.
 - "quote missing: ..." = Yahoo did not respond for that ticker; the rest works.
 - "Fear & Greed <market> could not be computed" / "index series ... missing" = Yahoo did not respond and the
   required raw series could not be fetched, or a required synthetic series could not be constructed, since

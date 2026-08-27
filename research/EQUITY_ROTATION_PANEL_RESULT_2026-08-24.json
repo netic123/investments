@@ -1,0 +1,1039 @@
+{
+  "schema": "equity-rotation-panel-result-v1",
+  "status": "RETROSPECTIVE_FALSIFICATION_ONLY_NOT_CONFIRMATORY",
+  "protocolSha256": "95cd9a01824efb5a2ecf1361e36bead4c08c3fc241a9f44cc284bf89af7fe206",
+  "inputSha256": "b55042c4c1eb741d2f87819ad0964d1d346fa8c2de4ba415ad9b339af1eae332",
+  "dataBoundary": {
+    "asOfDate": "2026-08-24",
+    "retrievedAt": "2026-08-25T18:56:17.352Z",
+    "firstStrictCommonClose": "2008-03-28",
+    "lastStrictCommonClose": "2026-08-24",
+    "strictCommonCloseCount": 4631,
+    "strictCommonYears": 18.406948807983735,
+    "inputLabels": {
+      "equities": "current-vintage Yahoo adjusted-close USD market-price total-return proxies",
+      "cash": "reconstructed frictionless 91-day DTB3 accrual proxy"
+    },
+    "rawPayloadSha256": {
+      "EWD": "0127d2948dfe4a79753c9b5280a390d25e9d13f6dd27fb5f444cde16791eed2b",
+      "IYY": "0c881ef398ac8f34fda4976063fd912a60b3ea073f3fe1125fa768686555ad92",
+      "IEV": "1cd419d89766efbaca5b903523cd80b38f5e4c57a1ef50ed26804875dbd4950f",
+      "ACWI": "94a61e38d1fcb1ee44d0870452d3f4cebfb014cc9b90cff9453cc6f732557761",
+      "DTB3": "0907b7c8ae0d047ff73ac231601b8d12e43f8e34cf42587c1bf9873f4aeb8bb4"
+    }
+  },
+  "signalCount": 209,
+  "firstSignal": {
+    "signalDate": "2009-03-31",
+    "anniversaryDate": "2008-03-31",
+    "referenceDate": "2008-03-31",
+    "executionDate": "2009-04-01",
+    "cashReturn12m": 0.009019663106721643,
+    "ranking": [
+      {
+        "key": "usa",
+        "return12m": -0.38019897034386085
+      },
+      {
+        "key": "global",
+        "return12m": -0.4255877864031088
+      },
+      {
+        "key": "europe",
+        "return12m": -0.49348930170771044
+      },
+      {
+        "key": "sweden",
+        "return12m": -0.5131324829950594
+      }
+    ],
+    "top1Weights": {},
+    "top2Weights": {}
+  },
+  "lastSignal": {
+    "signalDate": "2026-07-31",
+    "anniversaryDate": "2025-07-31",
+    "referenceDate": "2025-07-31",
+    "executionDate": "2026-08-03",
+    "cashReturn12m": 0.036995686808214634,
+    "ranking": [
+      {
+        "key": "europe",
+        "return12m": 0.238664868288472
+      },
+      {
+        "key": "sweden",
+        "return12m": 0.2369529104349135
+      },
+      {
+        "key": "global",
+        "return12m": 0.22214224387968984
+      },
+      {
+        "key": "usa",
+        "return12m": 0.18900786617983778
+      }
+    ],
+    "top1Weights": {
+      "europe": 1
+    },
+    "top2Weights": {
+      "europe": 0.5,
+      "sweden": 0.5
+    }
+  },
+  "windows": [
+    {
+      "key": "full",
+      "startDate": "2009-04-01",
+      "endDate": "2026-08-24"
+    },
+    {
+      "key": "firstHalf",
+      "startDate": "2009-04-01",
+      "endDate": "2018-01-02"
+    },
+    {
+      "key": "secondHalf",
+      "startDate": "2018-01-02",
+      "endDate": "2026-08-24"
+    }
+  ],
+  "results": {
+    "at20bp": {
+      "full": {
+        "startDate": "2009-04-01",
+        "endDate": "2026-08-24",
+        "cost": 0.002,
+        "strategies": {
+          "ROTATION_TOP1_CASH": {
+            "startDate": "2009-04-01",
+            "endDate": "2026-08-24",
+            "years": 17.39666112240498,
+            "commonCloseObservations": 4376,
+            "terminalWealth": 3.23053435477335,
+            "cumulativeReturn": 2.23053435477335,
+            "cagr": 0.06973020566127652,
+            "annualizedLogReturn": 0.06740647243831334,
+            "annualizedVolatility": 0.186694635651332,
+            "maximumDrawdown": -0.34900054431874306,
+            "totalOneWayTurnover": 75.86427145708579,
+            "tradeCount": 46,
+            "totalModeledCostPaid": 0.31924739148682957
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "startDate": "2009-04-01",
+            "endDate": "2026-08-24",
+            "years": 17.39666112240498,
+            "commonCloseObservations": 4376,
+            "terminalWealth": 2.4440626220836057,
+            "cumulativeReturn": 1.4440626220836057,
+            "cagr": 0.05271203324015716,
+            "annualizedLogReturn": 0.051369723044955615,
+            "annualizedVolatility": 0.16723846520068,
+            "maximumDrawdown": -0.3685966180153776,
+            "totalOneWayTurnover": 66.0743251926901,
+            "tradeCount": 188,
+            "totalModeledCostPaid": 0.196926638230871
+          }
+        },
+        "benchmarks": {
+          "ACWI_BUY_AND_HOLD": {
+            "startDate": "2009-04-01",
+            "endDate": "2026-08-24",
+            "years": 17.39666112240498,
+            "commonCloseObservations": 4376,
+            "terminalWealth": 7.778339334042009,
+            "cumulativeReturn": 6.778339334042009,
+            "cagr": 0.12514947642831298,
+            "annualizedLogReturn": 0.11791589476649923,
+            "annualizedVolatility": 0.17588889476165445,
+            "maximumDrawdown": -0.3352500309570673,
+            "totalOneWayTurnover": 1.9980039920159682,
+            "tradeCount": 2,
+            "totalModeledCostPaid": 0.01758386236086963
+          },
+          "MONTHLY_EQUAL_WEIGHT_4": {
+            "startDate": "2009-04-01",
+            "endDate": "2026-08-24",
+            "years": 17.39666112240498,
+            "commonCloseObservations": 4376,
+            "terminalWealth": 7.5717818928404,
+            "cumulativeReturn": 6.5717818928404,
+            "cagr": 0.1234100996844103,
+            "annualizedLogReturn": 0.11636879135921749,
+            "annualizedVolatility": 0.19397767606880503,
+            "maximumDrawdown": -0.35323690955505327,
+            "totalOneWayTurnover": 4.734520707247638,
+            "tradeCount": 210,
+            "totalModeledCostPaid": 0.035239483619158116
+          },
+          "EACH_ASSET_BUY_AND_HOLD": {
+            "sweden": {
+              "startDate": "2009-04-01",
+              "endDate": "2026-08-24",
+              "years": 17.39666112240498,
+              "commonCloseObservations": 4376,
+              "terminalWealth": 6.455383450009446,
+              "cumulativeReturn": 5.455383450009446,
+              "cagr": 0.11315637433307768,
+              "annualizedLogReturn": 0.10719956047756042,
+              "annualizedVolatility": 0.25949232407950534,
+              "maximumDrawdown": -0.4233355923295047,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.014932648164411588
+            },
+            "usa": {
+              "startDate": "2009-04-01",
+              "endDate": "2026-08-24",
+              "years": 17.39666112240498,
+              "commonCloseObservations": 4376,
+              "terminalWealth": 12.347825330733354,
+              "cumulativeReturn": 11.347825330733354,
+              "cagr": 0.15543927417837455,
+              "annualizedLogReturn": 0.14448059563289098,
+              "annualizedVolatility": 0.17509684495212305,
+              "maximumDrawdown": -0.3490005443187433,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.026741148927385352
+            },
+            "europe": {
+              "startDate": "2009-04-01",
+              "endDate": "2026-08-24",
+              "years": 17.39666112240498,
+              "commonCloseObservations": 4376,
+              "terminalWealth": 4.809226638418247,
+              "cumulativeReturn": 3.809226638418247,
+              "cagr": 0.09447853892620084,
+              "annualizedLogReturn": 0.09027802968091085,
+              "annualizedVolatility": 0.20422928957592323,
+              "maximumDrawdown": -0.36615862808454747,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.01163373671833704
+            },
+            "global": {
+              "startDate": "2009-04-01",
+              "endDate": "2026-08-24",
+              "years": 17.39666112240498,
+              "commonCloseObservations": 4376,
+              "terminalWealth": 7.778339334042009,
+              "cumulativeReturn": 6.778339334042009,
+              "cagr": 0.12514947642831298,
+              "annualizedLogReturn": 0.11791589476649923,
+              "annualizedVolatility": 0.17588889476165445,
+              "maximumDrawdown": -0.3352500309570673,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.01758386236086963
+            }
+          }
+        },
+        "cagrDifferenceVsBenchmarks": {
+          "ROTATION_TOP1_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.055419270767036455,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.05367989402313378,
+            "BUY_AND_HOLD_SWEDEN": -0.04342616867180116,
+            "BUY_AND_HOLD_USA": -0.08570906851709803,
+            "BUY_AND_HOLD_EUROPE": -0.024748333264924316,
+            "BUY_AND_HOLD_GLOBAL": -0.055419270767036455
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.07243744318815581,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.07069806644425314,
+            "BUY_AND_HOLD_SWEDEN": -0.06044434109292052,
+            "BUY_AND_HOLD_USA": -0.10272724093821739,
+            "BUY_AND_HOLD_EUROPE": -0.041766505686043676,
+            "BUY_AND_HOLD_GLOBAL": -0.07243744318815581
+          }
+        },
+        "bestBenchmarkCagr": 0.15543927417837455,
+        "top1BeatsEveryBenchmarkByCagr": false,
+        "top2BeatsEveryBenchmarkByCagr": false
+      },
+      "firstHalf": {
+        "startDate": "2009-04-01",
+        "endDate": "2018-01-02",
+        "cost": 0.002,
+        "strategies": {
+          "ROTATION_TOP1_CASH": {
+            "startDate": "2009-04-01",
+            "endDate": "2018-01-02",
+            "years": 8.755826608349247,
+            "commonCloseObservations": 2205,
+            "terminalWealth": 2.035888050334303,
+            "cumulativeReturn": 1.0358880503343029,
+            "cagr": 0.08458271270452866,
+            "annualizedLogReturn": 0.08119531643050017,
+            "annualizedVolatility": 0.1941204897058582,
+            "maximumDrawdown": -0.2878235598830987,
+            "totalOneWayTurnover": 25.956087824351297,
+            "tradeCount": 17,
+            "totalModeledCostPaid": 0.08797081664665622
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "startDate": "2009-04-01",
+            "endDate": "2018-01-02",
+            "years": 8.755826608349247,
+            "commonCloseObservations": 2205,
+            "terminalWealth": 1.547073689048049,
+            "cumulativeReturn": 0.547073689048049,
+            "cagr": 0.05109988199624471,
+            "annualizedLogReturn": 0.04983712258024949,
+            "annualizedVolatility": 0.1646653792391893,
+            "maximumDrawdown": -0.3055296876512631,
+            "totalOneWayTurnover": 29.657760855959864,
+            "tradeCount": 97,
+            "totalModeledCostPaid": 0.07204286952722816
+          }
+        },
+        "benchmarks": {
+          "ACWI_BUY_AND_HOLD": {
+            "startDate": "2009-04-01",
+            "endDate": "2018-01-02",
+            "years": 8.755826608349247,
+            "commonCloseObservations": 2205,
+            "terminalWealth": 3.0238693890483654,
+            "cumulativeReturn": 2.0238693890483654,
+            "cagr": 0.13471015406432651,
+            "annualizedLogReturn": 0.12637724745223872,
+            "annualizedVolatility": 0.1702604713821129,
+            "maximumDrawdown": -0.2414153105629402,
+            "totalOneWayTurnover": 1.9980039920159682,
+            "tradeCount": 2,
+            "totalModeledCostPaid": 0.008055866479118842
+          },
+          "MONTHLY_EQUAL_WEIGHT_4": {
+            "startDate": "2009-04-01",
+            "endDate": "2018-01-02",
+            "years": 8.755826608349247,
+            "commonCloseObservations": 2205,
+            "terminalWealth": 3.0926531656909484,
+            "cumulativeReturn": 2.0926531656909484,
+            "cagr": 0.1376287599824504,
+            "annualizedLogReturn": 0.1289460610257986,
+            "annualizedVolatility": 0.19488846085579045,
+            "maximumDrawdown": -0.2764884773267092,
+            "totalOneWayTurnover": 3.31028489014052,
+            "tradeCount": 106,
+            "totalModeledCostPaid": 0.013503030565031196
+          },
+          "EACH_ASSET_BUY_AND_HOLD": {
+            "sweden": {
+              "startDate": "2009-04-01",
+              "endDate": "2018-01-02",
+              "years": 8.755826608349247,
+              "commonCloseObservations": 2205,
+              "terminalWealth": 3.0925146398396697,
+              "cumulativeReturn": 2.0925146398396697,
+              "cagr": 0.13762294013453213,
+              "annualizedLogReturn": 0.12894094524197738,
+              "annualizedVolatility": 0.2731239537987636,
+              "maximumDrawdown": -0.3624422546315982,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.008193432111967146
+            },
+            "usa": {
+              "startDate": "2009-04-01",
+              "endDate": "2018-01-02",
+              "years": 8.755826608349247,
+              "commonCloseObservations": 2205,
+              "terminalWealth": 3.967246210905354,
+              "cumulativeReturn": 2.967246210905354,
+              "cagr": 0.17045101925377204,
+              "annualizedLogReturn": 0.15738916107050224,
+              "annualizedVolatility": 0.1548554469555099,
+              "maximumDrawdown": -0.1996101143173321,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.009946401192259098
+            },
+            "europe": {
+              "startDate": "2009-04-01",
+              "endDate": "2018-01-02",
+              "years": 8.755826608349247,
+              "commonCloseObservations": 2205,
+              "terminalWealth": 2.3611638042332395,
+              "cumulativeReturn": 1.3611638042332395,
+              "cagr": 0.10309929700510079,
+              "annualizedLogReturn": 0.09812376070272377,
+              "annualizedVolatility": 0.21511534550489764,
+              "maximumDrawdown": -0.3064575740801122,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.00672779917488011
+            },
+            "global": {
+              "startDate": "2009-04-01",
+              "endDate": "2018-01-02",
+              "years": 8.755826608349247,
+              "commonCloseObservations": 2205,
+              "terminalWealth": 3.0238693890483654,
+              "cumulativeReturn": 2.0238693890483654,
+              "cagr": 0.13471015406432651,
+              "annualizedLogReturn": 0.12637724745223872,
+              "annualizedVolatility": 0.1702604713821129,
+              "maximumDrawdown": -0.2414153105629402,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.008055866479118842
+            }
+          }
+        },
+        "cagrDifferenceVsBenchmarks": {
+          "ROTATION_TOP1_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.05012744135979785,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.053046047277921726,
+            "BUY_AND_HOLD_SWEDEN": -0.05304022743000347,
+            "BUY_AND_HOLD_USA": -0.08586830654924338,
+            "BUY_AND_HOLD_EUROPE": -0.018516584300572125,
+            "BUY_AND_HOLD_GLOBAL": -0.05012744135979785
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.0836102720680818,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.08652887798620568,
+            "BUY_AND_HOLD_SWEDEN": -0.08652305813828742,
+            "BUY_AND_HOLD_USA": -0.11935113725752733,
+            "BUY_AND_HOLD_EUROPE": -0.051999415008856076,
+            "BUY_AND_HOLD_GLOBAL": -0.0836102720680818
+          }
+        },
+        "bestBenchmarkCagr": 0.17045101925377204,
+        "top1BeatsEveryBenchmarkByCagr": false,
+        "top2BeatsEveryBenchmarkByCagr": false
+      },
+      "secondHalf": {
+        "startDate": "2018-01-02",
+        "endDate": "2026-08-24",
+        "cost": 0.002,
+        "strategies": {
+          "ROTATION_TOP1_CASH": {
+            "startDate": "2018-01-02",
+            "endDate": "2026-08-24",
+            "years": 8.64083451405573,
+            "commonCloseObservations": 2172,
+            "terminalWealth": 1.580459205266885,
+            "cumulativeReturn": 0.5804592052668851,
+            "cagr": 0.05439928626181634,
+            "annualizedLogReturn": 0.05297120785181785,
+            "annualizedVolatility": 0.17888909542147804,
+            "maximumDrawdown": -0.3490005443187433,
+            "totalOneWayTurnover": 51.90618762475048,
+            "tradeCount": 31,
+            "totalModeledCostPaid": 0.11713837243031966
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "startDate": "2018-01-02",
+            "endDate": "2026-08-24",
+            "years": 8.64083451405573,
+            "commonCloseObservations": 2172,
+            "terminalWealth": 1.576643873426189,
+            "cumulativeReturn": 0.576643873426189,
+            "cagr": 0.05410439463621031,
+            "annualizedLogReturn": 0.05269149135883705,
+            "annualizedVolatility": 0.16984389656036336,
+            "maximumDrawdown": -0.36859661801537835,
+            "totalOneWayTurnover": 37.4145683287462,
+            "tradeCount": 92,
+            "totalModeledCostPaid": 0.08255745802131169
+          }
+        },
+        "benchmarks": {
+          "ACWI_BUY_AND_HOLD": {
+            "startDate": "2018-01-02",
+            "endDate": "2026-08-24",
+            "years": 8.64083451405573,
+            "commonCloseObservations": 2172,
+            "terminalWealth": 2.562044547054204,
+            "cumulativeReturn": 1.562044547054204,
+            "cagr": 0.1150274457814131,
+            "annualizedLogReturn": 0.10887901965973132,
+            "annualizedVolatility": 0.1814417116512102,
+            "maximumDrawdown": -0.3352500309570674,
+            "totalOneWayTurnover": 1.9980039920159682,
+            "tradeCount": 2,
+            "totalModeledCostPaid": 0.007130365793759799
+          },
+          "MONTHLY_EQUAL_WEIGHT_4": {
+            "startDate": "2018-01-02",
+            "endDate": "2026-08-24",
+            "years": 8.64083451405573,
+            "commonCloseObservations": 2172,
+            "terminalWealth": 2.4385608850877203,
+            "cumulativeReturn": 1.4385608850877203,
+            "cagr": 0.10867129356104255,
+            "annualizedLogReturn": 0.10316226548030605,
+            "annualizedVolatility": 0.19308421060776448,
+            "maximumDrawdown": -0.35323690955505316,
+            "totalOneWayTurnover": 3.41774327178566,
+            "tradeCount": 105,
+            "totalModeledCostPaid": 0.010983480139690131
+          },
+          "EACH_ASSET_BUY_AND_HOLD": {
+            "sweden": {
+              "startDate": "2018-01-02",
+              "endDate": "2026-08-24",
+              "years": 8.64083451405573,
+              "commonCloseObservations": 2172,
+              "terminalWealth": 2.0790890925355034,
+              "cumulativeReturn": 1.0790890925355034,
+              "cagr": 0.08839694693369804,
+              "annualizedLogReturn": 0.0847059228271894,
+              "annualizedVolatility": 0.24495592570084418,
+              "maximumDrawdown": -0.42333559232950535,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.006162519191517914
+            },
+            "usa": {
+              "startDate": "2018-01-02",
+              "endDate": "2026-08-24",
+              "years": 8.64083451405573,
+              "commonCloseObservations": 2172,
+              "terminalWealth": 3.100017483420972,
+              "cumulativeReturn": 2.100017483420972,
+              "cagr": 0.13989633531173395,
+              "annualizedLogReturn": 0.13093732433458757,
+              "annualizedVolatility": 0.19348498972835917,
+              "maximumDrawdown": -0.3490005443187433,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.00820846787064711
+            },
+            "europe": {
+              "startDate": "2018-01-02",
+              "endDate": "2026-08-24",
+              "years": 8.64083451405573,
+              "commonCloseObservations": 2172,
+              "terminalWealth": 2.0286725217012833,
+              "cumulativeReturn": 1.0286725217012833,
+              "cagr": 0.0853092494565455,
+              "annualizedLogReturn": 0.08186496892180994,
+              "annualizedVolatility": 0.19261359709548156,
+              "maximumDrawdown": -0.36615862808454636,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.006061483979425289
+            },
+            "global": {
+              "startDate": "2018-01-02",
+              "endDate": "2026-08-24",
+              "years": 8.64083451405573,
+              "commonCloseObservations": 2172,
+              "terminalWealth": 2.562044547054204,
+              "cumulativeReturn": 1.562044547054204,
+              "cagr": 0.1150274457814131,
+              "annualizedLogReturn": 0.10887901965973132,
+              "annualizedVolatility": 0.1814417116512102,
+              "maximumDrawdown": -0.3352500309570674,
+              "totalOneWayTurnover": 1.9980039920159682,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.007130365793759799
+            }
+          }
+        },
+        "cagrDifferenceVsBenchmarks": {
+          "ROTATION_TOP1_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.06062815951959677,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.05427200729922621,
+            "BUY_AND_HOLD_SWEDEN": -0.0339976606718817,
+            "BUY_AND_HOLD_USA": -0.08549704904991762,
+            "BUY_AND_HOLD_EUROPE": -0.030909963194729162,
+            "BUY_AND_HOLD_GLOBAL": -0.06062815951959677
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.0609230511452028,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.05456689892483224,
+            "BUY_AND_HOLD_SWEDEN": -0.03429255229748773,
+            "BUY_AND_HOLD_USA": -0.08579194067552365,
+            "BUY_AND_HOLD_EUROPE": -0.031204854820335193,
+            "BUY_AND_HOLD_GLOBAL": -0.0609230511452028
+          }
+        },
+        "bestBenchmarkCagr": 0.13989633531173395,
+        "top1BeatsEveryBenchmarkByCagr": false,
+        "top2BeatsEveryBenchmarkByCagr": false
+      }
+    },
+    "at40bp": {
+      "full": {
+        "startDate": "2009-04-01",
+        "endDate": "2026-08-24",
+        "cost": 0.004,
+        "strategies": {
+          "ROTATION_TOP1_CASH": {
+            "startDate": "2009-04-01",
+            "endDate": "2026-08-24",
+            "years": 17.39666112240498,
+            "commonCloseObservations": 4376,
+            "terminalWealth": 2.7749872144553853,
+            "cumulativeReturn": 1.7749872144553853,
+            "cagr": 0.06042426930749634,
+            "annualizedLogReturn": 0.05866908210736136,
+            "annualizedVolatility": 0.1869451387578228,
+            "maximumDrawdown": -0.3490005443187433,
+            "totalOneWayTurnover": 75.72908366533864,
+            "tradeCount": 46,
+            "totalModeledCostPaid": 0.586989658491976
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "startDate": "2009-04-01",
+            "endDate": "2026-08-24",
+            "years": 17.39666112240498,
+            "commonCloseObservations": 4376,
+            "terminalWealth": 2.140951562981523,
+            "cumulativeReturn": 1.140951562981523,
+            "cagr": 0.044729937449419,
+            "annualizedLogReturn": 0.04375841895443897,
+            "annualizedVolatility": 0.16729910386350957,
+            "maximumDrawdown": -0.3761989765934992,
+            "totalOneWayTurnover": 66.04512231479073,
+            "tradeCount": 188,
+            "totalModeledCostPaid": 0.36611202884482147
+          }
+        },
+        "benchmarks": {
+          "ACWI_BUY_AND_HOLD": {
+            "startDate": "2009-04-01",
+            "endDate": "2026-08-24",
+            "years": 17.39666112240498,
+            "commonCloseObservations": 4376,
+            "terminalWealth": 7.747287831299257,
+            "cumulativeReturn": 6.747287831299257,
+            "cagr": 0.12489079905909306,
+            "annualizedLogReturn": 0.11768596344200016,
+            "annualizedVolatility": 0.17589366494436143,
+            "maximumDrawdown": -0.3352500309570675,
+            "totalOneWayTurnover": 1.99601593625498,
+            "tradeCount": 2,
+            "totalModeledCostPaid": 0.03509766949320971
+          },
+          "MONTHLY_EQUAL_WEIGHT_4": {
+            "startDate": "2009-04-01",
+            "endDate": "2026-08-24",
+            "years": 17.39666112240498,
+            "commonCloseObservations": 4376,
+            "terminalWealth": 7.500394030583712,
+            "cumulativeReturn": 6.500394030583712,
+            "cagr": 0.12279854422186909,
+            "annualizedLogReturn": 0.11582426894424842,
+            "annualizedVolatility": 0.19397830771557717,
+            "maximumDrawdown": -0.35324891381679235,
+            "totalOneWayTurnover": 4.732412055334253,
+            "tradeCount": 210,
+            "totalModeledCostPaid": 0.07004888145481906
+          },
+          "EACH_ASSET_BUY_AND_HOLD": {
+            "sweden": {
+              "startDate": "2009-04-01",
+              "endDate": "2026-08-24",
+              "years": 17.39666112240498,
+              "commonCloseObservations": 4376,
+              "terminalWealth": 6.429613250446927,
+              "cumulativeReturn": 5.429613250446927,
+              "cagr": 0.1129004542367038,
+              "annualizedLogReturn": 0.1069696291530616,
+              "annualizedVolatility": 0.2594943468318737,
+              "maximumDrawdown": -0.4233355923295056,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.029805803706654165
+            },
+            "usa": {
+              "startDate": "2009-04-01",
+              "endDate": "2026-08-24",
+              "years": 17.39666112240498,
+              "commonCloseObservations": 4376,
+              "terminalWealth": 12.298532221284525,
+              "cumulativeReturn": 11.298532221284525,
+              "cagr": 0.15517363303646547,
+              "annualizedLogReturn": 0.14425066430839262,
+              "annualizedVolatility": 0.1751016762781116,
+              "maximumDrawdown": -0.34900054431874283,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.05337575941282925
+            },
+            "europe": {
+              "startDate": "2009-04-01",
+              "endDate": "2026-08-24",
+              "years": 17.39666112240498,
+              "commonCloseObservations": 4376,
+              "terminalWealth": 4.790027975600848,
+              "cumulativeReturn": 3.7900279756008484,
+              "cagr": 0.0942269129555644,
+              "annualizedLogReturn": 0.09004809835641142,
+              "annualizedVolatility": 0.20423081736038096,
+              "maximumDrawdown": -0.36615862808454835,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.023221123887995212
+            },
+            "global": {
+              "startDate": "2009-04-01",
+              "endDate": "2026-08-24",
+              "years": 17.39666112240498,
+              "commonCloseObservations": 4376,
+              "terminalWealth": 7.747287831299257,
+              "cumulativeReturn": 6.747287831299257,
+              "cagr": 0.12489079905909306,
+              "annualizedLogReturn": 0.11768596344200016,
+              "annualizedVolatility": 0.17589366494436143,
+              "maximumDrawdown": -0.3352500309570675,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.03509766949320971
+            }
+          }
+        },
+        "cagrDifferenceVsBenchmarks": {
+          "ROTATION_TOP1_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.06446652975159672,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.06237427491437275,
+            "BUY_AND_HOLD_SWEDEN": -0.05247618492920747,
+            "BUY_AND_HOLD_USA": -0.09474936372896914,
+            "BUY_AND_HOLD_EUROPE": -0.033802643648068065,
+            "BUY_AND_HOLD_GLOBAL": -0.06446652975159672
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.08016086160967406,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.07806860677245009,
+            "BUY_AND_HOLD_SWEDEN": -0.06817051678728481,
+            "BUY_AND_HOLD_USA": -0.11044369558704648,
+            "BUY_AND_HOLD_EUROPE": -0.0494969755061454,
+            "BUY_AND_HOLD_GLOBAL": -0.08016086160967406
+          }
+        },
+        "bestBenchmarkCagr": 0.15517363303646547,
+        "top1BeatsEveryBenchmarkByCagr": false,
+        "top2BeatsEveryBenchmarkByCagr": false
+      },
+      "firstHalf": {
+        "startDate": "2009-04-01",
+        "endDate": "2018-01-02",
+        "cost": 0.004,
+        "strategies": {
+          "ROTATION_TOP1_CASH": {
+            "startDate": "2009-04-01",
+            "endDate": "2018-01-02",
+            "years": 8.755826608349247,
+            "commonCloseObservations": 2205,
+            "terminalWealth": 1.9327263578161147,
+            "cumulativeReturn": 0.9327263578161147,
+            "cagr": 0.07816051113676226,
+            "annualizedLogReturn": 0.07525635856113021,
+            "annualizedVolatility": 0.1943547225952054,
+            "maximumDrawdown": -0.29066660230306496,
+            "totalOneWayTurnover": 25.912350597609567,
+            "tradeCount": 17,
+            "totalModeledCostPaid": 0.17111636808695455
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "startDate": "2009-04-01",
+            "endDate": "2018-01-02",
+            "years": 8.755826608349247,
+            "commonCloseObservations": 2205,
+            "terminalWealth": 1.4578426007415275,
+            "cumulativeReturn": 0.4578426007415275,
+            "cagr": 0.043992398637083596,
+            "annualizedLogReturn": 0.04305220843497837,
+            "annualizedVolatility": 0.16465155161972495,
+            "maximumDrawdown": -0.30907180424780367,
+            "totalOneWayTurnover": 29.642254369262957,
+            "tradeCount": 97,
+            "totalModeledCostPaid": 0.13969956434737807
+          }
+        },
+        "benchmarks": {
+          "ACWI_BUY_AND_HOLD": {
+            "startDate": "2009-04-01",
+            "endDate": "2018-01-02",
+            "years": 8.755826608349247,
+            "commonCloseObservations": 2205,
+            "terminalWealth": 3.011797957783239,
+            "cumulativeReturn": 2.011797957783239,
+            "cagr": 0.13419188816416594,
+            "annualizedLogReturn": 0.12592040453920977,
+            "annualizedVolatility": 0.17025255409484866,
+            "maximumDrawdown": -0.24141531056294074,
+            "totalOneWayTurnover": 1.99601593625498,
+            "tradeCount": 2,
+            "totalModeledCostPaid": 0.01607963787266345
+          },
+          "MONTHLY_EQUAL_WEIGHT_4": {
+            "startDate": "2009-04-01",
+            "endDate": "2018-01-02",
+            "years": 8.755826608349247,
+            "commonCloseObservations": 2205,
+            "terminalWealth": 3.0722336288292844,
+            "cumulativeReturn": 2.0722336288292844,
+            "cagr": 0.1367683776248969,
+            "annualizedLogReturn": 0.1281894804054942,
+            "annualizedVolatility": 0.19487924338174575,
+            "maximumDrawdown": -0.276635811080735,
+            "totalOneWayTurnover": 3.3082382428151824,
+            "tradeCount": 106,
+            "totalModeledCostPaid": 0.02690389662514144
+          },
+          "EACH_ASSET_BUY_AND_HOLD": {
+            "sweden": {
+              "startDate": "2009-04-01",
+              "endDate": "2018-01-02",
+              "years": 8.755826608349247,
+              "commonCloseObservations": 2205,
+              "terminalWealth": 3.0801691734493613,
+              "cumulativeReturn": 2.0801691734493613,
+              "cagr": 0.13710334385260947,
+              "annualizedLogReturn": 0.12848410232894897,
+              "annualizedVolatility": 0.27312049407962036,
+              "maximumDrawdown": -0.3624422546315986,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.016354221068109725
+            },
+            "usa": {
+              "startDate": "2009-04-01",
+              "endDate": "2018-01-02",
+              "years": 8.755826608349247,
+              "commonCloseObservations": 2205,
+              "terminalWealth": 3.9514087742355857,
+              "cumulativeReturn": 2.9514087742355857,
+              "cagr": 0.16991642912173344,
+              "annualizedLogReturn": 0.156932318157474,
+              "annualizedVolatility": 0.1548494549159393,
+              "maximumDrawdown": -0.19961011431733122,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.01985317528813472
+            },
+            "europe": {
+              "startDate": "2009-04-01",
+              "endDate": "2018-01-02",
+              "years": 8.755826608349247,
+              "commonCloseObservations": 2205,
+              "terminalWealth": 2.3517379253669892,
+              "cumulativeReturn": 1.3517379253669892,
+              "cagr": 0.10259546900278504,
+              "annualizedLogReturn": 0.09766691778969443,
+              "annualizedVolatility": 0.21511177288193795,
+              "maximumDrawdown": -0.306457574080113,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.013428794368983733
+            },
+            "global": {
+              "startDate": "2009-04-01",
+              "endDate": "2018-01-02",
+              "years": 8.755826608349247,
+              "commonCloseObservations": 2205,
+              "terminalWealth": 3.011797957783239,
+              "cumulativeReturn": 2.011797957783239,
+              "cagr": 0.13419188816416594,
+              "annualizedLogReturn": 0.12592040453920977,
+              "annualizedVolatility": 0.17025255409484866,
+              "maximumDrawdown": -0.24141531056294074,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.01607963787266345
+            }
+          }
+        },
+        "cagrDifferenceVsBenchmarks": {
+          "ROTATION_TOP1_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.056031377027403684,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.05860786648813465,
+            "BUY_AND_HOLD_SWEDEN": -0.058942832715847215,
+            "BUY_AND_HOLD_USA": -0.09175591798497118,
+            "BUY_AND_HOLD_EUROPE": -0.02443495786602279,
+            "BUY_AND_HOLD_GLOBAL": -0.056031377027403684
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.09019948952708234,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.09277597898781331,
+            "BUY_AND_HOLD_SWEDEN": -0.09311094521552588,
+            "BUY_AND_HOLD_USA": -0.12592403048464984,
+            "BUY_AND_HOLD_EUROPE": -0.05860307036570145,
+            "BUY_AND_HOLD_GLOBAL": -0.09019948952708234
+          }
+        },
+        "bestBenchmarkCagr": 0.16991642912173344,
+        "top1BeatsEveryBenchmarkByCagr": false,
+        "top2BeatsEveryBenchmarkByCagr": false
+      },
+      "secondHalf": {
+        "startDate": "2018-01-02",
+        "endDate": "2026-08-24",
+        "cost": 0.004,
+        "strategies": {
+          "ROTATION_TOP1_CASH": {
+            "startDate": "2018-01-02",
+            "endDate": "2026-08-24",
+            "years": 8.64083451405573,
+            "commonCloseObservations": 2172,
+            "terminalWealth": 1.424348434745819,
+            "cumulativeReturn": 0.42434843474581907,
+            "cagr": 0.04178461758456664,
+            "annualizedLogReturn": 0.04093522099108038,
+            "annualizedVolatility": 0.1791513766770321,
+            "maximumDrawdown": -0.3490005443187433,
+            "totalOneWayTurnover": 51.81274900398408,
+            "tradeCount": 31,
+            "totalModeledCostPaid": 0.22142801918083413
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "startDate": "2018-01-02",
+            "endDate": "2026-08-24",
+            "years": 8.64083451405573,
+            "commonCloseObservations": 2172,
+            "terminalWealth": 1.4627243533663763,
+            "cumulativeReturn": 0.4627243533663763,
+            "cagr": 0.044994929066218825,
+            "annualizedLogReturn": 0.04401203283678892,
+            "annualizedVolatility": 0.1699777353305609,
+            "maximumDrawdown": -0.3761989765935003,
+            "totalOneWayTurnover": 37.39888388178275,
+            "tradeCount": 92,
+            "totalModeledCostPaid": 0.158671835039063
+          }
+        },
+        "benchmarks": {
+          "ACWI_BUY_AND_HOLD": {
+            "startDate": "2018-01-02",
+            "endDate": "2026-08-24",
+            "years": 8.64083451405573,
+            "commonCloseObservations": 2172,
+            "terminalWealth": 2.551816742652358,
+            "cumulativeReturn": 1.551816742652358,
+            "cagr": 0.11451139386410047,
+            "annualizedLogReturn": 0.10841609708816459,
+            "annualizedVolatility": 0.1814509784517832,
+            "maximumDrawdown": -0.3352500309570674,
+            "totalOneWayTurnover": 1.99601593625498,
+            "tradeCount": 2,
+            "totalModeledCostPaid": 0.01423232375567196
+          },
+          "MONTHLY_EQUAL_WEIGHT_4": {
+            "startDate": "2018-01-02",
+            "endDate": "2026-08-24",
+            "years": 8.64083451405573,
+            "commonCloseObservations": 2172,
+            "terminalWealth": 2.4219394741628193,
+            "cumulativeReturn": 1.4219394741628193,
+            "cagr": 0.10779410321178995,
+            "annualizedLogReturn": 0.1023707436308542,
+            "annualizedVolatility": 0.1930896518954056,
+            "maximumDrawdown": -0.35324891381679246,
+            "totalOneWayTurnover": 3.415688705888185,
+            "tradeCount": 105,
+            "totalModeledCostPaid": 0.021882140094704197
+          },
+          "EACH_ASSET_BUY_AND_HOLD": {
+            "sweden": {
+              "startDate": "2018-01-02",
+              "endDate": "2026-08-24",
+              "years": 8.64083451405573,
+              "commonCloseObservations": 2172,
+              "terminalWealth": 2.070789269413023,
+              "cumulativeReturn": 1.070789269413023,
+              "cagr": 0.08789322002241229,
+              "annualizedLogReturn": 0.08424300025562266,
+              "annualizedVolatility": 0.24496015648631075,
+              "maximumDrawdown": -0.42333559232950524,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.012300486513746918
+            },
+            "usa": {
+              "startDate": "2018-01-02",
+              "endDate": "2026-08-24",
+              "years": 8.64083451405573,
+              "commonCloseObservations": 2172,
+              "terminalWealth": 3.0876420653201526,
+              "cumulativeReturn": 2.0876420653201526,
+              "cagr": 0.13936877368838507,
+              "annualizedLogReturn": 0.13047440176302103,
+              "annualizedVolatility": 0.1934937304460164,
+              "maximumDrawdown": -0.3490005443187434,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.016384232682048645
+            },
+            "europe": {
+              "startDate": "2018-01-02",
+              "endDate": "2026-08-24",
+              "years": 8.64083451405573,
+              "commonCloseObservations": 2172,
+              "terminalWealth": 2.0205739639415334,
+              "cumulativeReturn": 1.0205739639415334,
+              "cagr": 0.08480695157932416,
+              "annualizedLogReturn": 0.08140204635024298,
+              "annualizedVolatility": 0.19261681954028986,
+              "maximumDrawdown": -0.3661586280845468,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.012098818620287121
+            },
+            "global": {
+              "startDate": "2018-01-02",
+              "endDate": "2026-08-24",
+              "years": 8.64083451405573,
+              "commonCloseObservations": 2172,
+              "terminalWealth": 2.551816742652358,
+              "cumulativeReturn": 1.551816742652358,
+              "cagr": 0.11451139386410047,
+              "annualizedLogReturn": 0.10841609708816459,
+              "annualizedVolatility": 0.1814509784517832,
+              "maximumDrawdown": -0.3352500309570674,
+              "totalOneWayTurnover": 1.99601593625498,
+              "tradeCount": 2,
+              "totalModeledCostPaid": 0.01423232375567196
+            }
+          }
+        },
+        "cagrDifferenceVsBenchmarks": {
+          "ROTATION_TOP1_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.07272677627953383,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.06600948562722331,
+            "BUY_AND_HOLD_SWEDEN": -0.04610860243784565,
+            "BUY_AND_HOLD_USA": -0.09758415610381843,
+            "BUY_AND_HOLD_EUROPE": -0.04302233399475752,
+            "BUY_AND_HOLD_GLOBAL": -0.07272677627953383
+          },
+          "ROTATION_TOP2_SLOTS_CASH": {
+            "ACWI_BUY_AND_HOLD": -0.06951646479788165,
+            "MONTHLY_EQUAL_WEIGHT_4": -0.06279917414557112,
+            "BUY_AND_HOLD_SWEDEN": -0.04289829095619346,
+            "BUY_AND_HOLD_USA": -0.09437384462216625,
+            "BUY_AND_HOLD_EUROPE": -0.03981202251310534,
+            "BUY_AND_HOLD_GLOBAL": -0.06951646479788165
+          }
+        },
+        "bestBenchmarkCagr": 0.13936877368838507,
+        "top1BeatsEveryBenchmarkByCagr": false,
+        "top2BeatsEveryBenchmarkByCagr": false
+      }
+    }
+  },
+  "falsificationGate": {
+    "requirement": "A rule must beat ACWI, monthly equal-weight and every constituent buy-and-hold by CAGR in full, first-half and second-half windows.",
+    "ROTATION_TOP1_CASH": {
+      "passesAt20bp": false,
+      "passesAt40bp": false
+    },
+    "ROTATION_TOP2_SLOTS_CASH": {
+      "passesAt20bp": false,
+      "passesAt40bp": false
+    },
+    "primaryIdeaSurvivesThisPanel": false,
+    "caveat": "Even a pass is retrospective hypothesis generation, not confirmation or evidence of future outperformance."
+  },
+  "warnings": [
+    "Yahoo adjusted closes are current-vintage market-price proxies and can be revised.",
+    "DTB3 is a discount yield; cash wealth is reconstructed and is not an official total-return index.",
+    "Sweden, Europe and Global overlap; the four outcomes are not independent.",
+    "Taxes, exact spreads, slippage, market impact, tracking error and ETF premium/discount are excluded."
+  ]
+}

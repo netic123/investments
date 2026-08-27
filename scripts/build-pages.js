@@ -14,7 +14,7 @@ const { spawn, execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, '_site');
 const API_OUT = path.join(OUT, 'api');
-const ENDPOINTS = ['config', 'holdings', 'nav', 'perf', 'quotes', 'marketfg'];
+const ENDPOINTS = ['config', 'holdings', 'dalal', 'nav', 'perf', 'quotes', 'marketfg'];
 const EXPECTED_FILES = ['.nojekyll', 'index.html', 'api/build.json', ...ENDPOINTS.map(name => `api/${name}.json`)].sort();
 const PUBLIC_POSITION_KEYS = ['currency', 'entry', 'fundTicker', 'nextReport', 'nextReportApprox', 'nextReportNote', 'secTicker', 'ticker', 'yahoo'];
 
@@ -22,7 +22,8 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const EXPECTED_MARKET_SYMBOLS = {
   crypto: {
-    index: 'BTC-USD', vol: null, bond: 'IEF', hy: 'HYG', ig: 'LQD',
+    index: { id: 'CRYPTO-BROAD-EW', method: 'equalWeightReturns', symbols: ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'] },
+    vol: null, bond: 'IEF', hy: 'HYG', ig: 'LQD',
     small: { id: 'CRYPTO-NONCORE-EW', method: 'equalWeightReturns', symbols: ['SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'] },
     large: { id: 'CRYPTO-CORE-EW', method: 'equalWeightReturns', symbols: ['BTC-USD', 'ETH-USD'] },
   },
@@ -82,26 +83,57 @@ async function waitForServer(base, child, logs) {
 }
 
 function validateSnapshot(data, publicPositions) {
-  const { config, holdings, nav, perf, quotes, marketfg } = data;
+  const { config, holdings, dalal, nav, perf, quotes, marketfg } = data;
   assert(config && typeof config === 'object', 'config is missing');
   assert(config.positionsMeta && config.positionsMeta.demo === false && config.positionsMeta.public === true && config.positionsMeta.source === 'public', 'public build did not select the approved public watchlist');
   assert(JSON.stringify(config.myPositions) === JSON.stringify(publicPositions), 'public build positions differ from data/positions.public.json');
   assert(config.myPositions.every(position => position.entry === null), 'public build exposed a non-null entry price');
   assert(!config.sources || !Object.prototype.hasOwnProperty.call(config.sources, 'fearGreed'), 'retired third-party crypto index source is still configured');
   assert(!Object.prototype.hasOwnProperty.call(config, 'cryptoFearGreed'), 'retired separate crypto model config is still present');
-  assert(config.marketFearGreed && config.marketFearGreed.modelId === 'investments-unified-fear-greed' && config.marketFearGreed.version === 1, 'unified model config is missing or has drifted');
+  assert(config.marketFearGreed && config.marketFearGreed.modelId === 'investments-unified-fear-greed' && config.marketFearGreed.version === 2, 'unified model config is missing or has drifted');
   assert(config.marketFearGreed.window === 252 && config.marketFearGreed.minWindowPoints === 126 && config.marketFearGreed.minComponents === 6 && config.marketFearGreed.fillDays === 7, 'unified model parameters have drifted');
   assert(JSON.stringify(Object.keys(config.marketFearGreed.markets || {}).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa']), 'unified config must contain exactly five markets');
   assert(config.marketFearGreed.markets.crypto.barPolicy === 'completed-utc-date', 'Crypto completed-bar policy has drifted');
   for (const name of ['crypto', 'sweden', 'usa', 'europe', 'global']) assertMarketMapping(name, config.marketFearGreed.markets[name].symbols, 'config');
 
-  assert(holdings && holdings.latest && typeof holdings.latest.date === 'string', 'holdings has no usable latest snapshot');
+  assert(holdings && holdings.ok === true && !holdings.fetchError, 'official holdings source was not fetched and accepted');
+  assert(holdings.source && holdings.source.status === 'verified' && holdings.source.url === config.sources.holdings, 'holdings source is not the configured official WAGN feed');
+  assert(holdings.latest && typeof holdings.latest.date === 'string', 'holdings has no usable latest snapshot');
+  assert(holdings.source.fileDate === holdings.latest.date, 'holdings source status and parsed latest file date differ');
   assert(holdings.latest.rows && typeof holdings.latest.rows === 'object', 'holdings rows are missing');
+  assert(holdings.latest.source && holdings.latest.source.url === config.sources.holdings && /^[0-9a-f]{64}$/.test(holdings.latest.source.sha256 || ''), 'latest holdings receipt lacks official provenance or SHA-256');
+  assert(holdings.latest.source.fileDate === holdings.latest.date, 'holdings receipt provenance conflicts with parsed file date');
+  assert(Number.isFinite(holdings.latest.sharesOutstanding) && holdings.latest.sharesOutstanding > 0, 'holdings SharesOutstanding is missing');
+  // FilePoint calls the column CUSIP, but foreign holdings legitimately carry
+  // seven-character SEDOLs there. Require a complete source identifier without
+  // pretending every market uses the nine-character US CUSIP format.
+  assert(Object.values(holdings.latest.rows).every(row => row && /^[0-9A-Z]{6,12}$/.test(row.cusip || '') && Number.isFinite(row.shares) && Number.isFinite(row.mv)), 'holdings rows lack validated security-identifier/share/value fields');
+  const holdingsAgeDays = (Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`) - Date.parse(`${holdings.latest.date}T00:00:00Z`)) / 864e5;
+  assert(holdingsAgeDays >= -1 && holdingsAgeDays <= 5, `official holdings file is outside the freshness window (${holdings.latest.date})`);
+  assert(Array.isArray(holdings.snapshots) && holdings.snapshots.length >= 1 && holdings.snapshots.some(snapshot => snapshot.date === holdings.latest.date), 'durable holdings history is missing from the API contract');
   assert(nav && typeof nav.date === 'string' && Array.isArray(nav.history) && nav.history.length > 1, 'NAV data is incomplete');
+  assert(Number.isFinite(nav.nav) && Number.isFinite(nav.sharesOut) && nav.sharesOut > 0, 'NAV reconciliation fields are missing');
+  assert(Math.abs(holdings.latest.sharesOutstanding - nav.sharesOut) < 0.5, 'holdings and NAV SharesOutstanding do not match');
+  const expectedHoldingsNetAssets = Math.round(nav.nav * 100) / 100 * nav.sharesOut;
+  assert(Math.abs(holdings.latest.netAssets - expectedHoldingsNetAssets) <= Math.max(1, Math.abs(holdings.latest.netAssets) * 0.00001), 'holdings NetAssets do not reconcile to the current official NAV receipt');
+  const officialDalal = !!(dalal && dalal.ok === true && dalal.sourceStatus === 'official SEC verified' && !dalal.fetchError);
+  const labelledFallback = !!(dalal && dalal.ok === false && dalal.fallback === true && dalal.sourceStatus === 'manual fallback — SEC verification unavailable' && dalal.fetchError);
+  assert(officialDalal || labelledFallback, 'Dalal Street 13F is neither official live data nor the explicitly labelled fallback');
+  assert(dalal.cik === '0001549575' && /^\d{10}-\d{2}-\d{6}$/.test(dalal.accession || ''), 'Dalal Street SEC identity/accession is invalid');
+  assert(/^https:\/\/www\.sec\.gov\/Archives\/edgar\/data\//.test(dalal.sourceUrl || ''), 'Dalal Street source is not an official SEC filing page');
+  assert(Array.isArray(dalal.holdings) && dalal.holdings.length > 0 && dalal.holdings.every(row => /^[0-9A-Z]{9}$/.test(row.cusip || '') && Number.isFinite(row.shares) && Number.isFinite(row.valueUsd)), 'Dalal Street SEC holdings are incomplete');
+  assert(dalal.holdings.reduce((sum, row) => sum + row.valueUsd, 0) === dalal.portfolioValueUsd, 'Dalal Street SEC holding values do not equal the filing total');
+  if (officialDalal) {
+    assert(dalal.provenance && /^[0-9a-f]{64}$/.test(dalal.provenance.submissions && dalal.provenance.submissions.sha256 || '') && /^[0-9a-f]{64}$/.test(dalal.provenance.informationTable && dalal.provenance.informationTable.sha256 || ''), 'Dalal Street SEC provenance hashes are missing');
+  } else {
+    assert(dalal.manualVerifiedAt === config.dalalStreet.manualVerifiedAt && dalal.accession === config.dalalStreet.accession, 'Dalal fallback identity differs from the manually verified configuration');
+    assert(JSON.stringify(dalal.holdings) === JSON.stringify(config.dalalStreet.holdings), 'Dalal fallback holdings differ from the manually verified configuration');
+    assert(/^\d{4}-\d{2}-\d{2}$/.test(dalal.nextFilingDeadline || '') && new Date().toISOString().slice(0, 10) <= dalal.nextFilingDeadline, 'Dalal fallback is past its next filing deadline and cannot be republished');
+  }
   assert(perf && Array.isArray(perf.monthly) && perf.monthly.length > 0, 'performance data is incomplete');
   assert(quotes && typeof quotes === 'object' && Object.values(quotes).some(q => q && Number.isFinite(q.price)), 'all quotes are missing');
   assert(marketfg && marketfg.ok === true && marketfg.markets && typeof marketfg.markets === 'object', 'market Fear & Greed is invalid');
-  assert(marketfg.model && marketfg.model.id === 'investments-unified-fear-greed' && marketfg.model.version === 1 && marketfg.model.owner === 'repository', 'market result does not identify the unified repository model');
+  assert(marketfg.model && marketfg.model.id === 'investments-unified-fear-greed' && marketfg.model.version === 2 && marketfg.model.owner === 'repository', 'market result does not identify the unified repository model');
   assert(marketfg.model.window === 252 && marketfg.model.minWindowPoints === 126 && marketfg.model.minComponents === 6 && marketfg.model.fillDays === 7, 'unified result parameters have drifted');
   assert(JSON.stringify(Object.keys(marketfg.markets).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa']), 'unified model must return exactly the five configured markets');
   const componentKeys = ['breadth', 'credit', 'momentum', 'safeHaven', 'strength', 'volatility'];
@@ -116,6 +148,11 @@ function validateSnapshot(data, publicPositions) {
     assertMarketMapping(name, market.mapping && market.mapping.symbols, 'result');
   }
   const crypto = marketfg.markets.crypto;
+  assert(crypto.indexSymbol === 'CRYPTO-BROAD-EW' && crypto.indexName === 'Broad crypto equal-weight basket', 'Crypto result is not using the broad repository-owned benchmark');
+  for (const component of ['momentum', 'strength', 'volatility']) {
+    assert(JSON.stringify(crypto.components[component].symbols) === JSON.stringify(['CRYPTO-BROAD-EW']), `Crypto ${component} is not based on the broad benchmark`);
+  }
+  assert(JSON.stringify(crypto.components.safeHaven.symbols) === JSON.stringify(['CRYPTO-BROAD-EW', 'IEF']), 'Crypto safe-haven component is not based on the broad benchmark');
   assert(crypto.mapping && crypto.mapping.barPolicy === 'completed-utc-date' && crypto.intraday === false, 'Crypto result does not prove completed UTC bars');
   assert(crypto.asOf < new Date().toISOString().slice(0, 10), 'Crypto result includes the still-forming current UTC bar');
 }
@@ -137,6 +174,29 @@ async function captureSnapshot(base, publicPositions) {
     }
   }
   throw lastError;
+}
+
+function usableSnapshots(value) {
+  if (!value || typeof value !== 'object') return [];
+  const candidates = Array.isArray(value.snapshots) ? value.snapshots : [value.first, value.previous, value.latest];
+  return candidates.filter(snapshot => snapshot && /^\d{4}-\d{2}-\d{2}$/.test(snapshot.date || '') && snapshot.rows && typeof snapshot.rows === 'object');
+}
+
+function mergeSnapshots(...lists) {
+  const byDate = new Map();
+  for (const list of lists) for (const snapshot of list || []) byDate.set(snapshot.date, snapshot);
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+async function loadPreviousPublishedSnapshots() {
+  const url = process.env.INVESTMENTS_PREVIOUS_PUBLIC_HOLDINGS_URL;
+  if (!url) return [];
+  const parsed = new URL(url);
+  assert(parsed.protocol === 'https:' && parsed.hostname === 'netic123.github.io' && parsed.pathname === '/investments/api/holdings.json', 'previous public holdings URL is not the approved GitHub Pages endpoint');
+  const value = await fetchJson(url);
+  const snapshots = usableSnapshots(value);
+  assert(snapshots.length > 0, 'previous public holdings endpoint contains no reusable snapshots');
+  return snapshots;
 }
 
 function prepareOutput() {
@@ -212,11 +272,16 @@ async function main() {
   const forbiddenSecrets = ['GH_TOKEN', 'GITHUB_TOKEN']
     .map(name => process.env[name]).filter(value => typeof value === 'string' && value.length >= 8);
 
+  const committedSnapshots = fs.existsSync(path.join(ROOT, 'data', 'snapshots.json'))
+    ? usableSnapshots({ snapshots: JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'snapshots.json'), 'utf8')) })
+    : [];
+  const previousPublishedSnapshots = await loadPreviousPublishedSnapshots();
+  const carriedSnapshots = mergeSnapshots(committedSnapshots, previousPublishedSnapshots);
+  assert(carriedSnapshots.length > 0, 'no seed holdings snapshots are available');
+
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'investments-pages-'));
   const snapshotPath = path.join(temp, 'snapshots.json');
-  const sourceSnapshots = path.join(ROOT, 'data', 'snapshots.json');
-  if (fs.existsSync(sourceSnapshots)) fs.copyFileSync(sourceSnapshots, snapshotPath);
-  else fs.writeFileSync(snapshotPath, '[]\n', 'utf8');
+  fs.writeFileSync(snapshotPath, `${JSON.stringify(carriedSnapshots)}\n`, 'utf8');
 
   let child;
   const logs = { text: '' };
@@ -254,7 +319,9 @@ async function main() {
       ref: process.env.GITHUB_REF_NAME || gitValue(['branch', '--show-current']),
       dataMode: 'build-time snapshot',
       watchlist: 'public-no-entry-prices',
-      refreshTrigger: 'push to main',
+      refreshTrigger: 'push to main, manual dispatch, or daily scheduled build',
+      carriedSnapshotCount: carriedSnapshots.length,
+      dalalVerification: data.dalal.ok ? 'official SEC fetched and validated' : `labelled manual fallback verified ${data.dalal.manualVerifiedAt}; live SEC check failed`,
     };
 
     prepareOutput();

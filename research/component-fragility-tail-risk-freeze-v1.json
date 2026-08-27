@@ -1,0 +1,94 @@
+{
+  "attemptReceipt": {
+    "path": "codex-one-shot-research/component-fragility-tail-v1/attempt-receipt-2026-08-26.json",
+    "schema": "component-fragility-tail-risk-attempt-receipt-v1",
+    "scope": "shared-git-common-directory",
+    "status": "PERMANENT_ONE_SHOT_ATTEMPT_RESERVED_BEFORE_INPUT_PARSE"
+  },
+  "experimentId": "component-fragility-tail-v1",
+  "files": [
+    {
+      "bytes": 23677,
+      "gitBlob": "1b0cd7960afda6898491f231eead82f8b65978e0",
+      "key": "protocol",
+      "path": "research/COMPONENT_FRAGILITY_TAIL_RISK_PROTOCOL.md",
+      "sha256": "3f38edba122cbdb0e51af47a3c08ddb320a2ba203a5fecaaef3af5fd29e1ba8b"
+    },
+    {
+      "bytes": 67610,
+      "gitBlob": "a7a5a5d36b17d22f2a0ad8432432c3e2dfba7446",
+      "key": "runner",
+      "path": "research/component_fragility_tail_risk.js",
+      "sha256": "f9343ac14626387b3fe7f60fa6665128d7578e80082e143035c249b710901b20"
+    },
+    {
+      "bytes": 36296,
+      "gitBlob": "8294ab2f0d0a75e89d594bd9a6dd2de20bf16d50",
+      "key": "tests",
+      "path": "test/component_fragility_tail_risk.test.js",
+      "sha256": "58de280d4901777849b4affd157d3dc1d10a0a594edc8630a84459a2ecccf31a"
+    },
+    {
+      "bytes": 18661,
+      "gitBlob": "226f1b83e431b96ef23c5fcb7acbc6079f91782b",
+      "key": "launcher",
+      "path": "research/component_fragility_tail_risk_launcher.js",
+      "sha256": "543c8bebc82d613b68c32ad58d4da4515dd21447a3c1364f8f53595604154fe8"
+    },
+    {
+      "bytes": 16424,
+      "gitBlob": "71864b73ff905a08b8a1a52696a9fc071c4ba1b8",
+      "key": "schema5Protocol",
+      "path": "research/FEAR_GREED_V2_VALIDATION_PROTOCOL.md",
+      "sha256": "6f00302f57979fc94a60835c19aec8f8c3c88ec482b2ab59778180c2ac789c6d"
+    },
+    {
+      "bytes": 69227,
+      "gitBlob": "4a3b30e96a4c2f03b6a0c0beb84dcf978673dd5c",
+      "key": "schema5Reader",
+      "path": "research/fear_greed_v2_validation.js",
+      "sha256": "846a8812bd08fa3243b3de645ac30c6c02379f7f575ea356cf78eba2dce8c374"
+    },
+    {
+      "bytes": 76975,
+      "gitBlob": "ef7689be03af7bf75b72354a7acd7c84859df60c",
+      "key": "schema4Math",
+      "path": "research/fear_greed_model_search.js",
+      "sha256": "b7cebf64cb0c1db55c22a18e3f41877db67f099ec9484435fae1be0755e93a0a"
+    },
+    {
+      "bytes": 23100,
+      "gitBlob": "c65dac2caa27fbd06b26aa85193ab64411354afe",
+      "key": "marketEngine",
+      "path": "marketfg.js",
+      "sha256": "018954b001df8738d3d152969abd98764b7683516e97f7afecd8b786a9d22090"
+    },
+    {
+      "bytes": 9546,
+      "gitBlob": "0932ea179701ee41186fd3c9d6cac06a85e452a9",
+      "key": "productionConfig",
+      "path": "data/config.json",
+      "sha256": "c4eeae263da7052d1c16b38a829841aa6ca8cf43e6caffc407fd880d18cca7c7"
+    }
+  ],
+  "input": {
+    "lastCompletedTargetDate": "2026-08-24",
+    "path": "research/local-artifacts/v2-validation-final/inputs/fear-greed-v2-validation-input-2026-08-25T12-44-22Z.json",
+    "sha256": "ac025aec6096147aeabba61f270e2fdd9e1032068b10c474fea73cbf4999444d",
+    "sidecarPath": "research/local-artifacts/v2-validation-final/inputs/fear-greed-v2-validation-input-2026-08-25T12-44-22Z.sha256",
+    "status": "RETROSPECTIVE_DEVELOPMENT_ONLY_NO_CONFIRMATORY_OUTCOME"
+  },
+  "publication": {
+    "directory": "research/local-artifacts/component-fragility-tail-v1",
+    "resultPath": "research/local-artifacts/component-fragility-tail-v1/component-fragility-tail-v1-result-2026-08-26.json",
+    "sidecarPath": "research/local-artifacts/component-fragility-tail-v1/component-fragility-tail-v1-result-2026-08-26.json.sha256",
+    "transaction": "complete adjacent staging directory then one same-volume atomic rename"
+  },
+  "requiredAnnotatedTag": "component-fragility-tail-risk-v1-preoutcome",
+  "runtime": {
+    "arch": "x64",
+    "node": "v22.19.0",
+    "platform": "win32"
+  },
+  "schema": "component-fragility-tail-risk-freeze-manifest-v1"
+}

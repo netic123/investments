@@ -14,24 +14,25 @@
   --paper:#F4F5F3; --surface:#FFFFFF; --surface-2:#EDEFEC; --ink:#191D1B; --ink-2:#3D4441; --muted:#6A726E;
   --rule:#DCDFDB; --rule-strong:#C4C8C3; --accent:#7A4A22; --accent-soft:#E9DDD1;
   --pos:#2E6B4F; --neg:#A03828; --warn:#8A6A1F; --pos-bg:#E4EEE8; --neg-bg:#F5E3DF;
+  --radius:10px; --radius-sm:6px; --shadow:0 12px 30px rgba(31,37,34,.06); --shadow-pop:0 14px 34px rgba(31,37,34,.16);
   --f-display:"Spectral",Georgia,serif; --f-body:"IBM Plex Sans","Segoe UI",Arial,sans-serif; --f-mono:"IBM Plex Mono",Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){
   :root{ --paper:#15120F; --surface:#1C1916; --surface-2:#232019; --ink:#EDE9E3; --ink-2:#CFC8BF; --muted:#9A9388;
-    --rule:#2E2A24; --rule-strong:#413B33; --accent:#C98A50; --accent-soft:#3A2C1D;
+    --rule:#2E2A24; --rule-strong:#413B33; --accent:#C98A50; --accent-soft:#3A2C1D; --shadow:0 14px 34px rgba(0,0,0,.18); --shadow-pop:0 16px 38px rgba(0,0,0,.42);
     --pos:#74B994; --neg:#E08573; --warn:#D4A94A; --pos-bg:#1D2A23; --neg-bg:#2E1E1A; }
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1180px;margin:0 auto;padding:0 22px 60px}
+body{margin:0;min-height:100vh;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:0 clamp(14px,3vw,28px) 72px}
 a{color:var(--accent)}
-h1{font-family:var(--f-display);font-weight:600;font-size:2rem;margin:0;letter-spacing:-.01em}
+h1{font-family:var(--f-display);font-weight:600;font-size:clamp(2rem,4vw,2.55rem);line-height:1.05;margin:0;letter-spacing:-.025em}
 h2{font-family:var(--f-display);font-weight:600;font-size:1.35rem;margin:0}
 .mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
 .up{color:var(--pos)} .down{color:var(--neg)} .flat{color:var(--muted)}
 
-.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;padding:34px 0 14px}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:18px;padding:38px 0 18px}
 .top .filenote{font-size:.82rem;color:var(--muted);margin-top:6px}
 .kpis{display:flex;gap:22px;flex-wrap:wrap}
 .kpi{min-width:110px}
@@ -39,18 +40,19 @@ h2{font-family:var(--f-display);font-weight:600;font-size:1.35rem;margin:0}
 .kpi .v{font-family:var(--f-display);font-size:1.35rem;font-variant-numeric:tabular-nums}
 .kpi .s{font-size:.8rem;color:var(--muted)}
 .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:420px;justify-content:flex-end}
-button{font:inherit;font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:8px 14px;border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
-button:hover{border-color:var(--accent);color:var(--accent)}
+button{min-height:34px;font:inherit;font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:7px 14px;border:1px solid var(--rule-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);cursor:pointer;transition:border-color .16s ease,color .16s ease,background-color .16s ease}
+button:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
 button:disabled{opacity:.5;cursor:wait}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 #status{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right}
 #status.err{color:var(--neg)}
 
-section{padding-top:34px}
-.sec-head{border-top:1px solid var(--rule-strong);padding-top:12px;margin-bottom:14px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+section{padding-top:38px}
+.sec-head{border-top:1px solid var(--rule-strong);padding-top:14px;margin-bottom:15px;display:flex;align-items:center;column-gap:14px;row-gap:9px;flex-wrap:wrap}
 .sec-head .note{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
-.card{background:var(--surface);border:1px solid var(--rule);padding:16px 18px}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);box-shadow:var(--shadow);padding:17px 19px}
 .card .hd{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .chip{font-family:var(--f-mono);font-size:.78rem;font-weight:600;background:var(--ink);color:var(--paper);padding:1px 7px}
 .card .nm{font-family:var(--f-display);font-size:1.08rem;font-weight:600}
@@ -64,7 +66,7 @@ section{padding-top:34px}
 .grid2 .s{font-size:.76rem;color:var(--muted)}
 .big{font-family:var(--f-display);font-size:1.5rem;line-height:1.1}
 
-.tablewrap{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}
 table{border-collapse:collapse;width:100%;min-width:640px;font-size:.88rem}
 th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--rule);white-space:nowrap}
 thead th{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);position:sticky;top:0}
@@ -78,12 +80,12 @@ tr.cashrow td{color:var(--muted);font-style:italic}
 .pill{display:inline-block;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;border:1px solid var(--rule-strong);color:var(--muted)}
 .pill.ok{color:var(--pos);border-color:var(--pos)} .pill.tel{color:var(--warn);border-color:var(--warn)} .pill.no{color:var(--neg);border-color:var(--neg)}
 
-.empty{padding:14px 16px;color:var(--muted);font-size:.9rem;border:1px dashed var(--rule-strong)}
-.callout{border:1px solid var(--rule);border-left:3px solid var(--accent);background:var(--surface);padding:12px 16px;font-size:.9rem;margin-bottom:12px}
+.empty{padding:14px 16px;color:var(--muted);font-size:.9rem;border:1px dashed var(--rule-strong);border-radius:var(--radius-sm)}
+.callout{border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:var(--radius-sm);background:var(--surface);padding:12px 16px;font-size:.9rem;margin-bottom:12px}
 .callout b{color:var(--ink)}
-details{border:1px solid var(--rule);background:var(--surface);margin-top:10px}
+details{border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface);margin-top:10px;overflow:hidden}
 summary{cursor:pointer;padding:10px 14px;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
-.spark{width:100%;height:64px;display:block}
+.spark{width:100%;height:76px;display:block}
 .dates{list-style:none;margin:0;padding:0}
 .dates li{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--rule);font-size:.9rem}
 .dates .d{font-family:var(--f-mono);font-size:.82rem;min-width:150px;color:var(--ink)}
@@ -93,8 +95,9 @@ footer{margin-top:44px;border-top:1px solid var(--rule-strong);padding-top:16px;
 footer p{margin:0 0 .5em}
 
 /* tabs */
-.tabs{display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--rule-strong)}
+.tabs{display:flex;flex-wrap:nowrap;gap:2px;border-bottom:1px solid var(--rule-strong);overflow-x:auto;scrollbar-width:thin}
 .tabs button{border:none;border-bottom:2px solid transparent;background:none;padding:10px 16px;margin-bottom:-1px;color:var(--muted)}
+.tabs button{flex:0 0 auto;border-radius:var(--radius-sm) var(--radius-sm) 0 0}
 @media (max-width:520px){ .tabs button{padding:8px 10px;font-size:11px} }
 .tabs button:hover{color:var(--accent)}
 .tabs button.active{color:var(--ink);border-bottom-color:var(--accent)}
@@ -116,8 +119,8 @@ footer p{margin:0 0 .5em}
 .fgchart{width:100%;height:auto;display:block}
 .fgchart text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
 .range{margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px}
-.range button{padding:4px 10px;font-size:10.5px}
-.range button.active{border-color:var(--accent);color:var(--accent)}
+.range button{min-height:30px;padding:4px 10px;font-size:10.5px;flex:0 0 auto}
+.range button.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
 .swatch{display:inline-block;width:10px;height:10px;flex:none}
 .fg-bands{list-style:none;margin:8px 0 0;padding:0;font-size:.9rem}
 .fg-bands li{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--rule);align-items:center}
@@ -128,7 +131,79 @@ footer p{margin:0 0 .5em}
 .fg-comp li{margin-bottom:6px}
 .fg-comps td{vertical-align:top}
 .fg-comps td:first-child{white-space:normal;min-width:220px}
-@media (max-width:700px){ .fgchart text{font-size:16px} }
+/* Dense Pabrai data stays inside the page instead of forcing sideways scrolling. */
+#panel-pabrai .tablewrap{max-width:100%}
+#tblAll,#tblPerf,#tblDalal,.changes-table{width:100%;min-width:0;table-layout:fixed}
+#tblAll th,#tblAll td,#tblPerf th,#tblPerf td,#tblDalal th,#tblDalal td,.changes-table th,.changes-table td{white-space:normal;line-height:1.3}
+#tblAll th,#tblAll td{padding-left:7px;padding-right:7px}
+#tblAll th:nth-child(1){width:4%}
+#tblAll th:nth-child(2){width:22%}
+#tblAll th:nth-child(3){width:8%}
+#tblAll th:nth-child(4){width:10%}
+#tblAll th:nth-child(5),#tblAll th:nth-child(6){width:15%}
+#tblAll th:nth-child(7),#tblAll th:nth-child(8){width:9%}
+#tblAll th:nth-child(9){width:8%}
+#tblAll td:nth-child(2),#tblDalal td:first-child,.changes-table td:nth-child(-n+2){overflow-wrap:anywhere}
+#tblAll td.num,#tblPerf td.num,.changes-table td.num{font-size:.78rem}
+#tblAll th:nth-child(9),#tblAll td:nth-child(9){text-align:center}
+#tblPerf th,#tblPerf td{padding-left:8px;padding-right:8px}
+#tblPerf th:first-child{width:25%}
+#tblPerf td:first-child{overflow-wrap:anywhere}
+#tblDalal th:nth-child(1){width:40%}
+#tblDalal th:nth-child(2){width:14%}
+#tblDalal th:nth-child(3){width:20%}
+#tblDalal th:nth-child(4){width:26%}
+.changes-table th,.changes-table td{padding-left:8px;padding-right:8px}
+.changes-table:not(.changes-table--dated) th:nth-child(1){width:28%}
+.changes-table:not(.changes-table--dated) th:nth-child(2){width:16%}
+.changes-table:not(.changes-table--dated) th:nth-child(3){width:16%}
+.changes-table:not(.changes-table--dated) th:nth-child(4){width:10%}
+.changes-table:not(.changes-table--dated) th:nth-child(5),.changes-table:not(.changes-table--dated) th:nth-child(6){width:15%}
+.changes-table--dated th:nth-child(1){width:20%}
+.changes-table--dated th:nth-child(2){width:23%}
+.changes-table--dated th:nth-child(3){width:14%}
+.changes-table--dated th:nth-child(4){width:13%}
+.changes-table--dated th:nth-child(5){width:9%}
+.changes-table--dated th:nth-child(6){width:11%}
+.changes-table--dated th:nth-child(7){width:10%}
+/* Inspectable charts */
+.perf-grid{grid-template-columns:minmax(0,1fr)}
+.perf-grid>.card{min-width:0}
+.chart-card{padding:13px 14px 14px;overflow:hidden;border-color:var(--rule-strong)}
+.chart-scroll{max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.chart-shell{position:relative;isolation:isolate;min-width:0;border-radius:var(--radius-sm);overflow:hidden;background:var(--surface-2)}
+.chart-shell--spark{margin-top:3px}
+.chart-canvas--history{min-width:0}
+.chart-hit{cursor:crosshair;touch-action:pan-y;outline:none}
+.chart-hit:focus-visible{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 5}
+.chart-focus-line{stroke:var(--ink-2);stroke-width:1;stroke-dasharray:3 4;opacity:.72;pointer-events:none}
+.chart-focus-halo{fill:var(--surface);stroke:var(--surface);stroke-width:5;opacity:.92;pointer-events:none}
+.chart-focus-dot{fill:var(--accent);stroke:var(--ink);stroke-width:1.5;pointer-events:none}
+.chart-tooltip{position:absolute;z-index:3;top:12px;left:50%;min-width:158px;max-width:230px;padding:9px 11px;border:1px solid var(--rule-strong);border-radius:var(--radius-sm);background:var(--surface);box-shadow:var(--shadow-pop);color:var(--ink);pointer-events:none;transform:translateX(12px)}
+.chart-tooltip.is-right{transform:translateX(calc(-100% - 12px))}
+.chart-shell--spark .chart-tooltip{top:6px;min-width:134px}
+.chart-tooltip-date{font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.chart-tooltip-value{display:block;margin-top:2px;font-family:var(--f-display);font-size:1.12rem;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums}
+.chart-tooltip-meta{display:block;margin-top:2px;font-size:.75rem;color:var(--muted)}
+.chart-meta{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:8px}
+.chart-hint{flex:none;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:right}
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+@media (max-width:820px){ .perf-grid{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:700px){
+  .fgchart text{font-size:16px}
+  .chart-canvas--history{min-width:680px}
+  .range{width:100%;margin-left:0;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;padding-bottom:3px;scrollbar-width:thin}
+  .chart-meta{display:block}
+  .chart-hint{text-align:left;margin-top:6px}
+}
+@media (max-width:520px){
+  .top{padding-top:28px}
+  .grid2{grid-template-columns:1fr}
+  .dates li{display:grid;grid-template-columns:1fr auto;gap:3px 10px}
+  .dates li>span:not(.d):not(.in){grid-column:1/-1;grid-row:2}
+  .dates .d{min-width:0}.dates .in{grid-column:2;grid-row:1}
+}
+@media (prefers-reduced-motion:reduce){ button{transition:none} }
 .fgbar{display:inline-block;position:relative;width:120px;height:8px;vertical-align:middle;margin-right:8px}
 .fgbar b{position:absolute;inset:0;opacity:.35;background:linear-gradient(90deg,var(--neg) 0 25%,var(--neg) 25% 45%,var(--warn) 45% 56%,var(--pos) 56% 75%,var(--pos) 75% 100%)}
 .fgbar i{position:absolute;top:-3px;width:3px;height:14px;margin-left:-1.5px;background:var(--ink)}
@@ -190,17 +265,20 @@ footer p{margin:0 0 .5em}
 
 <section>
   <div class="sec-head"><h2>Performance</h2><span class="note" id="perfNote">—</span></div>
-  <div class="cards" style="grid-template-columns:2fr 1fr">
+  <div class="cards perf-grid">
     <div class="card">
       <div class="tablewrap" style="border:none"><table id="tblPerf"><thead><tr>
         <th></th><th class="num">1 mo</th><th class="num">3 mo</th><th class="num">6 mo</th><th class="num">YTD</th><th class="num">1 yr</th><th class="num">Since inception (ann.)</th><th class="num">Since inception (cum.)</th>
       </tr></thead><tbody></tbody></table></div>
     </div>
     <div class="card">
-      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px"><div class="kpi"><div class="l">NAV</div></div>
-        <span class="range" id="navRange"><button data-days="90" class="active">90 days</button><button data-days="365">1 year</button><button data-days="1825">5 years</button><button data-days="3650">10 years</button><button data-days="0">Since start</button></span></div>
-      <svg class="spark" id="spark" viewBox="0 0 300 64" preserveAspectRatio="none"></svg>
-      <div class="muted" id="sparkSub" style="font-size:.8rem">—</div>
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px"><div class="kpi"><div class="l">NAV history</div></div>
+        <span class="range" id="navRange" role="group" aria-label="NAV history range"><button type="button" data-days="90" class="active" aria-pressed="true">90 days</button><button type="button" data-days="365" aria-pressed="false">1 year</button><button type="button" data-days="1825" aria-pressed="false">5 years</button><button type="button" data-days="3650" aria-pressed="false">10 years</button><button type="button" data-days="0" aria-pressed="false">Since start</button></span></div>
+      <div class="chart-shell chart-shell--spark">
+        <svg class="spark" id="spark" viewBox="0 0 300 76" preserveAspectRatio="none" role="group" aria-labelledby="spark-title spark-desc"></svg>
+        <div class="chart-tooltip" id="spark-tip" role="tooltip" hidden><span class="chart-tooltip-date" data-chart-date></span><strong class="chart-tooltip-value" data-chart-value></strong><span class="chart-tooltip-meta" data-chart-meta></span></div>
+      </div>
+      <div class="chart-meta"><div class="muted" id="sparkSub" style="font-size:.8rem">—</div><div class="chart-hint" id="spark-help">Hover · touch · focus + arrow keys</div></div><span class="sr-only" id="spark-live" aria-live="polite"></span>
     </div>
   </div>
 </section>
@@ -217,9 +295,9 @@ footer p{margin:0 0 .5em}
 </section>
 
 <footer>
-  <p>Sources: the fund's own daily files (wagonsetf.filepoint.live) · Yahoo Finance for quotes · SEC 13F for Dalal Street LLC's manager-aggregated report. A 13F is delayed and incomplete.</p>
-  <p>The fund's holdings file is dated one trading day <em>after</em> the prices in it (T+1). Snapshots are saved in <span class="mono">data/snapshots.json</span> every time a new file day is detected — if Investments is not run every weekday, several days' net quantity changes are merged under "Changes"; the interval is shown in the heading.</p>
-  <p><b>Not investment advice.</b> The figures are the fund's own and Yahoo's; estimated change values are share-count differences × the latest fund-file value per share, not execution values.</p>
+  <p>Primary sources: <a href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">WAGN’s official fund page and daily FilePoint files</a> · Yahoo Finance for quotes · SEC EDGAR for Dalal Street LLC’s manager-aggregated 13F. Source status is shown in the page; a 13F is delayed and incomplete.</p>
+  <p>The WAGN file date and the corresponding NAV are reconciled using NetAssets and SharesOutstanding before the pricing date is claimed. Snapshots are saved whenever a new official file day is detected. If a file day is missed, only the net change over the displayed interval is knowable.</p>
+  <p><b>Not investment advice.</b> A WAGN quantity change may include ETF creations/redemptions; where both files contain SharesOutstanding the page therefore shows a flow-adjusted signal as well as the raw inventory change. Neither is proof of Pabrai’s exact trade time, execution price or motive.</p>
 </footer>
 
 </div><!-- /panel-pabrai -->
@@ -243,14 +321,46 @@ const today0 = ()=>{ const t=new Date(); t.setHours(0,0,0,0); return t; };
 
 const APP_MODE=document.querySelector('meta[name="investments-mode"]')?.content||'local';
 const STATIC_BUILD=APP_MODE==='static';
-let CFG=null, TR_WEIGHT=null, BUILD_META=null;
+let CFG=null, TR_WEIGHT=null, BUILD_META=null, DALAL=null;
+let STATUS_RENDER=()=>{};
 const apiUrl=u=>{
   if(!STATIC_BUILD||!u.startsWith('/api/')) return u;
   const name=u.slice('/api/'.length).split('?')[0];
   if(!/^[a-z0-9_-]+$/.test(name)) throw new Error('invalid static API path');
   return './api/'+name+'.json';
 };
-async function getJson(u,opt){ const r=await fetch(apiUrl(u),{cache:'no-store',...opt}); const j=await r.json().catch(()=>({error:'invalid response'})); if(!r.ok) throw new Error(j.error||r.statusText); return j; }
+async function getJson(u,opt={}){
+  const timeout=u.startsWith('/api/marketfg')?35000:45000;
+  try{
+    const signal=opt.signal||AbortSignal.timeout(timeout);
+    const r=await fetch(apiUrl(u),{cache:'no-store',...opt,signal});
+    const j=await r.json().catch(()=>({error:'invalid response'}));
+    if(!r.ok) throw new Error(j.error||r.statusText);
+    return j;
+  }catch(error){
+    if(error&&(['AbortError','TimeoutError'].includes(error.name))) throw new Error(u.startsWith('/api/marketfg')?'Fear & Greed request timed out':'request timed out');
+    throw error;
+  }
+}
+let SEC_BROWSER_CHECK=null;
+async function checkLatestSecAccession(D){
+  if(D&&D.ok) return {checked:false};
+  if(SEC_BROWSER_CHECK&&Date.now()-SEC_BROWSER_CHECK.t<60*60*1000) return SEC_BROWSER_CHECK.p;
+  const p=(async()=>{
+    try{
+      const r=await fetch('https://data.sec.gov/submissions/CIK0001549575.json',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const j=await r.json(), x=j&&j.filings&&j.filings.recent;
+      if(!x||!Array.isArray(x.form)) throw new Error('unexpected submissions format');
+      const rows=x.form.map((form,i)=>({form,accession:x.accessionNumber[i],filed:x.filingDate[i],accepted:x.acceptanceDateTime[i],asOf:x.reportDate[i]}))
+        .filter(row=>row.form==='13F-HR'||row.form==='13F-HR/A')
+        .sort((a,b)=>String(b.asOf).localeCompare(String(a.asOf))||String(b.accepted||b.filed).localeCompare(String(a.accepted||a.filed)));
+      if(!rows.length) throw new Error('no 13F-HR filings found');
+      return {checked:true,latest:rows[0],checkedAt:new Date().toISOString(),newer:rows[0].accession!==D.accession};
+    }catch(error){ return {checked:false,error:String(error&&error.message||error),checkedAt:new Date().toISOString()}; }
+  })();
+  SEC_BROWSER_CHECK={t:Date.now(),p}; return p;
+}
 
 if(STATIC_BUILD){
   $('#btnRefresh').textContent='Reload snapshot';
@@ -259,11 +369,14 @@ if(STATIC_BUILD){
 
 async function load(mode){ // mode: 'manual' = Update button (re-fetch everything), 'auto' = 10-minute timer, undefined = first load
   const st=$('#status'); st.className=''; st.textContent = STATIC_BUILD ? (mode?'checking published snapshot…':'loading published snapshot…') : (mode ? 'refreshing… fund files, NAV, quotes' : 'loading…'); $('#btnRefresh').disabled=true;
-  const t0=Date.now(), errs=[];
+  const t0=Date.now(), pabraiErrs=[], marketErrs=[];
   const setStatus=extra=>{
+    const onPabrai=document.body.dataset.tab==='pabrai';
+    const errs=onPabrai?pabraiErrs:marketErrs;
     const published=BUILD_META&&BUILD_META.generatedAt ? new Date(BUILD_META.generatedAt).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'medium'}) : 'unknown time';
-    st.textContent = (STATIC_BUILD ? 'published '+published+' · checked '+timeStr() : 'updated '+timeStr())+(errs.length?' — '+errs.join(' · '):'')+(extra||'');
+    st.textContent = (STATIC_BUILD ? 'published '+published+' · checked '+timeStr() : 'updated '+timeStr())+(errs.length?' — '+errs.join(' · '):'')+(onPabrai?'':(extra||''));
     st.className = errs.length?'err':'';
+    STATUS_RENDER=()=>setStatus(extra);
   };
   try{
     if(mode&&!STATIC_BUILD) await getJson('/api/refresh'+(mode==='manual'?'?force=1':''),{method:'POST'}); // POST so a cross-site <img> cannot trigger it; force=1 re-fetches the raw series behind the shared model
@@ -271,27 +384,40 @@ async function load(mode){ // mode: 'manual' = Update button (re-fetch everythin
     else CFG = CFG || await getJson('/api/config');
     // All requests start at once, but the Pabrai part renders as soon as it is ready — the daily series behind the market-state models must not hold it back.
     const fgReq=getJson('/api/marketfg');
-    const [h,n,p,q] = await Promise.allSettled([getJson('/api/holdings'),getJson('/api/nav'),getJson('/api/perf'),getJson('/api/quotes')]);
+    const [h,n,p,q,d] = await Promise.allSettled([getJson('/api/holdings'),getJson('/api/nav'),getJson('/api/perf'),getJson('/api/quotes'),getJson('/api/dalal')]);
     const Q = q.status==='fulfilled' ? q.value : {};
+    DALAL = d.status==='fulfilled' ? d.value : CFG.dalalStreet;
     // NAV carries the actual pricing date for the T+1 holdings file. Render it first so the watch cards show that date too.
-    if(n.status==='fulfilled') renderNav(n.value); else errs.push('NAV could not be fetched');
+    if(n.status==='fulfilled') renderNav(n.value); else pabraiErrs.push('NAV could not be fetched');
     if(h.status==='fulfilled'){
       renderHoldings(h.value, Q);
-      if(h.value.fetchError) errs.push(h.value.latest ? 'holdings file could not be fetched — showing saved file from '+fmtDate(h.value.latest.date) : 'holdings file could not be fetched');
-    } else errs.push('holdings: '+h.reason.message);
-    if(p.status==='fulfilled') renderPerf(p.value); else errs.push('performance could not be fetched');
-    if(q.status!=='fulfilled') errs.push('quotes could not be fetched');
-    else { const bad=Object.values(Q).filter(x=>x.error).map(x=>x.symbol); if(bad.length) errs.push('quote missing: '+bad.join(', ')); }
-    renderDalal(); renderDates();
+      if(h.value.fetchError) pabraiErrs.push(h.value.latest ? 'holdings file could not be fetched — showing saved file from '+fmtDate(h.value.latest.date) : 'holdings file could not be fetched');
+      else if(!holdingsNavCheck(h.value,n.status==='fulfilled'?n.value:null).matched) pabraiErrs.push('WAGN holdings and NAV are not reconciled yet — pricing date is not asserted');
+    } else pabraiErrs.push('holdings: '+h.reason.message);
+    if(p.status==='fulfilled') renderPerf(p.value); else pabraiErrs.push('performance could not be fetched');
+    if(q.status!=='fulfilled') pabraiErrs.push('quotes could not be fetched');
+    else { const bad=Object.values(Q).filter(x=>x.error).map(x=>x.symbol); if(bad.length) pabraiErrs.push('quote missing: '+bad.join(', ')); }
+    if(d.status!=='fulfilled') pabraiErrs.push(`SEC automatic refresh failed — showing the official filing manually verified${DALAL&&DALAL.manualVerifiedAt?' '+fmtDate(DALAL.manualVerifiedAt):''}`);
+    else if(!d.value.ok) pabraiErrs.push(`SEC automatic refresh unavailable — official filing manually verified${d.value.manualVerifiedAt?' '+fmtDate(d.value.manualVerifiedAt):''}`);
+    renderDalal(DALAL); renderDates();
+    if(!DALAL.ok){
+      const secCheck=await checkLatestSecAccession(DALAL);
+      if(secCheck.checked&&secCheck.newer){
+        $('#dalalCall').insertAdjacentHTML('afterbegin',`<b>NEW SEC FILING DETECTED:</b> ${esc(secCheck.latest.form)} ${esc(secCheck.latest.accession)}, filed ${fmtDate(secCheck.latest.filed)}. The holdings below are older and must not be treated as current.<br>`);
+        pabraiErrs.push('new Dalal Street SEC filing detected — holdings import pending');
+      } else if(secCheck.checked){
+        $('#dalalCall').insertAdjacentHTML('beforeend',` <span class="muted">SEC submissions checked in your browser ${new Date(secCheck.checkedAt).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'})}: ${esc(secCheck.latest.accession)} is still the latest 13F accession. This confirms filing recency; the row totals retain their separate manual-verification date.</span>`);
+      }
+    }
     setStatus(' · computing one shared six-component market model from daily series…');
     // All five Fear & Greed tabs come from one marketfg response and one model identity.
     const [mf] = await Promise.allSettled([fgReq]);
     for(const t of FG_TABS){
       if(mf.status!=='fulfilled'){ setFg(t.id, {error:mf.reason.message}); continue; }
       const M=mf.value.markets[t.market];
-      if(M) setFg(t.id, normMarket(M, mf.value.model, mf.value.fetchedAt)); else { setFg(t.id, {error:(mf.value.failed||{})[t.market]||'no data'}); errs.push('Fear & Greed '+t.tab+' could not be computed'); }
+      if(M) setFg(t.id, normMarket(M, mf.value.model, mf.value.fetchedAt)); else { setFg(t.id, {error:(mf.value.failed||{})[t.market]||'no data'}); marketErrs.push('Fear & Greed '+t.tab+' could not be computed'); }
     }
-    if(mf.status!=='fulfilled') errs.push('Fear & Greed for the markets could not be fetched');
+    if(mf.status!=='fulfilled') marketErrs.push('Fear & Greed for the markets could not be fetched');
     setStatus(!STATIC_BUILD&&mode==='manual' ? ` · all sources re-fetched in ${((Date.now()-t0)/1000).toFixed(1)} s` : '');
   }catch(e){ st.className='err'; st.textContent='error: '+e.message; }
   $('#btnRefresh').disabled=false;
@@ -302,12 +428,32 @@ function flagOf(t){ const m=CFG.names[t]; return m?m.flag:''; }
 function avanzaPill(t){ const a=(CFG.names[t]||{}).avanza; return a==='online'?'<span class="pill ok">online</span>':a==='telefon'?'<span class="pill tel">by phone</span>':a==='nej'?'<span class="pill no">not available</span>':'<span class="pill">—</span>'; }
 const isCashLike = t => (CFG.cashLike||[]).includes(t);
 
-let LAST_H=null, NAV_DATE=null; // the holdings file is dated T+1; the NAV date is its actual pricing date
-const fileDateLine=(H,navDate)=>`Fund holdings file dated <b>${fmtDate(H.latest.date)}</b> (T+1) — priced at the <b>${navDate?fmtDate(navDate):'previous trading day'}</b> close. Fetched ${new Date(H.fetchedAt).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'medium'})}.`;
+let LAST_H=null, NAV_DATE=null;
+function holdingsNavCheck(H,N){
+  const L=H&&H.latest;
+  if(!L||!N||!Number.isFinite(L.netAssets)||!Number.isFinite(L.sharesOutstanding)||!Number.isFinite(N.nav)||!N.date) return {matched:false,reason:'required NAV reconciliation fields are missing'};
+  const dateGap=(Date.parse(`${L.date}T00:00:00Z`)-Date.parse(`${N.date}T00:00:00Z`))/864e5;
+  const recentNav=Number.isFinite(dateGap)&&dateGap>=0&&dateGap<=4;
+  const sameShares=!Number.isFinite(N.sharesOut)||Math.abs(L.sharesOutstanding-N.sharesOut)<0.5;
+  const expected=Math.round(N.nav*100)/100*L.sharesOutstanding;
+  const gap=Math.abs(L.netAssets-expected), tolerance=Math.max(1,Math.abs(L.netAssets)*0.00001);
+  return {matched:recentNav&&sameShares&&gap<=tolerance,recentNav,sameShares,expected,gap,tolerance,fundShares:L.sharesOutstanding};
+}
+const fileDateLine=(H,N)=>{
+  const L=H.latest, checked=holdingsNavCheck(H,N), live=H.source&&H.source.status==='verified';
+  const captured=L.source&&L.source.capturedAt || H.fetchedAt;
+  const receipt=captured ? new Date(captured).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'medium'}) : 'unknown time';
+  const checksum=L.source&&L.source.sha256 ? ` · SHA-256 <span class="mono" title="${esc(L.source.sha256)}">${esc(L.source.sha256.slice(0,12))}…</span>` : '';
+  const source=live ? '<b>Official WAGN source verified</b>' : '<b>Saved WAGN snapshot</b>';
+  const pricing=checked.matched ? `Values reconcile to NAV <b>$${fmt(N.nav,2)}</b> and <b>${fmt(checked.fundShares)}</b> fund shares as of <b>${fmtDate(N.date)}</b>.` : '<b>Current NAV does not reconcile to this holdings receipt yet; its pricing date is therefore not asserted.</b>';
+  return `${source}: file dated <b>${fmtDate(L.date)}</b>. ${pricing} Retrieved ${receipt}${checksum}.`;
+};
+const changeSignal=c=>c ? (Number.isFinite(c.signalDelta)?c.signalDelta:c.delta) : null;
+const changeSignalPct=c=>c ? (Number.isFinite(c.signalPct)?c.signalPct:c.pct) : null;
 function renderHoldings(H,Q){
   const L=H.latest; if(!L){ $('#cards').innerHTML='<div class="empty">No holdings data — the source did not respond and no snapshot is saved yet.</div>'; return; }
   const F=H.first, P=H.previous;
-  LAST_H=H; $('#fileDate').innerHTML = fileDateLine(H, NAV_DATE);
+  LAST_H=H; $('#fileDate').innerHTML = fileDateLine(H, NAV_DATA);
   $('#kNet').textContent = L.netAssets==null ? '—' : '$'+fmt(L.netAssets/1e6,1)+'M';
   $('#kNetSub').textContent = F&&F!==L ? pct(ratio(L.netAssets,F.netAssets),1)+' since '+fmtDate(F.date)+' (incl. flows)' : '';
   if(F) $('#thFirst').textContent='Δ since first file ('+fmtDate(F.date)+')';
@@ -330,9 +476,10 @@ function renderHoldings(H,Q){
     const fundTicker=pos.fundTicker||pos.ticker;
     const secTicker=pos.secTicker||pos.ticker;
     const row=L.rows[fundTicker]; const ch=prevMap[fundTicker]; const q=Q[pos.yahoo]||{};
+    const sig=changeSignal(ch), sigPct=changeSignalPct(ch);
     const badge = ch&&ch.kind==='SOLD OUT' ? `<span class="badge b-sell">SOLD OUT ${fmt(ch.delta)}</span>`
       : !row ? '<span class="badge b-sell">not in WAGN</span>'
-      : ch ? (ch.delta>0?`<span class="badge b-buy">WAGN +${fmt(ch.delta)} (${pct(ch.pct,1)})</span>`:`<span class="badge b-sell">WAGN ${fmt(ch.delta)} (${pct(ch.pct,1)})</span>`)
+      : ch ? (sig>0?`<span class="badge b-buy">WAGN +${fmt(sig)} (${pct(sigPct,1)})</span>`:`<span class="badge b-sell">WAGN ${fmt(sig)} (${pct(sigPct,1)})</span>`)
       : '<span class="badge b-flat">WAGN unchanged</span>';
     const live=q.price, day = ratio(live,q.prevClose);
     const qt=q.time?new Date(q.time):null, sameDay = qt && qt.toDateString()===new Date().toDateString();
@@ -343,10 +490,12 @@ function renderHoldings(H,Q){
     const fxq=Q[(CFG.fx||{})[pos.currency]]||{};
     const fxNote = fxq.price ? `${pos.currency}/SEK ${fmt(fxq.price,4)}${fxq.time?' · '+new Date(fxq.time).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''} (Yahoo)` : '';
     const inFund = row ? `${fmt(row.shares)} shares · ${pct(row.weight,2,false)} of WAGN` : 'not reported in WAGN';
-    const wagnChange = !ch ? 'No quantity change' : `${ch.delta>0?'+':''}${fmt(ch.delta)} shares (${pct(ch.pct,1)})`;
-    const wagnChangeNote = ch ? `≈ $${fmt(ch.approxUsd)} at the latest holding-file value; not an execution price` : (P?`${fmtDate(P.date)} → ${fmtDate(L.date)}`:'—');
-    const dh=((CFG.dalalStreet||{}).holdings||[]).find(h=>h.ticker===secTicker);
-    const dw=dh&&CFG.dalalStreet.portfolioValueUsd ? dh.valueUsd/CFG.dalalStreet.portfolioValueUsd*100 : null;
+    const wagnChange = !ch ? 'No quantity change' : `${sig>0?'+':''}${fmt(sig)} shares (${pct(sigPct,1)})`;
+    const rawNote=ch&&ch.flowAdjusted ? ` Flow-adjusted for ${fmt(ch.sharesOutstandingFrom)} → ${fmt(ch.sharesOutstandingTo)} WAGN shares; raw inventory Δ ${ch.delta>0?'+':''}${fmt(ch.delta)}.` : '';
+    const wagnChangeNote = ch ? `≈ $${fmt(ch.approxUsd)} at the latest holding-file value; not an execution price.${rawNote}` : (P?`${fmtDate(P.date)} → ${fmtDate(L.date)}`:'—');
+    const D=DALAL||CFG.dalalStreet||{};
+    const dh=(D.holdings||[]).find(h=>h.ticker===secTicker);
+    const dw=dh&&D.portfolioValueUsd ? dh.valueUsd/D.portfolioValueUsd*100 : null;
     const dalalPosition=dh ? `${fmt(dh.shares)} shares · ${pct(dw,2,false)} of the 13F` : 'not reported in the latest 13F';
     let dalalChange='—';
     if(dh){
@@ -360,9 +509,9 @@ function renderHoldings(H,Q){
     return `<div class="card">
       <div class="hd"><span class="chip">${esc(pos.ticker)}</span><span class="nm">${esc(nameOf(fundTicker))}</span>${badge}</div>
       <div class="grid2">
-        <div><div class="l">Pabrai · WAGN daily file</div><div class="v">${inFund}</div><div class="s">file ${fmtDate(L.date)}, priced ${NAV_DATE?fmtDate(NAV_DATE):'at prior close'}</div></div>
-        <div><div class="l">WAGN net quantity change</div><div class="v ${ch?cls(ch.delta):'flat'}">${wagnChange}</div><div class="s">${wagnChangeNote}</div></div>
-        <div><div class="l">Pabrai · Dalal Street 13F</div><div class="v">${dalalPosition}</div><div class="s">as of ${fmtDate((CFG.dalalStreet||{}).asOf)} · delayed quarterly disclosure</div></div>
+        <div><div class="l">Pabrai · WAGN daily file</div><div class="v">${inFund}</div><div class="s">file ${fmtDate(L.date)}${holdingsNavCheck(H,NAV_DATA).matched?', reconciled to '+fmtDate(NAV_DATE):', pricing date not reconciled'}</div></div>
+        <div><div class="l">${ch&&ch.flowAdjusted?'WAGN flow-adjusted signal':'WAGN raw quantity change'}</div><div class="v ${ch?cls(sig):'flat'}">${wagnChange}</div><div class="s">${wagnChangeNote}</div></div>
+        <div><div class="l">Pabrai · Dalal Street 13F</div><div class="v">${dalalPosition}</div><div class="s">as of ${fmtDate(D.asOf)} · delayed quarterly disclosure${D.ok?' · SEC auto-verified':` · official filing manually verified${D.manualVerifiedAt?' '+fmtDate(D.manualVerifiedAt):''}`}</div></div>
         <div><div class="l">Dalal change vs prior 13F</div><div class="v">${dalalChange}</div><div class="s">Do not add WAGN and 13F quantities together</div></div>
         <div><div class="l">${qLabel}</div><div class="v big">${live?money(live,pos.currency)+' <span class="'+cls(day)+'" style="font-size:.8rem">'+pct(day,2)+'</span>':'<span class="down" style="font-size:.95rem">price unavailable</span>'}</div><div class="s">${qWhen}${day!=null?' · day change':''}</div></div>
         <div><div class="l">${hasEntry?'Price return since entry ('+money(pos.entry,pos.currency)+')':'Return since entry'}</div><div class="v big ${hasEntry?cls(vsEntry):'flat'}">${hasEntry?pct(vsEntry,1):(posMeta.source==='public'?'Entry price not published':'No entry price entered')}</div><div class="s">${hasEntry?'Local currency; excludes FX, fees and dividends, so it differs from Avanza’s SEK result':''}</div></div>
@@ -375,7 +524,7 @@ function renderHoldings(H,Q){
   const C=H.changesVsPrevious.filter(c=>!c.cashLike), LOG=H.log.filter(c=>!c.cashLike);
   const span = P ? `${fmtDate(P.date)} → ${fmtDate(L.date)}` : '';
   const multiDay = P && Math.round((new Date(L.date)-new Date(P.date))/864e5)>1;
-  const gapCallout = multiDay ? `<div class="callout">The interval ${span} spans several trading days — only the net quantity change is known; exact transactions in between are not.</div>` : '';
+  const gapCallout = multiDay ? `<div class="callout">The interval ${span} spans more than one calendar day — only the net change between disclosures is known; exact transactions in between are not.</div>` : '';
   $('#chgNote').textContent = P ? span : '—';
   $('#changes').innerHTML = !P ? '<div class="empty">Only one snapshot saved so far — changes appear from the next file day.</div>'
     : !C.length ? `<div class="empty">No changes in share counts (${span}).</div>`
@@ -390,8 +539,9 @@ function renderHoldings(H,Q){
   const cash=Object.values(L.cash||{}).reduce((a,v)=>a+(v||0),0);
   $('#tblAll tbody').innerHTML = rows.map(([t,r],i)=>{
     const c=prevMap[t], f=firstMap[t], cl=isCashLike(t);
-    const d = c ? `<span class="${cls(c.delta)}">${c.delta>0?'+':''}${fmt(c.delta)} (${pct(c.pct,1)})</span>` : '<span class="flat">—</span>';
-    const df = f ? `<span class="${cls(f.delta)}">${f.delta>0?'+':''}${fmt(f.delta)} (${pct(f.pct,1)})</span>` : '<span class="flat">—</span>';
+    const cs=changeSignal(c), fs=changeSignal(f);
+    const d = c ? `<span class="${cls(cs)}">${cs>0?'+':''}${fmt(cs)} (${pct(changeSignalPct(c),1)})</span>` : '<span class="flat">—</span>';
+    const df = f ? `<span class="${cls(fs)}">${fs>0?'+':''}${fmt(fs)} (${pct(changeSignalPct(f),1)})</span>` : '<span class="flat">—</span>';
     const px = cl && r.shares ? r.mv/r.shares : r.price;
     return `<tr class="${mine.has(t)?'mine ':''}${cl?'cashrow':(c?(c.delta>0?'chg-buy':'chg-sell'):'')}">
       <td class="num">${i+1}</td><td>${flagOf(t)} <span class="tick">${esc(t)}</span> ${esc(nameOf(t))}</td>
@@ -400,9 +550,9 @@ function renderHoldings(H,Q){
   }).join('') + `<tr class="cashrow"><td></td><td>Cash / currencies (net)</td><td class="num">${pct(L.netAssets?cash/L.netAssets*100:null,2,false)}</td><td colspan="4"></td><td class="num">${fmt(cash/1e6,2)}M</td><td></td></tr>`;
 }
 function changesTable(list,withDate){
-  return `<div class="tablewrap"><table><thead><tr>${withDate?'<th>Between files</th>':''}<th>Holding</th><th>Type</th><th class="num">Δ shares</th><th class="num">Δ %</th><th class="num">After</th><th class="num">≈ Value USD</th></tr></thead><tbody>`+
-    list.map(c=>`<tr class="${c.delta>0?'chg-buy':'chg-sell'}">${withDate?`<td class="mono">${fmtDate(c.from)} → ${fmtDate(c.to)}</td>`:''}<td>${flagOf(c.ticker)} <span class="tick">${esc(c.ticker)}</span> ${esc(nameOf(c.ticker))}</td>
-      <td><span class="badge ${c.delta>0?'b-buy':'b-sell'}" style="margin:0">${c.kind}</span></td><td class="num ${cls(c.delta)}">${c.delta>0?'+':''}${fmt(c.delta)}</td><td class="num ${cls(c.delta)}">${pct(c.pct,1)}</td><td class="num">${fmt(c.sharesTo)}</td><td class="num">${fmt(c.approxUsd)}</td></tr>`).join('')+'</tbody></table></div>';
+  return `<div class="tablewrap"><table class="changes-table${withDate?' changes-table--dated':''}"><thead><tr>${withDate?'<th>Between files</th>':''}<th>Holding</th><th>Signal</th><th class="num">Position Δ</th><th class="num">Δ %</th><th class="num">After</th><th class="num">≈ Value USD</th></tr></thead><tbody>`+
+    list.map(c=>{ const d=changeSignal(c),p=changeSignalPct(c),raw=c.flowAdjusted?`<div class="s">raw ${c.delta>0?'+':''}${fmt(c.delta)}</div>`:''; return `<tr class="${d>0?'chg-buy':'chg-sell'}">${withDate?`<td class="mono">${fmtDate(c.from)} → ${fmtDate(c.to)}</td>`:''}<td>${flagOf(c.ticker)} <span class="tick">${esc(c.ticker)}</span> ${esc(nameOf(c.ticker))}</td>
+      <td><span class="badge ${d>0?'b-buy':'b-sell'}" style="margin:0">${esc(c.kind)}</span>${c.flowAdjusted?'<div class="s">flow-adjusted</div>':'<div class="s">raw inventory</div>'}</td><td class="num ${cls(d)}">${d>0?'+':''}${fmt(d)}${raw}</td><td class="num ${cls(d)}">${pct(p,1)}</td><td class="num">${fmt(c.sharesTo)}</td><td class="num">${fmt(c.approxUsd)}</td></tr>`; }).join('')+'</tbody></table></div>';
 }
 
 function renderNav(N){
@@ -410,18 +560,29 @@ function renderNav(N){
   $('#kNavSub').innerHTML = `<span class="${cls(N.navChgPct)}">${pct(N.navChgPct,2)}</span> · ${fmtDate(N.date)}`;
   $('#kPx').textContent = N.price==null ? '—' : '$'+fmt(N.price,2);
   $('#kPxSub').textContent = N.premium==null ? '' : (N.premium<0?'discount ':'premium ')+pct(Math.abs(N.premium),2,false)+' vs NAV';
-  NAV_DATE=N.date||null; if(LAST_H&&LAST_H.latest) $('#fileDate').innerHTML = fileDateLine(LAST_H, NAV_DATE);
-  NAV_DATA=N; renderNavSpark();
+  NAV_DATE=N.date||null; NAV_DATA=N; if(LAST_H&&LAST_H.latest) $('#fileDate').innerHTML = fileDateLine(LAST_H, NAV_DATA);
+  renderNavSpark();
 }
 let NAV_DATA=null, NAV_DAYS=90; // the NAV chart: 90 days / 1, 5 or 10 years / since inception (the fund's full daily file, price only)
 function renderNavSpark(){
   const N=NAV_DATA; if(!N) return;
-  const all=(N.history||[]).filter(r=>r.nav!=null), lastRow=all[all.length-1];
+  const svg=$('#spark'), tip=$('#spark-tip'), live=$('#spark-live');
+  const all=(N.history||[]).filter(r=>r.nav!=null&&r.date), lastRow=all[all.length-1];
   const h = NAV_DAYS && lastRow ? all.filter(r=>r.date>=addDays(lastRow.date,-NAV_DAYS)) : all;
-  if(h.length<2){ $('#spark').innerHTML=''; $('#sparkSub').textContent='—'; return; }
-  const xs=h.map((_,i)=>i/(h.length-1)*300), ys=h.map(r=>r.nav); const lo=Math.min(...ys),hi=Math.max(...ys); const y=v=>60-(v-lo)/((hi-lo)||1)*52;
+  if(h.length<2){ svg.innerHTML=''; $('#sparkSub').textContent='—'; clearChartExplorer(svg,tip,live); return; }
+  const W=300,HH=76,L=4,R=4,T=7,B=7,iw=W-L-R,ih=HH-T-B;
+  const xs=h.map((_,i)=>L+i/(h.length-1)*iw), ys=h.map(r=>r.nav), lo=Math.min(...ys),hi=Math.max(...ys); const y=v=>T+(1-(v-lo)/((hi-lo)||1))*ih;
   const d=h.map((r,i)=>(i?'L':'M')+xs[i].toFixed(1)+' '+y(r.nav).toFixed(1)).join(' ');
-  $('#spark').innerHTML=`<path d="${d} L300 64 L0 64 Z" fill="var(--accent-soft)"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="1.6"/><circle cx="300" cy="${y(ys[ys.length-1]).toFixed(1)}" r="2.6" fill="var(--accent)"/>`;
+  svg.innerHTML=`<title id="spark-title">Pabrai NAV history</title><desc id="spark-desc">Daily fund NAV for the selected period. Hover, touch, or focus the chart and use the arrow keys to inspect exact dates and values.</desc>
+    <path d="${d} L${W-R} ${HH-B} L${L} ${HH-B} Z" fill="var(--accent-soft)"/>
+    <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${xs[xs.length-1].toFixed(1)}" cy="${y(ys[ys.length-1]).toFixed(1)}" r="3" fill="var(--accent)" vector-effect="non-scaling-stroke"/>
+    <g class="chart-focus" visibility="hidden" aria-hidden="true"><line class="chart-focus-line" x1="0" x2="0" y1="${T}" y2="${HH-B}" vector-effect="non-scaling-stroke"/><circle class="chart-focus-halo" cx="0" cy="0" r="4.8" vector-effect="non-scaling-stroke"/><circle class="chart-focus-dot" cx="0" cy="0" r="3.1" vector-effect="non-scaling-stroke"/></g>
+    <rect class="chart-hit" x="${L}" y="${T}" width="${iw}" height="${ih}" fill="transparent" pointer-events="all"/>`;
+  svg.setAttribute('aria-describedby','spark-desc spark-help');
+  setChartExplorer(svg,{points:h.map((row,i)=>({row,x:xs[i],y:y(row.nav)})),bounds:{left:L,right:W-R,top:T,bottom:HH-B},viewX:0,viewWidth:W,
+    focus:svg.querySelector('.chart-focus'),line:svg.querySelector('.chart-focus-line'),halo:svg.querySelector('.chart-focus-halo'),dot:svg.querySelector('.chart-focus-dot'),tip,live,
+    describe:row=>{ const date=fmtDate(row.date),value='$'+fmt(row.nav,2); return {date,value,meta:'Fund NAV',aria:`${date}, NAV ${value}`}; }});
   const first=h[0], last=h[h.length-1], r=ratio(last.nav,first.nav);
   $('#sparkSub').innerHTML=`${fmtDate(first.date)} $${fmt(first.nav,2)} → ${fmtDate(last.date)} $${fmt(last.nav,2)} <span class="${cls(r)}">${pct(r,1)}</span>${NAV_DAYS?'':' · since inception, NAV price only (distributions excluded — see the performance table for total return)'}`;
 }
@@ -433,12 +594,14 @@ function renderPerf(Pf){
   const c=v=>`<td class="num ${cls(v)}">${pct(v,2)}</td>`;
   $('#tblPerf tbody').innerHTML=rows.map(r=>`<tr><td><b>${esc(label[r.ticker]||r.ticker)}</b></td>${c(r.m1)}${c(r.m3)}${c(r.m6)}${c(r.ytd)}${c(r.y1)}${c(r.sinceAnn)}${c(r.sinceCum)}</tr>`).join('');
 }
-function renderDalal(){
-  const D=CFG.dalalStreet; $('#dalalNote').textContent='as of '+fmtDate(D.asOf)+' · filed '+fmtDate(D.filed);
+function renderDalal(D){
+  D=D||CFG.dalalStreet; $('#dalalNote').textContent='as of '+fmtDate(D.asOf)+' · filed '+fmtDate(D.filed)+(D.ok?' · SEC auto-verified':` · official filing manually verified${D.manualVerifiedAt?' '+fmtDate(D.manualVerifiedAt):''}`);
   const src = D.sourceUrl ? ` Source: <a href="${esc(D.sourceUrl)}" target="_blank" rel="noopener">${esc(D.source||'SEC EDGAR 13F-HR')}</a>.` : '';
-  $('#dalalCall').innerHTML=`<b>$${fmt(D.portfolioValueUsd/1e6,1)}M across ${D.holdings.length} reported securities.</b> This is Dalal Street LLC’s manager-aggregated 13F, not a complete or live private-fund portfolio. It is quarterly and generally covers reportable long US-listed securities; cash, shorts and most non-US listings are absent. <b>Next filing due ${esc(D.nextFilingWindow)}.</b>${src} Shares and values are typed from the filing into <span class="mono">data/config.json</span>; weights and quarter changes are computed from them.`;
+  const state=D.ok ? `<b>Official SEC data fetched and validated:</b> accession ${esc(D.accession||'—')}; declared entry count and total value match the information table.` : `<b>Official SEC filing manually verified${D.manualVerifiedAt?' '+fmtDate(D.manualVerifiedAt):''}:</b> accession ${esc(D.accession||'—')} and the displayed row totals were checked against EDGAR. Automatic refresh is currently unavailable; ${esc(D.fetchError||'no live verification result was returned.')}`;
+  const next=D.nextFilingWindow ? ` <b>Next filing expected ${esc(D.nextFilingWindow)}.</b>` : '';
+  $('#dalalCall').innerHTML=`${state} <b>$${fmt(D.portfolioValueUsd/1e6,1)}M across ${(D.holdings||[]).length} reported securities.</b> This is Dalal Street LLC’s manager-aggregated 13F, not a complete or live private-fund portfolio. It is quarterly and generally covers reportable long Section 13(f) securities; cash, shorts and many non-US securities are absent. It is manager-submitted data; SEC publication does not mean SEC has certified its accuracy or completeness.${next}${src}`;
   const mine=new Set(CFG.myPositions.map(p=>p.secTicker||p.ticker));
-  $('#tblDalal tbody').innerHTML=D.holdings.map(h=>{
+  $('#tblDalal tbody').innerHTML=(D.holdings||[]).map(h=>{
     const w = h.valueUsd!=null && D.portfolioValueUsd ? h.valueUsd/D.portfolioValueUsd*100 : h.weight; // weight = 13F value / total
     let q;
     if(h.prevShares==null) q = h.qChange!=null ? esc(h.qChange) : '<span class="up">new</span>';
@@ -458,7 +621,7 @@ function renderDates(){
 // ---- Fear & Greed: one shared six-component model, five market mappings, one renderer.
 const MARKET_BANDS=[[0,24,'Extreme Fear'],[25,44,'Fear'],[45,55,'Neutral'],[56,74,'Greed'],[75,100,'Extreme Greed']];
 const FG_TABS=[
-  {id:'crypto',tab:'Crypto',forName:'the crypto market using BTC as benchmark',hash:'#crypto',kind:'market',market:'crypto',bands:MARKET_BANDS},
+  {id:'crypto',tab:'Crypto',forName:'the broad 7-asset crypto index',hash:'#crypto',kind:'market',market:'crypto',bands:MARKET_BANDS},
   {id:'sweden',tab:'Sweden',forName:'the Stockholm stock market',hash:'#sweden',kind:'market',market:'sweden',bands:MARKET_BANDS},
   {id:'usa',tab:'USA',forName:'the US stock market',hash:'#usa',kind:'market',market:'usa',bands:MARKET_BANDS},
   {id:'europe',tab:'Europe',forName:'the European stock market',hash:'#europe',kind:'market',market:'europe',bands:MARKET_BANDS},
@@ -479,6 +642,76 @@ const fetchedStr=iso=>{ const d=iso?new Date(iso):null; return d&&!isNaN(d) ? 'f
 const arcPt=(v,r)=>{ const a=Math.PI*(1-v/100); return [100+r*Math.cos(a), 104-r*Math.sin(a)]; }; // half circle, centre (100,104)
 const fmtRaw=(v,unit)=> v==null ? '—' : unit==='%' ? (v>0?'+':'')+fmt(v,1)+' %' : unit==='pp' ? (v>0?'+':'')+fmt(v,1)+' pp' : fmt(v,1);
 const hiLo=(rows)=>{ let hi=null,lo=null; for(const r of rows){ if(r.value==null) continue; if(!hi||r.value>=hi.value) hi=r; if(!lo||r.value<=lo.value) lo=r; } return [hi,lo]; };
+
+// Shared pointer/keyboard explorer for the NAV sparkline and every market history chart.
+// Coordinates are transformed from the screen into the SVG viewBox, so hover remains exact after resizing or zooming.
+const CHART_STATE=new WeakMap();
+function chartLocalPoint(svg,e){
+  const ctm=svg.getScreenCTM();
+  if(ctm){ const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; return p.matrixTransform(ctm.inverse()); }
+  const r=svg.getBoundingClientRect(), vb=svg.viewBox.baseVal;
+  return {x:vb.x+(e.clientX-r.left)/Math.max(1,r.width)*vb.width,y:vb.y+(e.clientY-r.top)/Math.max(1,r.height)*vb.height};
+}
+function nearestChartIndex(points,x){
+  if(!points.length) return -1;
+  let lo=0,hi=points.length-1;
+  while(lo<hi){ const mid=(lo+hi)>>1; if(points[mid].x<x) lo=mid+1; else hi=mid; }
+  if(lo===0) return 0;
+  return Math.abs(points[lo].x-x)<Math.abs(points[lo-1].x-x)?lo:lo-1;
+}
+function hideChartPoint(svg){
+  const s=CHART_STATE.get(svg); if(!s) return;
+  s.visible=false; s.focus.setAttribute('visibility','hidden'); s.tip.hidden=true; s.tip.setAttribute('aria-hidden','true');
+}
+function showChartPoint(svg,index,announce=false){
+  const s=CHART_STATE.get(svg); if(!s||!s.points.length) return;
+  const i=Math.max(0,Math.min(s.points.length-1,index)), p=s.points[i], d=s.describe(p.row);
+  s.index=i; s.visible=true;
+  s.line.setAttribute('x1',p.x.toFixed(2)); s.line.setAttribute('x2',p.x.toFixed(2));
+  s.halo.setAttribute('cx',p.x.toFixed(2)); s.halo.setAttribute('cy',p.y.toFixed(2));
+  s.dot.setAttribute('cx',p.x.toFixed(2)); s.dot.setAttribute('cy',p.y.toFixed(2)); s.focus.removeAttribute('visibility');
+  s.tip.querySelector('[data-chart-date]').textContent=d.date;
+  s.tip.querySelector('[data-chart-value]').textContent=d.value;
+  s.tip.querySelector('[data-chart-meta]').textContent=d.meta||'';
+  s.tip.style.left=((p.x-s.viewX)/s.viewWidth*100).toFixed(3)+'%';
+  s.tip.classList.toggle('is-right',p.x>s.viewX+s.viewWidth*.68);
+  s.tip.hidden=false; s.tip.setAttribute('aria-hidden','false');
+  const scroller=svg.closest('.chart-scroll');
+  if(document.activeElement===svg&&scroller&&scroller.scrollWidth>scroller.clientWidth){
+    const px=(p.x-s.viewX)/s.viewWidth*svg.clientWidth,edge=Math.min(80,scroller.clientWidth*.22);
+    if(px<scroller.scrollLeft+edge) scroller.scrollLeft=Math.max(0,px-edge);
+    else if(px>scroller.scrollLeft+scroller.clientWidth-edge) scroller.scrollLeft=Math.min(scroller.scrollWidth-scroller.clientWidth,px-scroller.clientWidth+edge);
+  }
+  svg.dataset.chartIndex=String(i); svg.dataset.chartValue=d.aria;
+  if(announce&&s.live) s.live.textContent=d.aria;
+}
+function bindChartExplorer(svg){
+  if(svg.dataset.chartExplorerBound) return; svg.dataset.chartExplorerBound='true';
+  const fromPointer=e=>{ const s=CHART_STATE.get(svg); if(!s||!s.points.length) return; const p=chartLocalPoint(svg,e), b=s.bounds;
+    if(p.x<b.left||p.x>b.right||p.y<b.top||p.y>b.bottom){ if(document.activeElement!==svg) hideChartPoint(svg); return; }
+    showChartPoint(svg,nearestChartIndex(s.points,p.x)); };
+  svg.addEventListener('pointerenter',fromPointer);
+  svg.addEventListener('pointermove',fromPointer);
+  svg.addEventListener('pointerdown',e=>{ svg.focus({preventScroll:true}); fromPointer(e); });
+  svg.addEventListener('pointerleave',()=>{ if(document.activeElement!==svg) hideChartPoint(svg); });
+  svg.addEventListener('pointercancel',()=>{ if(document.activeElement!==svg) hideChartPoint(svg); });
+  svg.addEventListener('focus',()=>{ const s=CHART_STATE.get(svg); if(s) showChartPoint(svg,s.index==null?s.points.length-1:s.index); });
+  svg.addEventListener('blur',()=>hideChartPoint(svg));
+  svg.addEventListener('keydown',e=>{ const s=CHART_STATE.get(svg); if(!s||!s.points.length) return; const cur=s.index==null?s.points.length-1:s.index; let next=null;
+    if(e.key==='ArrowLeft') next=cur-1; else if(e.key==='ArrowRight') next=cur+1; else if(e.key==='Home') next=0; else if(e.key==='End') next=s.points.length-1;
+    else if(e.key==='PageUp') next=cur-10; else if(e.key==='PageDown') next=cur+10; else if(e.key==='Escape'){ e.preventDefault(); hideChartPoint(svg); return; }
+    if(next==null) return; e.preventDefault(); showChartPoint(svg,next,true); });
+}
+function setChartExplorer(svg,state){
+  const old=CHART_STATE.get(svg), oldDate=old&&old.points[old.index]&&old.points[old.index].row.date;
+  state.index=oldDate?state.points.findIndex(p=>p.row.date===oldDate):-1; if(state.index<0) state.index=state.points.length-1;
+  CHART_STATE.set(svg,state); svg.tabIndex=0; svg.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight Home End PageUp PageDown Escape');
+  bindChartExplorer(svg); if(document.activeElement===svg) showChartPoint(svg,state.index); else hideChartPoint(svg);
+}
+function clearChartExplorer(svg,tip,live){
+  CHART_STATE.delete(svg); svg.removeAttribute('tabindex'); svg.removeAttribute('aria-keyshortcuts'); delete svg.dataset.chartIndex; delete svg.dataset.chartValue;
+  if(tip){ tip.hidden=true; tip.setAttribute('aria-hidden','true'); } if(live) live.textContent='';
+}
 
 function fgPanelHtml(t){
   const id=t.id;
@@ -501,8 +734,11 @@ ${t.kind==='market'?`<section class="fg-data">
 </section>`:''}
 <section class="fg-data">
   <div class="sec-head"><h2>History</h2><span class="note" id="${id}-chartnote">—</span>
-    <span class="range" data-fg="${id}"><button data-days="30" class="active">30 days</button><button data-days="90">90 days</button><button data-days="365">1 year</button><button data-days="1095">3 years</button><button data-days="1825">5 years</button><button data-days="3650">10 years</button><button data-days="0">Max</button></span></div>
-  <div class="card"><svg class="fgchart" id="${id}-chart" viewBox="0 0 900 260" role="img" aria-label="Fear and Greed history"></svg><div class="muted" id="${id}-chartsub" style="font-size:.8rem;margin-top:6px">—</div></div>
+    <span class="range" data-fg="${id}" role="group" aria-label="${esc(t.tab)} Fear and Greed history range"><button type="button" data-days="30" class="active" aria-pressed="true">30 days</button><button type="button" data-days="90" aria-pressed="false">90 days</button><button type="button" data-days="365" aria-pressed="false">1 year</button><button type="button" data-days="1095" aria-pressed="false">3 years</button><button type="button" data-days="1825" aria-pressed="false">5 years</button><button type="button" data-days="3650" aria-pressed="false">10 years</button><button type="button" data-days="0" aria-pressed="false">Max</button></span></div>
+  <div class="card chart-card"><div class="chart-scroll"><div class="chart-shell chart-canvas--history">
+    <svg class="fgchart" id="${id}-chart" viewBox="0 0 900 260" role="group" aria-labelledby="${id}-chart-title ${id}-chart-desc"></svg>
+    <div class="chart-tooltip" id="${id}-charttip" role="tooltip" hidden><span class="chart-tooltip-date" data-chart-date></span><strong class="chart-tooltip-value" data-chart-value></strong><span class="chart-tooltip-meta" data-chart-meta></span></div>
+  </div></div><div class="chart-meta"><div class="muted" id="${id}-chartsub" style="font-size:.8rem">—</div><div class="chart-hint" id="${id}-charthelp">Hover · touch · focus + arrow keys</div></div><span class="sr-only" id="${id}-chartlive" aria-live="polite"></span></div>
 </section>
 <section class="fg-data">
   <div class="sec-head"><h2>How the index works</h2><span class="note" id="${id}-explnote"></span></div>
@@ -536,7 +772,7 @@ function normMarket(M,model,fetchedAt){
   const crypto=M.key==='crypto';
   const observationText=crypto?'completed daily observations':'trading-day observations';
   const disclosure=crypto
-    ? `<p class="muted" style="font-size:.82rem;margin:10px 0 0"><b>Crypto mapping:</b> BTC is the benchmark, not the entire crypto market. IEF is the US Treasury safe-haven proxy; HYG/LQD measures external US corporate-credit appetite. Breadth is a fixed, daily-rebalanced non-core basket (SOL/XRP/ADA/DOGE/BNB) versus a BTC/ETH core basket. These are analytical proxies, not investable or historical market-cap indices. Selecting today’s surviving assets in August 2026 and reconstructing them backward creates hindsight-selection and survivorship bias in historical charts and backtests. The current UTC candle is excluded. Because crypto trades seven days a week, 252 observations cover about 8.3 months, not a full calendar year; US bond components carry their latest score over weekends.</p>`
+    ? `<p class="muted" style="font-size:.82rem;margin:10px 0 0"><b>Crypto mapping:</b> the benchmark is a fixed, daily-rebalanced equal-weight return index of BTC, ETH, SOL, XRP, ADA, DOGE and BNB; each contributes one seventh of each day’s return. It is broader than BTC alone, but it is <b>not literally every coin, not market-cap weighted and not investable</b>. IEF is the US Treasury safe-haven proxy; HYG/LQD measures external US corporate-credit appetite. Breadth compares a non-core basket (SOL/XRP/ADA/DOGE/BNB) with a BTC/ETH core basket, so those assets overlap the benchmark. Selecting today’s surviving assets in August 2026 and reconstructing them backward creates hindsight-selection and survivorship bias; history also starts only when all seven assets have common Yahoo daily closes. The current UTC candle is excluded. Because crypto trades seven days a week, 252 observations cover about 8.3 months, not a full calendar year; US bond components carry their latest score over weekends.</p>`
     : `<p class="muted" style="font-size:.82rem;margin:10px 0 0">No published Fear &amp; Greed index with an open data source exists for ${esc(M.name)}${M.key==='usa'?' apart from CNN’s published US index':''}, hence the own computation. Scores are relative to the last 252 observations — after a calm period a moderate pullback can read as "extreme fear".${realised?' Volatility = realised 20-observation because this market is not configured with a matching implied-volatility series; it is backward-looking and behaves differently from a VIX-style measure.':''}${M.key==='usa'?' <b>One-off comparison (23 Aug 2026):</b> against CNN’s published index over 398 trading days this model had correlation 0.88, a mean gap of 8.9 points and read on average 6 points greedier; this is a non-reproducible reasonableness check, not proof of predictive value.':' The same construction applied to the US market had correlation 0.88 in that one-off check (see the USA tab).'}</p>`;
   const explain=`<div class="kpi"><div class="l">One shared repository model · v${esc(model.version||1)}</div></div>
     <p style="margin:8px 0 0;font-size:.9rem">Crypto, Sweden, USA, Europe and Global use the <b>same six-component engine, ${model.window}-observation percentile scoring, equal weights, directions and labels</b>. Raw market proxies differ: volatility uses an implied-volatility level where configured and benchmark realised volatility otherwise. Each raw indicator gets a causal 0–100 percentile rank within the last ${model.window} ${observationText}; volatility is inverted and the six ranks are averaged. All ${model.minComponents} components are required. There are no fitted weights and no third-party sentiment score.</p>
@@ -563,7 +799,7 @@ function renderFg(id){
     $i('title').textContent = 'Fear & Greed — '+t.tab;
     $i('error').innerHTML=`<div class="empty">Fear &amp; Greed could not be fetched${N&&N.error?' — '+esc(N.error):''}. The page retries every 10 minutes, or press ${STATIC_BUILD?'Reload snapshot':'Update'}.</div>`;
     $i('note').textContent='—'; $i('chartnote').textContent='—'; $i('label').textContent='—'; $i('sub').textContent='—'; $i('explnote').textContent='';
-    $i('explain').innerHTML = ''; $i('footer').innerHTML=''; return;
+    $i('explain').innerHTML = ''; $i('footer').innerHTML=''; clearChartExplorer($i('chart'),$i('charttip'),$i('chartlive')); return;
   }
   panel.classList.remove('nodata');
   const bands=N.bands, v=Math.max(0,Math.min(100,N.value)), b=fgBand(v,bands);
@@ -596,10 +832,11 @@ function renderFg(id){
 
 function renderFgChart(id){
   const S=FGS[id], N=S.norm, $i=s=>document.getElementById(id+'-'+s); if(!N||N.error) return;
+  const svg=$i('chart'),tip=$i('charttip'),live=$i('chartlive');
   const bands=N.bands, H=N.history.filter(r=>r.date&&isFinite(r.value)), today=todayIso();
   if(N.livePoint && (!H.length || H[H.length-1].date<today)) H.push({date:today,value:N.value,label:N.label,live:true}); // the live reading as today's point
   const end=H.length?H[H.length-1].date:today, h=S.days ? H.filter(r=>r.date>=addDays(end,-S.days)) : H; // days 0 = everything the source has
-  if(h.length<2){ $i('chart').innerHTML=''; $i('chartsub').textContent='not enough history'; $i('chartnote').textContent='—'; return; }
+  if(h.length<2){ svg.innerHTML=''; $i('chartsub').textContent='not enough history'; $i('chartnote').textContent='—'; clearChartExplorer(svg,tip,live); return; }
   const W=900,HH=260,L=44,R=16,T=14,B=30, iw=W-L-R, ih=HH-T-B;
   const ms=d=>new Date(d+'T00:00:00Z').getTime(); const t0=ms(h[0].date), t1=ms(h[h.length-1].date);
   const spanDays=Math.round((t1-t0)/864e5);
@@ -612,9 +849,16 @@ function renderFgChart(id){
     return `<text x="${X(r.date).toFixed(1)}" y="${HH-9}" text-anchor="${last?'end':i===0?'start':'middle'}">${lab(r)}</text>`; }).join('');
   const path=h.map((r,i)=>(i?'L':'M')+X(r.date).toFixed(1)+' '+Y(r.value).toFixed(1)).join(' ');
   const lr=h[n-1], f=h[0];
-  $i('chart').innerHTML = stripes+grid+xl+
-    `<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`+
-    `<circle cx="${X(lr.date).toFixed(1)}" cy="${Y(lr.value).toFixed(1)}" r="4.5" fill="${FG_COL[fgBand(lr.value,bands)]}" stroke="var(--surface)" stroke-width="1.5"/>`;
+  svg.innerHTML = `<title id="${id}-chart-title">${esc(S.tab.tab)} Fear and Greed history</title><desc id="${id}-chart-desc">Repository model score from 0 to 100 for the selected period. Hover, touch, or focus the chart and use the arrow keys to inspect exact dates and values.</desc>`+stripes+grid+xl+
+    `<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`+
+    `<circle cx="${X(lr.date).toFixed(1)}" cy="${Y(lr.value).toFixed(1)}" r="4.5" fill="${FG_COL[fgBand(lr.value,bands)]}" stroke="var(--surface)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`+
+    `<g class="chart-focus" visibility="hidden" aria-hidden="true"><line class="chart-focus-line" x1="0" x2="0" y1="${T}" y2="${HH-B}" vector-effect="non-scaling-stroke"/><circle class="chart-focus-halo" cx="0" cy="0" r="6" vector-effect="non-scaling-stroke"/><circle class="chart-focus-dot" cx="0" cy="0" r="4" vector-effect="non-scaling-stroke"/></g>`+
+    `<rect class="chart-hit" x="${L}" y="${T}" width="${iw}" height="${ih}" fill="transparent" pointer-events="all"/>`;
+  svg.setAttribute('aria-describedby',`${id}-chart-desc ${id}-charthelp`);
+  setChartExplorer(svg,{points:h.map(row=>({row,x:X(row.date),y:Y(row.value)})),bounds:{left:L,right:W-R,top:T,bottom:HH-B},viewX:0,viewWidth:W,
+    focus:svg.querySelector('.chart-focus'),line:svg.querySelector('.chart-focus-line'),halo:svg.querySelector('.chart-focus-halo'),dot:svg.querySelector('.chart-focus-dot'),tip,live,
+    describe:row=>{ const date=row.live?'Today · '+fmtDate(row.date):fmtDate(row.date),label=fgLabel(row.label,row.value,bands),value=fmt(row.value,2)+' · '+label;
+      const meta=row.live?'Intraday reading':row.n!=null&&N.total?`${row.n} of ${N.total} indicators`:'Repository model'; return {date,value,meta,aria:`${date}, score ${fmt(row.value,2)}, ${label}${meta?' · '+meta:''}`}; }});
   const vals=h.map(r=>r.value), mn=Math.min(...vals), mx=Math.max(...vals), d=lr.value-f.value;
   $i('chartnote').textContent=`${fmtDate(f.date)} – ${lr.live?'today':fmtDate(lr.date)} · ${spanDays>400 ? (spanDays/365.25).toFixed(1)+' years' : spanDays+' days'} · ${n} points`;
   // older stretches where not all indicator series existed yet (e.g. a credit ETF launched later) — the index was the mean of the ones available
@@ -624,7 +868,7 @@ function renderFgChart(id){
 }
 $('#fgPanels').addEventListener('click',e=>{ const b=e.target.closest('.range[data-fg] button[data-days]'); if(!b) return;
   const id=b.closest('.range').dataset.fg; FGS[id].days=Number(b.dataset.days);
-  b.closest('.range').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b)); renderFgChart(id); });
+  b.closest('.range').querySelectorAll('button').forEach(x=>{ const on=x===b; x.classList.toggle('active',on); x.setAttribute('aria-pressed',String(on)); }); renderFgChart(id); });
 
 // header KPIs for the active Fear & Greed tab
 function updateFgHeader(id){
@@ -650,6 +894,7 @@ function showTab(id){
   document.title = id==='pabrai' ? 'Pabrai — Investments' : `Fear & Greed ${FGS[id].tab.tab} — Investments`;
   const want=TAB_HASH[id]; if(location.hash!==want) history.replaceState(null,'',location.pathname+location.search+want);
   if(FGS[id]) updateFgHeader(id);
+  STATUS_RENDER();
 }
 $('#tabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-tab]'); if(b) showTab(b.dataset.tab); });
 $('#tabs').addEventListener('keydown',e=>{
@@ -661,7 +906,7 @@ window.addEventListener('hashchange',()=>showTab(tabFromHash()));
 showTab(tabFromHash());
 
 $('#navRange').addEventListener('click',e=>{ const b=e.target.closest('button[data-days]'); if(!b) return; NAV_DAYS=Number(b.dataset.days);
-  document.querySelectorAll('#navRange button').forEach(x=>x.classList.toggle('active',x===b)); renderNavSpark(); });
+  document.querySelectorAll('#navRange button').forEach(x=>{ const on=x===b; x.classList.toggle('active',on); x.setAttribute('aria-pressed',String(on)); }); renderNavSpark(); });
 $('#btnRefresh').addEventListener('click',()=>load('manual'));
 load();
 setInterval(()=>load('auto'), 10*60*1000); // every 10 minutes

@@ -1,0 +1,27 @@
+{
+  "frozenAt": "2026-08-25T18:12:44.882Z",
+  "status": "FROZEN_BEFORE_CANONICAL_V3_PREDICTIVE_AND_STRATEGY_OUTCOME",
+  "schemaVersion": 11,
+  "modelId": "investments-unified-fear-greed-v3-shadow-absolute-vol-normalized-v1",
+  "sourceFiles": {
+    "research/FEAR_GREED_V3_EVALUATION_PROTOCOL.md": "e8e03c9c1dae578d3f652f222646dbef8a9294dd08edff0dae8e2f5853fb1e84",
+    "research/fear_greed_v3_evaluation.js": "0d01915129a63f7ce11717d349aea51da630d54c9af5f999d1b09ba9f46cfc22",
+    "test/fear_greed_v3_evaluation.test.js": "a00e11c12c5fa66e18441211eaa66f12afeb5d9e33e92a5e27cd4dcf0feddb8c"
+  },
+  "dependencyFiles": {
+    "research/FEAR_GREED_V3_SHADOW_FREEZE.json": "ce4a4ff5620a919b0c63dd1b695521b163729bb34e7f5d32951f5682ef5e297f",
+    "research/fear_greed_v3_shadow.js": "8527b4e4f0b435f9df078bb90fdd973631911783eb9994e1db83760e0731ca5e",
+    "research/fear_greed_model_search.js": "b7cebf64cb0c1db55c22a18e3f41877db67f099ec9484435fae1be0755e93a0a",
+    "research/fear_greed_core_overlay.js": "2779ba88e1999c484364d6975add02a78719248f367259782d3ce8b48fb36de0"
+  },
+  "input": {
+    "path": "research/local-artifacts/v2-validation-final/inputs/fear-greed-v2-validation-input-2026-08-25T12-44-22Z.json",
+    "sha256": "ac025aec6096147aeabba61f270e2fdd9e1032068b10c474fea73cbf4999444d",
+    "holdoutStatus": "REUSED_DEVELOPMENT_DATA_NOT_CONFIRMATORY"
+  },
+  "preOutcomeChecks": {
+    "syntheticTests": "4/4 passed",
+    "canonicalPredictiveOutcomeViewed": false,
+    "canonicalStrategyOutcomeViewed": false
+  }
+}

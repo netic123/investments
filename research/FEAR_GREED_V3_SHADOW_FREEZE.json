@@ -1,0 +1,23 @@
+{
+  "frozenAt": "2026-08-25T18:00:27.720Z",
+  "status": "FROZEN_BEFORE_PREDICTIVE_OR_STRATEGY_EVALUATION",
+  "modelId": "investments-unified-fear-greed-v3-shadow-absolute-vol-normalized-v1",
+  "sourceFiles": {
+    "research/FEAR_GREED_V3_SHADOW_PROTOCOL.md": "c2b2e8fe811e2c01b8affc3ae6c9a81c6e398fb3a6d243f7d383f2fd390ef9c2",
+    "research/fear_greed_v3_shadow.js": "8527b4e4f0b435f9df078bb90fdd973631911783eb9994e1db83760e0731ca5e",
+    "test/fear_greed_v3_shadow.test.js": "bfc5926f72702dba98ac6fe3c9fc1898bb34520474aea74b87fa789f6d82437e"
+  },
+  "developmentInput": {
+    "path": "research/local-artifacts/v2-validation-final/inputs/fear-greed-v2-validation-input-2026-08-25T12-44-22Z.json",
+    "sha256": "ac025aec6096147aeabba61f270e2fdd9e1032068b10c474fea73cbf4999444d",
+    "lastObservation": "2026-08-24",
+    "holdoutStatus": "REUSED_DEVELOPMENT_DATA_NOT_CONFIRMATORY"
+  },
+  "prePredictiveChecks": {
+    "dedicatedTests": "8/8 passed",
+    "repositoryTests": "97/97 passed",
+    "descriptiveReplayViewed": true,
+    "predictiveOutcomeViewed": false,
+    "strategyOutcomeViewed": false
+  }
+}
