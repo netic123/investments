@@ -71,6 +71,25 @@ at base cost on the holdout with roughly half the drawdown but failed the
 placebos. Under its own stop rule the study is closed; it is the seventh
 rule family falsified against this endpoint.
 
+The extended diagnostic battery
+([`fear_greed_extended_battery.js`](fear_greed_extended_battery.js), run
+2026-08-27, adversarially reviewed before its first real-data run) went
+further: fear-entry/time-exit, monthly-cadence extremes, long/short at
+extremes, continuous exposure mapping, cross-market signals, a world
+composite score, and an episode-aware, Benjamini–Hochberg-corrected event
+study. Crypto, USA, Global and Sweden produced no winner in any family.
+Europe alone showed a residual contrarian effect: sell at displayed
+integer ≥ 85, buy back ≤ 35 on a monthly cadence — direction robust
+across all 21 cadence anchors (20/21 above 1) but magnitude anchor-lucky
+(median 1.16×, month-end variant 1.18–1.20× against the dividend-less
+`^STOXX` price index; roughly 1.10–1.15× after an approximate
+total-return correction), with max-of-family placebo p = 0.01 and
+uncorrected fear-day forward-return support that does not survive
+multiplicity. That candidate — and nothing else from the battery — is
+preregistered for prospective validation in
+[`FEAR_GREED_EUROPE_MONTHLY_CONTRARIAN_LOCKBOX_PROTOCOL.md`](FEAR_GREED_EUROPE_MONTHLY_CONTRARIAN_LOCKBOX_PROTOCOL.md)
+(status `PREREGISTRATION_CANDIDATE_NOT_ACTIVATED`).
+
 The source and history audit is in
 [`DATA_SOURCE_AUDIT_2026-08-25.md`](DATA_SOURCE_AUDIT_2026-08-25.md). It
 separates real market identity, total-return status, currency, investability,
