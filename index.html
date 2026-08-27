@@ -274,7 +274,7 @@ footer p{margin:0 0 .5em}
     </div>
     <div class="card">
       <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px"><div class="kpi"><div class="l">NAV history</div></div>
-        <span class="range" id="navRange" role="group" aria-label="NAV history range"><button type="button" data-days="90" class="active" aria-pressed="true">90 days</button><button type="button" data-days="365" aria-pressed="false">1 year</button><button type="button" data-days="1825" aria-pressed="false">5 years</button><button type="button" data-days="3650" aria-pressed="false">10 years</button><button type="button" data-days="0" aria-pressed="false">Since start</button></span></div>
+        <span class="range" id="navRange" role="group" aria-label="NAV history range"><button type="button" data-days="0" class="active" aria-pressed="true">Since start</button></span></div>
       <div class="chart-shell chart-shell--spark">
         <svg class="spark" id="spark" viewBox="0 0 300 76" preserveAspectRatio="none" role="group" aria-labelledby="spark-title spark-desc"></svg>
         <div class="chart-tooltip" id="spark-tip" role="tooltip" hidden><span class="chart-tooltip-date" data-chart-date></span><strong class="chart-tooltip-value" data-chart-value></strong><span class="chart-tooltip-meta" data-chart-meta></span></div>
@@ -564,7 +564,7 @@ function renderNav(N){
   NAV_DATE=N.date||null; NAV_DATA=N; if(LAST_H&&LAST_H.latest) $('#fileDate').innerHTML = fileDateLine(LAST_H, NAV_DATA);
   renderNavSpark();
 }
-let NAV_DATA=null, NAV_DAYS=90; // the NAV chart: 90 days / 1, 5 or 10 years / since inception (the fund's full daily file, price only)
+let NAV_DATA=null, NAV_DAYS=0; // the NAV chart always shows the fund's full life — lifetime history only, no short-term windows
 function renderNavSpark(){
   const N=NAV_DATA; if(!N) return;
   const svg=$('#spark'), tip=$('#spark-tip'), live=$('#spark-live');
@@ -629,7 +629,7 @@ const FG_TABS=[
   {id:'europe',tab:'Europe',forName:'the European stock market',hash:'#europe',kind:'market',market:'europe',bands:MARKET_BANDS},
   {id:'global',tab:'Global',forName:'the global stock market',hash:'#global',kind:'market',market:'global',bands:MARKET_BANDS},
 ];
-const FGS={}; FG_TABS.forEach(t=>{ FGS[t.id]={tab:t,norm:null,days:1825}; }); // 5-year minimum view: sentiment history is only meaningful on long horizons
+const FGS={}; FG_TABS.forEach(t=>{ FGS[t.id]={tab:t,norm:null,days:0}; }); // lifetime history only — short-term windows deliberately removed
 const FG_LABEL={'extreme fear':'Extreme Fear',fear:'Fear',neutral:'Neutral',greed:'Greed','extreme greed':'Extreme Greed'};
 const FG_COL=['var(--neg)','var(--neg)','var(--warn)','var(--pos)','var(--pos)'], FG_OP=[.9,.45,.8,.45,.9];
 const fgBand=(v,bands)=>{ if(v==null||!isFinite(v)) return -1; const s=Math.round(v); const i=bands.findIndex(([lo,hi])=>s>=lo&&s<=hi); return i>=0?i:(s<0?0:bands.length-1); };
@@ -740,7 +740,7 @@ ${t.kind==='market'?`<section class="fg-data">
 </section>`:''}
 <section class="fg-data">
   <div class="sec-head"><h2>History</h2><span class="note" id="${id}-chartnote">—</span>
-    <span class="range" data-fg="${id}" role="group" aria-label="${esc(t.tab)} Fear and Greed history range"><button type="button" data-days="1825" class="active" aria-pressed="true">5 years</button><button type="button" data-days="3650" aria-pressed="false">10 years</button><button type="button" data-days="0" aria-pressed="false">Max</button></span></div>
+    <span class="range" data-fg="${id}" role="group" aria-label="${esc(t.tab)} Fear and Greed history range"><button type="button" data-days="0" class="active" aria-pressed="true">Max — lifetime history</button></span></div>
   <div class="card chart-card"><div class="chart-scroll"><div class="chart-shell chart-canvas--history">
     <svg class="fgchart" id="${id}-chart" viewBox="0 0 900 260" role="group" aria-labelledby="${id}-chart-title ${id}-chart-desc"></svg>
     <div class="chart-tooltip" id="${id}-charttip" role="tooltip" hidden><span class="chart-tooltip-date" data-chart-date></span><strong class="chart-tooltip-value" data-chart-value></strong><span class="chart-tooltip-meta" data-chart-meta></span></div>
