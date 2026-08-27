@@ -867,7 +867,14 @@ function renderFg(id){
   panel.classList.remove('nodata');
   const bands=N.bands, v=Math.max(0,Math.min(100,N.value)), b=fgBand(v,bands);
   $i('title').textContent=N.title; $i('note').innerHTML=N.note;
-  $i('error').innerHTML=N.callouts.map(c=>`<div class="callout">${c}</div>`).join('');
+  // Extreme readings double as explicit action warnings: extreme fear = BUY,
+  // extreme greed = SELL. The band name stays visible under the action word,
+  // and the callout points at the signal card for each tab's tested thresholds.
+  const action = b===0 ? {word:'BUY', color:'var(--pos)'} : b===bands.length-1 ? {word:'SELL', color:'var(--neg)'} : null;
+  const actionCallout = action
+    ? [`<b style="color:${action.color}">${action.word} warning</b> — the score is in ${esc(N.label)} territory (${fmt(v)}). Mechanical extremes warning; each tab's tested thresholds and their evidence are on the signal card below. Not investment advice.`]
+    : [];
+  $i('error').innerHTML=actionCallout.concat(N.callouts).map(c=>`<div class="callout">${c}</div>`).join('');
   // gauge: five coloured bands, marker on the arc, the value in the middle
   const seg=bands.map(([lo,hi],i)=>{ const e=Math.min(100,hi+1); const [x1,y1]=arcPt(lo+0.6,80),[x2,y2]=arcPt(e-0.6,80);
     return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}A80 80 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${FG_COL[i]}" stroke-opacity="${FG_OP[i]}" stroke-width="16"/>`; }).join('');
@@ -876,7 +883,10 @@ function renderFg(id){
     `<circle cx="${dx.toFixed(1)}" cy="${dy.toFixed(1)}" r="6.5" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/>`+
     `<text class="n" x="100" y="98" text-anchor="middle">${fmt(v)}</text>`+
     `<text class="t" x="4" y="121" text-anchor="start">0 · fear</text><text class="t" x="100" y="121" text-anchor="middle">50</text><text class="t" x="196" y="121" text-anchor="end">greed · 100</text>`;
-  $i('label').innerHTML=`<span class="fg-c${b}">${esc(N.label)}</span>`; $i('sub').innerHTML=N.sub;
+  $i('label').innerHTML = action
+    ? `<span style="display:block;color:${action.color};font-size:1.3em;letter-spacing:.08em;font-weight:700">${action.word}</span><span class="fg-c${b}" style="font-size:.72em;opacity:.85">${esc(N.label)}</span>`
+    : `<span class="fg-c${b}">${esc(N.label)}</span>`;
+  $i('sub').innerHTML=N.sub;
   const stat=(l,r)=> !r ? `<div><div class="l">${l}</div><div class="v">—</div><div class="s">&nbsp;</div></div>`
     : `<div><div class="l">${l}</div><div class="v fg-c${fgBand(r.value,bands)}">${fmt(r.value)}</div><div class="s">${esc(r.label)} · ${r.live?'today':fmtDate(r.date)}</div></div>`;
   $i('stats').innerHTML=N.stats.map(([l,r])=>stat(l,r)).join('');
@@ -889,7 +899,7 @@ function renderFg(id){
       <td class="fg-c${fgBand(c.score,bands)}">${c.label?esc(c.label):'—'}${c.lag?' <span class="pill">as of '+dayMon(c.asOf)+'</span>':''}${c.stale?' <span class="pill no">fallback data</span>':''}</td>
       <td class="mono" style="font-size:.78rem">${c.symbols.map(esc).join(' / ')}</td></tr>`).join('');
   }
-  $i('bands').innerHTML=bands.map(([lo,hi,name],i)=>`<li><span class="swatch" style="background:${FG_COL[i]};opacity:${FG_OP[i]}"></span><span class="r">${lo}–${hi}</span><span>${esc(name)}</span>${i===b?'<span class="now">now</span>':''}</li>`).join('');
+  $i('bands').innerHTML=bands.map(([lo,hi,name],i)=>`<li><span class="swatch" style="background:${FG_COL[i]};opacity:${FG_OP[i]}"></span><span class="r">${lo}–${hi}</span><span>${esc(name)}${i===0?' <span class="muted" style="font-size:.85em">· BUY warning zone</span>':''}${i===bands.length-1?' <span class="muted" style="font-size:.85em">· SELL warning zone</span>':''}</span>${i===b?'<span class="now">now</span>':''}</li>`).join('');
   $i('explain').innerHTML=N.explain; $i('explnote').textContent=N.explnote; $i('footer').innerHTML=N.footer;
   renderFgChart(id);
 }
