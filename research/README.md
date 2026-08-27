@@ -90,6 +90,21 @@ preregistered for prospective validation in
 [`FEAR_GREED_EUROPE_MONTHLY_CONTRARIAN_LOCKBOX_PROTOCOL.md`](FEAR_GREED_EUROPE_MONTHLY_CONTRARIAN_LOCKBOX_PROTOCOL.md)
 (status `PREREGISTRATION_CANDIDATE_NOT_ACTIVATED`).
 
+Finally, [`FG_EXTREMES_RETRO_V1.md`](FG_EXTREMES_RETRO_V1.md) /
+[`fear_greed_extremes_retro_model.js`](fear_greed_extremes_retro_model.js)
+(frozen 2026-08-27) records the literal best-case answer to "sell at extreme
+greed, buy at extreme fear, beat the index in every tab": with score
+smoothing, per-tab thresholds/cadence and the audited T-bill cash yield, the
+rule beats index buy-and-hold in all five tabs retrospectively (crypto
+1.355×, sweden 1.158×, usa 1.039×, europe 1.744×, global 1.236×). Its status
+line is deliberately blunt —
+`RETROSPECTIVE_MINED_MODEL_NOT_PREDICTIVE_NOT_VALIDATED` — because the
+parameters are the best of 1,458 configurations per tab on exposed history,
+the edges rest on 2–8 trades, no shared configuration wins all five tabs
+(~15,000 tried, best 3/5), and a single world-score rule on the combined
+portfolio wins 0/1,458. The self-verifying runner reproduces every frozen
+number or refuses to report.
+
 The source and history audit is in
 [`DATA_SOURCE_AUDIT_2026-08-25.md`](DATA_SOURCE_AUDIT_2026-08-25.md). It
 separates real market identity, total-return status, currency, investability,
