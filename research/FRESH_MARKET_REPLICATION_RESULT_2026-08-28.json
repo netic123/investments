@@ -1,0 +1,50 @@
+{
+  "protocol": "FEAR_GREED_FRESH_MARKET_REPLICATION_PROTOCOL.md",
+  "protocolSha256": "f01e5218a58850d3b4c9b2c20dcf6aa90920e80ad0b473b298f93e381a471b24",
+  "ranAt": "2026-08-27T22:41:00.985Z",
+  "rule": {
+    "fear": 35,
+    "greed": 85,
+    "cadence": "month-end",
+    "baseCost": 0.001,
+    "stressCost": 0.0025,
+    "cash": "DTB3-91D-ACCRUAL-V2"
+  },
+  "verdict": "REPLICATION_FAILED",
+  "markets": {
+    "japan": {
+      "window": "2008-10-22->2026-08-27",
+      "bars": 4489,
+      "indexBuyAndHold": 3.8691230982700975,
+      "ratioBase": 1.0801464671471688,
+      "ratioStress": 1.0736736975428682,
+      "trades": 4,
+      "exposure": 0.9527629233511586,
+      "placeboFiniteSampleP": 0.15,
+      "placeboMedian": 0.9665601430661006
+    },
+    "uk": {
+      "window": "2012-11-21->2026-08-27",
+      "bars": 3461,
+      "indexBuyAndHold": 2.446880094542619,
+      "ratioBase": 0.9367867906499356,
+      "ratioStress": 0.9339757290965913,
+      "trades": 2,
+      "exposure": 0.9635838150289018,
+      "placeboFiniteSampleP": 0.59,
+      "placeboMedian": 0.9597301132186977
+    },
+    "em": {
+      "window": "2012-06-14->2026-08-27",
+      "bars": 3571,
+      "indexBuyAndHold": 2.413091307445868,
+      "ratioBase": 0.9999999999999963,
+      "ratioStress": 0.9999999999999963,
+      "trades": 0,
+      "exposure": 1,
+      "placeboFiniteSampleP": 0.52,
+      "placeboMedian": 0.9999999999999963
+    }
+  },
+  "interpretation": "Quasi-out-of-sample spatial replication on unmined markets; retrospective current-vintage data; not confirmatory in the lockbox sense."
+}

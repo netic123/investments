@@ -95,7 +95,15 @@ append-only collector EUROPE-LOCKBOX-V1
 one hash-chained entry per weekday with the production europe score, the
 accumulating XSX6.DE total-return instrument and DTB3 cash, toward the
 candidate's ≥ 60 prospective monthly decisions. The full five-market
-lockbox design remains `NOT_ACTIVATED`.
+lockbox design remains `NOT_ACTIVATED`. **Fresh-market replication
+(2026-08-28, preregistered one-shot,
+[`FEAR_GREED_FRESH_MARKET_REPLICATION_PROTOCOL.md`](FEAR_GREED_FRESH_MARKET_REPLICATION_PROTOCOL.md)):
+REPLICATION_FAILED** — the frozen Europe rule applied unmodified to three
+never-searched markets (EWJ, EWU, EEM; investable total-return ETFs,
+T-bill cash) won only in Japan (1.080×, placebo p 0.15), lost in the UK
+(0.937×) and never triggered in EM (0 trades). Per the preregistered
+interpretation this materially weakens the Europe candidate's prior; the
+lockbox remains its definitive live test.
 
 Finally, [`FG_EXTREMES_RETRO_V1.md`](FG_EXTREMES_RETRO_V1.md) /
 [`fear_greed_extremes_retro_model.js`](fear_greed_extremes_retro_model.js)
