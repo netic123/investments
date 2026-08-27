@@ -62,6 +62,23 @@ CI, and reports progress toward the candidate's ≥ 60 completed monthly decisio
 7. **Timing**: entries record each series' own as-of dates; the europe score recorded at
    22:30 UTC is that day's completed Xetra close observation.
 
+## Known deviations and identity semantics (post-activation audit, 2026-08-28)
+
+- **Entry 2026-08-27's final instrument bar is an intraday snapshot.** The activation-day
+  collection ran manually at 14:48 UTC, 42 minutes before the Xetra close; it recorded
+  XSX6.DE at 169.80 while the official session close was 170.08, and Yahoo's response was
+  also missing the 2026-08-26 bar at that moment. Under revision-zero-primary those first
+  recorded values stay primary; later entries carry the official closes for the same dates,
+  so the verifier's provider-revision warnings for 2026-08-26/27 are expected and explained
+  here, not signs of tampering. The collector now records **completed sessions only**
+  (bars strictly before the entry's own UTC date), which prevents both defect classes; the
+  scheduled 22:30 UTC runs were never exposed to them.
+- **GENESIS identity hashes are activation-time snapshots.** `configSha256` in GENESIS pins
+  data/config.json as it was at activation (2026-08-27T14:47Z); the config legitimately
+  evolved 33 minutes later (the additive ustech market). Do not re-verify GENESIS pins
+  against the live tree: model-identity drift is tracked per-entry instead, because every
+  daily entry embeds the then-current marketfg.js and config.json hashes.
+
 ## What this store can and cannot show
 
 It can, after ≥ 60 completed prospective months, answer the candidate protocol's primary

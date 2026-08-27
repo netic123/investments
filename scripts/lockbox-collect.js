@@ -202,6 +202,11 @@ async function collect() {
     throw new Error(`market model failed: ${JSON.stringify(marketfgResult.failed || {})}`);
   }
   const [instrument, cash] = await Promise.all([fetchInstrument(), fetchCash()]);
+  // Completed sessions only: the entry's own UTC date may still be trading (or
+  // carry a partial Yahoo bar), so it is sealed by a LATER entry, never this
+  // one. Entry 2026-08-27 predates this rule — see the activation record.
+  instrument.bars = instrument.bars.filter(bar => bar.date < entryDate);
+  if (instrument.bars.length < 5) throw new Error('too few completed instrument bars after excluding the current session');
   const entry = buildEntry({
     entryDate, marketfgResult, instrument, cash, chain,
     identity: modelIdentity(), collectedAt: new Date().toISOString(),
