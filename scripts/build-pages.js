@@ -113,9 +113,18 @@ function validateSnapshot(data, publicPositions) {
   assert(Array.isArray(holdings.snapshots) && holdings.snapshots.length >= 1 && holdings.snapshots.some(snapshot => snapshot.date === holdings.latest.date), 'durable holdings history is missing from the API contract');
   assert(nav && typeof nav.date === 'string' && Array.isArray(nav.history) && nav.history.length > 1, 'NAV data is incomplete');
   assert(Number.isFinite(nav.nav) && Number.isFinite(nav.sharesOut) && nav.sharesOut > 0, 'NAV reconciliation fields are missing');
-  assert(Math.abs(holdings.latest.sharesOutstanding - nav.sharesOut) < 0.5, 'holdings and NAV SharesOutstanding do not match');
+  // Holdings and NAV files can legitimately disagree for a few hours after a
+  // creation/redemption, because the fund updates them at different times. The
+  // build publishes anyway; index.html computes the same check client-side and
+  // then labels the pricing date as "not asserted" (the unverified state the
+  // local app shows). The state is also recorded in api/build.json.
   const expectedHoldingsNetAssets = Math.round(nav.nav * 100) / 100 * nav.sharesOut;
-  assert(Math.abs(holdings.latest.netAssets - expectedHoldingsNetAssets) <= Math.max(1, Math.abs(holdings.latest.netAssets) * 0.00001), 'holdings NetAssets do not reconcile to the current official NAV receipt');
+  data.navReconciled =
+    Math.abs(holdings.latest.sharesOutstanding - nav.sharesOut) < 0.5 &&
+    Math.abs(holdings.latest.netAssets - expectedHoldingsNetAssets) <= Math.max(1, Math.abs(holdings.latest.netAssets) * 0.00001);
+  if (!data.navReconciled) {
+    process.stderr.write('WARNING: holdings and NAV do not reconcile yet; publishing with the unverified pricing-date label.\n');
+  }
   const officialDalal = !!(dalal && dalal.ok === true && dalal.sourceStatus === 'official SEC verified' && !dalal.fetchError);
   const labelledFallback = !!(dalal && dalal.ok === false && dalal.fallback === true && dalal.sourceStatus === 'manual fallback — SEC verification unavailable' && dalal.fetchError);
   assert(officialDalal || labelledFallback, 'Dalal Street 13F is neither official live data nor the explicitly labelled fallback');
@@ -322,6 +331,9 @@ async function main() {
       refreshTrigger: 'push to main, manual dispatch, or daily scheduled build',
       carriedSnapshotCount: carriedSnapshots.length,
       dalalVerification: data.dalal.ok ? 'official SEC fetched and validated' : `labelled manual fallback verified ${data.dalal.manualVerifiedAt}; live SEC check failed`,
+      navReconciliation: data.navReconciled
+        ? 'holdings NetAssets and SharesOutstanding reconcile to the official NAV receipt'
+        : 'holdings and NAV do not reconcile yet; the page labels the pricing date as not asserted',
     };
 
     prepareOutput();
