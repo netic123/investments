@@ -12,7 +12,10 @@ Public site: https://netic123.github.io/investments/
 Every push to main — including a merged pull request — plus a manual dispatch and the daily 09:15 UTC schedule
 runs .github/workflows/pages.yml. The workflow starts the local server temporarily on the GitHub runner, fetches
 and validates the seven public API responses, and
-publishes only _site/index.html, _site/.nojekyll and _site/api/*.json. GitHub Pages is static: it does not keep server.js
+publishes only _site/index.html, _site/.nojekyll and _site/api/*.json. When the fund's holdings
+and NAV files disagree (normal for a few hours after a share creation/redemption), the build still
+publishes; the page then labels the pricing date as not asserted, and api/build.json records the
+non-reconciled state. GitHub Pages is static: it does not keep server.js
 running. The public values therefore reflect the timestamp shown in the page header and change on the next
 successful deployment. "Reload snapshot" only checks whether that newer deployment is available. Each scheduled
 build imports the previously published WAGN snapshots before adding the newest receipt, so history survives static
