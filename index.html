@@ -828,7 +828,9 @@ function renderRuleCard(id,N,$i){
   const spec=RULE_SPECS[id], el=$i('rule');
   if(!el) return;
   if(!spec){
-    el.innerHTML='<div class="muted" style="font-size:.85rem">No tested rule for this tab yet — thresholds exist only for tabs whose rule was backtested and frozen (research/FG_EXTREMES_RETRO_V1.md). The score above is descriptive.</div>';
+    el.innerHTML = id==='ustech'
+      ? '<div class="muted" style="font-size:.85rem"><b>No rule — deliberately.</b> Backtested 27 Aug 2026: across 1,458 tested threshold/smoothing/cadence configurations (2008–2026, XLK total return, T-bill cash, costs), only 6 beat buy-and-hold at all and the best (+0.4%/yr) performed below the median of the same search run on shuffled, informationless scores (placebo p = 0.52). For US tech the score carries no tradeable timing signal; the gauge above is descriptive only.</div>'
+      : '<div class="muted" style="font-size:.85rem">No tested rule for this tab yet — thresholds exist only for tabs whose rule was backtested and frozen (research/FG_EXTREMES_RETRO_V1.md). The score above is descriptive.</div>';
     $i('rulenote').textContent='—';
     return;
   }
