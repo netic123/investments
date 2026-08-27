@@ -231,7 +231,7 @@ test('config exposes one model identity and five market mappings', () => {
   assert.equal(config.marketFearGreed.modelId, 'investments-unified-fear-greed');
   assert.equal(config.marketFearGreed.version, 2);
   assert.equal(config.marketFearGreed.minComponents, 6);
-  assert.deepEqual(Object.keys(config.marketFearGreed.markets).sort(), ['crypto', 'europe', 'global', 'sweden', 'usa']);
+  assert.deepEqual(Object.keys(config.marketFearGreed.markets).sort(), ['crypto', 'europe', 'global', 'sweden', 'usa', 'ustech']);
   assert.deepEqual(config.marketFearGreed.markets.crypto.symbols.index, {
     id: 'CRYPTO-BROAD-EW',
     name: 'Broad crypto equal-weight basket',

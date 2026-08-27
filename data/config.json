@@ -57,6 +57,7 @@
       },
       "sweden": { "name": "Sweden", "currency": "SEK", "symbols": { "index": "^OMXSBGI", "vol": null,  "bond": "XACT-OBLIGATION.ST", "hy": "0P0001C87Y.ST", "ig": "0P00000KIW.ST",      "small": "XACT-SMABOLAG.ST", "large": "XACT-SVERIGE.ST" } },
       "usa":    { "name": "USA",     "currency": "USD", "symbols": { "index": "SPY",     "vol": "^VIX", "bond": "IEF",                "hy": "HYG",           "ig": "LQD",                "small": "IWM",              "large": null } },
+      "ustech": { "name": "US Tech", "currency": "USD", "symbols": { "index": "XLK",     "vol": "^VXN", "bond": "IEF",                "hy": "HYG",           "ig": "LQD",                "small": "RSPT",             "large": null } },
       "europe": { "name": "Europe",  "currency": "EUR", "symbols": { "index": "^STOXX",  "vol": null,   "bond": "SXRQ.DE",            "hy": "IHYG.L",        "ig": "IEAC.L",             "small": "EXSE.DE",          "large": "EXSA.DE" } },
       "global": { "name": "Global", "currency": "USD", "symbols": { "index": "ACWI",    "vol": "^VIX", "bond": "IEF",                "hy": "HYLD.L",        "ig": "CORP.L",             "small": "WSML.L",           "large": "IWDA.L" } }
     }
