@@ -29,6 +29,7 @@ const EXPECTED_MARKET_SYMBOLS = {
   },
   sweden: { index: '^OMXSBGI', vol: null, bond: 'XACT-OBLIGATION.ST', hy: '0P0001C87Y.ST', ig: '0P00000KIW.ST', small: 'XACT-SMABOLAG.ST', large: 'XACT-SVERIGE.ST' },
   usa: { index: 'SPY', vol: '^VIX', bond: 'IEF', hy: 'HYG', ig: 'LQD', small: 'IWM', large: null },
+  ustech: { index: 'XLK', vol: '^VXN', bond: 'IEF', hy: 'HYG', ig: 'LQD', small: 'RSPT', large: null },
   europe: { index: '^STOXX', vol: null, bond: 'SXRQ.DE', hy: 'IHYG.L', ig: 'IEAC.L', small: 'EXSE.DE', large: 'EXSA.DE' },
   global: { index: 'ACWI', vol: '^VIX', bond: 'IEF', hy: 'HYLD.L', ig: 'CORP.L', small: 'WSML.L', large: 'IWDA.L' },
 };
@@ -92,9 +93,9 @@ function validateSnapshot(data, publicPositions) {
   assert(!Object.prototype.hasOwnProperty.call(config, 'cryptoFearGreed'), 'retired separate crypto model config is still present');
   assert(config.marketFearGreed && config.marketFearGreed.modelId === 'investments-unified-fear-greed' && config.marketFearGreed.version === 2, 'unified model config is missing or has drifted');
   assert(config.marketFearGreed.window === 252 && config.marketFearGreed.minWindowPoints === 126 && config.marketFearGreed.minComponents === 6 && config.marketFearGreed.fillDays === 7, 'unified model parameters have drifted');
-  assert(JSON.stringify(Object.keys(config.marketFearGreed.markets || {}).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa']), 'unified config must contain exactly five markets');
+  assert(JSON.stringify(Object.keys(config.marketFearGreed.markets || {}).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa', 'ustech']), 'unified config must contain exactly the six configured markets');
   assert(config.marketFearGreed.markets.crypto.barPolicy === 'completed-utc-date', 'Crypto completed-bar policy has drifted');
-  for (const name of ['crypto', 'sweden', 'usa', 'europe', 'global']) assertMarketMapping(name, config.marketFearGreed.markets[name].symbols, 'config');
+  for (const name of ['crypto', 'sweden', 'usa', 'ustech', 'europe', 'global']) assertMarketMapping(name, config.marketFearGreed.markets[name].symbols, 'config');
 
   assert(holdings && holdings.ok === true && !holdings.fetchError, 'official holdings source was not fetched and accepted');
   assert(holdings.source && holdings.source.status === 'verified' && holdings.source.url === config.sources.holdings, 'holdings source is not the configured official WAGN feed');
@@ -144,9 +145,9 @@ function validateSnapshot(data, publicPositions) {
   assert(marketfg && marketfg.ok === true && marketfg.markets && typeof marketfg.markets === 'object', 'market Fear & Greed is invalid');
   assert(marketfg.model && marketfg.model.id === 'investments-unified-fear-greed' && marketfg.model.version === 2 && marketfg.model.owner === 'repository', 'market result does not identify the unified repository model');
   assert(marketfg.model.window === 252 && marketfg.model.minWindowPoints === 126 && marketfg.model.minComponents === 6 && marketfg.model.fillDays === 7, 'unified result parameters have drifted');
-  assert(JSON.stringify(Object.keys(marketfg.markets).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa']), 'unified model must return exactly the five configured markets');
+  assert(JSON.stringify(Object.keys(marketfg.markets).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa', 'ustech']), 'unified model must return exactly the six configured markets');
   const componentKeys = ['breadth', 'credit', 'momentum', 'safeHaven', 'strength', 'volatility'];
-  for (const name of ['crypto', 'sweden', 'usa', 'europe', 'global']) {
+  for (const name of ['crypto', 'sweden', 'usa', 'ustech', 'europe', 'global']) {
     const market = marketfg.markets[name];
     assert(market && Number.isFinite(market.score) && market.score >= 0 && market.score <= 100, `market Fear & Greed is missing ${name}`);
     assert(Array.isArray(market.history) && market.history.length > 1, `market Fear & Greed history is incomplete for ${name}`);

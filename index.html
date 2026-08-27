@@ -216,14 +216,14 @@ footer p{margin:0 0 .5em}
   <div>
     <h1>Investments</h1>
     <div class="filenote pabrai-only" id="fileDate" data-header-tabs="pabrai">—</div>
-    <div class="filenote fg-only" id="fgFileNote" data-header-tabs="crypto sweden usa europe global" hidden>—</div>
+    <div class="filenote fg-only" id="fgFileNote" data-header-tabs="crypto sweden usa ustech europe global" hidden>—</div>
   </div>
   <div class="kpis pabrai-only" data-header-tabs="pabrai">
     <div class="kpi"><div class="l">Fund assets</div><div class="v mono" id="kNet">—</div><div class="s" id="kNetSub">&nbsp;</div></div>
     <div class="kpi"><div class="l">NAV</div><div class="v mono" id="kNav">—</div><div class="s" id="kNavSub">&nbsp;</div></div>
     <div class="kpi"><div class="l">WAGN market price</div><div class="v mono" id="kPx">—</div><div class="s" id="kPxSub">&nbsp;</div></div>
   </div>
-  <div class="kpis fg-only" data-header-tabs="crypto sweden usa europe global" hidden>
+  <div class="kpis fg-only" data-header-tabs="crypto sweden usa ustech europe global" hidden>
     <div class="kpi"><div class="l">Fear &amp; Greed now</div><div class="v mono" id="kFg">—</div><div class="s" id="kFgSub">&nbsp;</div></div>
     <div class="kpi"><div class="l" id="kFgPrevL">Yesterday</div><div class="v mono" id="kFgPrev">—</div><div class="s" id="kFgPrevSub">&nbsp;</div></div>
   </div>
@@ -238,6 +238,7 @@ footer p{margin:0 0 .5em}
   <button role="tab" id="tab-crypto" data-tab="crypto" aria-selected="false" aria-controls="panel-crypto" tabindex="-1">Crypto</button>
   <button role="tab" id="tab-sweden" data-tab="sweden" aria-selected="false" aria-controls="panel-sweden" tabindex="-1">Sweden</button>
   <button role="tab" id="tab-usa" data-tab="usa" aria-selected="false" aria-controls="panel-usa" tabindex="-1">USA</button>
+  <button role="tab" id="tab-ustech" data-tab="ustech" aria-selected="false" aria-controls="panel-ustech" tabindex="-1">US Tech</button>
   <button role="tab" id="tab-europe" data-tab="europe" aria-selected="false" aria-controls="panel-europe" tabindex="-1">Europe</button>
   <button role="tab" id="tab-global" data-tab="global" aria-selected="false" aria-controls="panel-global" tabindex="-1">Global</button>
 </nav>
@@ -624,6 +625,7 @@ const FG_TABS=[
   {id:'crypto',tab:'Crypto',forName:'the broad 7-asset crypto index',hash:'#crypto',kind:'market',market:'crypto',bands:MARKET_BANDS},
   {id:'sweden',tab:'Sweden',forName:'the Stockholm stock market',hash:'#sweden',kind:'market',market:'sweden',bands:MARKET_BANDS},
   {id:'usa',tab:'USA',forName:'the US stock market',hash:'#usa',kind:'market',market:'usa',bands:MARKET_BANDS},
+  {id:'ustech',tab:'US Tech',forName:'the US technology sector',hash:'#ustech',kind:'market',market:'ustech',bands:MARKET_BANDS},
   {id:'europe',tab:'Europe',forName:'the European stock market',hash:'#europe',kind:'market',market:'europe',bands:MARKET_BANDS},
   {id:'global',tab:'Global',forName:'the global stock market',hash:'#global',kind:'market',market:'global',bands:MARKET_BANDS},
 ];
@@ -824,7 +826,12 @@ function ruleReplay(H,spec){
 }
 function renderRuleCard(id,N,$i){
   const spec=RULE_SPECS[id], el=$i('rule');
-  if(!spec||!el) return;
+  if(!el) return;
+  if(!spec){
+    el.innerHTML='<div class="muted" style="font-size:.85rem">No tested rule for this tab yet — thresholds exist only for tabs whose rule was backtested and frozen (research/FG_EXTREMES_RETRO_V1.md). The score above is descriptive.</div>';
+    $i('rulenote').textContent='—';
+    return;
+  }
   const H=N.history||[];
   if(H.length<spec.k+5){ el.innerHTML='<div class="empty">Not enough history to evaluate the rule yet.</div>'; $i('rulenote').textContent='—'; return; }
   const r=ruleReplay(H,spec);
@@ -937,7 +944,7 @@ function updateFgHeader(id){
 }
 
 // ---- tabs (empty hash opens Pabrai; every other view has a direct hash; old aliases still work)
-const TAB_HASH={pabrai:'',crypto:'#crypto',sweden:'#sweden',usa:'#usa',europe:'#europe',global:'#global'};
+const TAB_HASH={pabrai:'',crypto:'#crypto',sweden:'#sweden',usa:'#usa',ustech:'#ustech',europe:'#europe',global:'#global'};
 const HASH_ALIAS={'#fear-greed':'crypto','#krypto':'crypto','#sverige':'sweden','#europa':'europe'};
 const tabFromHash=()=>{ const h=location.hash; if(HASH_ALIAS[h]) return HASH_ALIAS[h]; const e=Object.entries(TAB_HASH).find(([,v])=>v&&v===h); return e?e[0]:'pabrai'; };
 function showTab(id){
