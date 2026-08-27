@@ -728,6 +728,10 @@ function fgPanelHtml(t){
     <div class="card"><div class="kpi"><div class="l">Compared with earlier</div></div><div class="fg-stats" id="${id}-stats"></div></div>
   </div>
 </section>
+<section class="fg-data">
+  <div class="sec-head"><h2>Buy/sell signal — slow rule</h2><span class="note" id="${id}-rulenote">—</span></div>
+  <div class="card" id="${id}-rule"><div class="empty">—</div></div>
+</section>
 ${t.kind==='market'?`<section class="fg-data">
   <div class="sec-head"><h2>Indicators</h2><span class="note" id="${id}-compnote">—</span></div>
   <div class="tablewrap"><table class="fg-comps"><thead><tr><th>Indicator</th><th class="num">Value</th><th>Score 0–100</th><th>State</th><th>Series</th></tr></thead><tbody id="${id}-comps"></tbody></table></div>
@@ -788,6 +792,54 @@ function normMarket(M,model,fetchedAt){
     footer:`<p><b>One model, separate raw mappings:</b> this repository calculates every market score in <span class="mono">marketfg.js</span>; Yahoo Finance supplies raw daily histories, not an index score. No CoinMarketCap or Alternative.me score enters the calculation. Yahoo’s chart feed has no contractual public API SLA.</p><p><b>Descriptive indicator only — predictive value must be tested separately.</b></p>` };
 }
 
+// Slow buy/sell rule per market — FG-EXTREMES-RETRO-V1 (research/FG_EXTREMES_RETRO_V1.md).
+// The smoothed composite score drives a two-threshold state machine: sell the market at the
+// greed threshold, buy back at the fear threshold, checked at the tab's cadence. Thresholds
+// were selected retrospectively (best of 1,458 tested configurations per market on
+// already-inspected history) — a tested mechanical rule, not a validated prediction.
+const RULE_SPECS={
+  crypto:{F:20,G:80,k:10,c:'me',hist:'2021–2026: 1.36× the index (≈ +5.4%/yr), 3 trades'},
+  sweden:{F:20,G:70,k:10,c:'d',hist:'2023–2026: 1.16× the index (≈ +4.4%/yr), 7 trades'},
+  usa:{F:5,G:85,k:21,c:'me',hist:'2008–2026: 1.04× the index (≈ +0.2%/yr), 2 trades'},
+  europe:{F:45,G:80,k:42,c:'d',hist:'2011–2026: 1.74× the index (≈ +3.7%/yr), 8 trades'},
+  global:{F:45,G:75,k:63,c:'w',hist:'2019–2026: 1.24× the index (≈ +2.8%/yr), 6 trades'}};
+const RULE_CADENCE={d:'every trading day',w:'the first trading day of each week',me:'the last trading day of each month'};
+function ruleReplay(H,spec){
+  let pos=1,last=null,sm=null,sum=0,prevDow=null; const q=[];
+  const dow=d=>{const n=new Date(d+'T00:00:00Z').getUTCDay(); return n===0?7:n;};
+  for(let i=0;i<H.length;i++){
+    const s=H[i].value; q.push(s); sum+=s; if(q.length>spec.k) sum-=q.shift();
+    sm=q.length===spec.k?sum/spec.k:null;
+    let fire=false;
+    if(spec.c==='d') fire=true;
+    else if(spec.c==='me') fire=i+1<H.length && H[i].date.slice(0,7)!==H[i+1].date.slice(0,7);
+    else if(spec.c==='w'){const cur=dow(H[i].date); fire=prevDow!=null&&cur<prevDow; prevDow=cur;}
+    if(fire&&sm!=null){
+      const I=Math.round(Math.round(sm*10)/10);
+      if(pos===1&&I>=spec.G){pos=0;last={side:'SELL',date:H[i].date,value:I};}
+      else if(pos===0&&I<=spec.F){pos=1;last={side:'BUY',date:H[i].date,value:I};}
+    }
+  }
+  return {pos,last,smoothed:sm};
+}
+function renderRuleCard(id,N,$i){
+  const spec=RULE_SPECS[id], el=$i('rule');
+  if(!spec||!el) return;
+  const H=N.history||[];
+  if(H.length<spec.k+5){ el.innerHTML='<div class="empty">Not enough history to evaluate the rule yet.</div>'; $i('rulenote').textContent='—'; return; }
+  const r=ruleReplay(H,spec);
+  const smInt=r.smoothed==null?null:Math.round(Math.round(r.smoothed*10)/10);
+  const long=r.pos===1;
+  const trigger=long?`sell if the smoothed score reaches <b>≥ ${spec.G}</b>`:`buy back if the smoothed score falls to <b>≤ ${spec.F}</b>`;
+  $i('rulenote').textContent=`checked ${RULE_CADENCE[spec.c]} · ${spec.k}-observation average`;
+  el.innerHTML=`<div class="kpi"><div class="l">Rule state now</div></div>
+    <div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-top:6px">
+      <span class="fg-label" style="font-size:1.02rem"><b>${long?'HOLDING THE MARKET':'IN CASH (T-BILLS)'}</b></span>
+      <span class="muted" style="font-size:.85rem">smoothed score ${smInt==null?'—':smInt} · ${trigger}</span>
+    </div>
+    <div class="muted" style="font-size:.85rem;margin-top:6px">${r.last?`Last signal: <b>${esc(r.last.side)}</b> on ${fmtDate(r.last.date)} at smoothed score ${r.last.value}`:'No signal in the loaded history — the rule has been holding the market throughout.'}</div>
+    <div class="muted" style="font-size:.82rem;margin-top:8px">Backtest ${esc(spec.hist)}, costs and T-bill cash included. Thresholds were <b>selected retrospectively</b> from 1,458 tested configurations on already-inspected history (research/FG_EXTREMES_RETRO_V1.md); ${id==='europe'?'a stricter variant (sell ≥ 85, buy back ≤ 35, month-end checks) is under live prospective validation since Aug 2026; ':''}past results do not predict future returns. Not investment advice.</div>`;
+}
 function setFg(id,norm){ FGS[id].norm=norm; renderFg(id); if(document.body.dataset.tab===id) updateFgHeader(id); }
 
 function renderFg(id){
@@ -799,7 +851,9 @@ function renderFg(id){
     $i('title').textContent = 'Fear & Greed — '+t.tab;
     $i('error').innerHTML=`<div class="empty">Fear &amp; Greed could not be fetched${N&&N.error?' — '+esc(N.error):''}. The page retries every 10 minutes, or press ${STATIC_BUILD?'Reload snapshot':'Update'}.</div>`;
     $i('note').textContent='—'; $i('chartnote').textContent='—'; $i('label').textContent='—'; $i('sub').textContent='—'; $i('explnote').textContent='';
-    $i('explain').innerHTML = ''; $i('footer').innerHTML=''; clearChartExplorer($i('chart'),$i('charttip'),$i('chartlive')); return;
+    $i('explain').innerHTML = ''; $i('footer').innerHTML='';
+    if($i('rule')){ $i('rule').innerHTML='<div class="empty">—</div>'; $i('rulenote').textContent='—'; }
+    clearChartExplorer($i('chart'),$i('charttip'),$i('chartlive')); return;
   }
   panel.classList.remove('nodata');
   const bands=N.bands, v=Math.max(0,Math.min(100,N.value)), b=fgBand(v,bands);
@@ -817,6 +871,7 @@ function renderFg(id){
   const stat=(l,r)=> !r ? `<div><div class="l">${l}</div><div class="v">—</div><div class="s">&nbsp;</div></div>`
     : `<div><div class="l">${l}</div><div class="v fg-c${fgBand(r.value,bands)}">${fmt(r.value)}</div><div class="s">${esc(r.label)} · ${r.live?'today':fmtDate(r.date)}</div></div>`;
   $i('stats').innerHTML=N.stats.map(([l,r])=>stat(l,r)).join('');
+  renderRuleCard(id,N,$i);
   if(N.components){
     $i('compnote').textContent=N.compnote;
     $i('comps').innerHTML=N.components.map(c=>`<tr><td><b>${esc(c.name)}</b><div class="muted" style="font-size:.78rem">${esc(c.desc)}${c.note?' · '+esc(c.note):''}</div></td>
