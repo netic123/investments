@@ -9,6 +9,31 @@ const assert = require('node:assert/strict');
 
 const validation = require('../research/fear_greed_v2_validation');
 
+// data/config.json has deliberately grown beyond the schema-5 freeze (the
+// ustech market was added 2026-08-27). The frozen runner must keep refusing
+// that evolved config — asserted in the last test below — while every other
+// frozen-behaviour test needs the runner to see exactly the five frozen
+// production markets it was sealed against. Reads of data/config.json are
+// therefore served the frozen-five subset of the real file; the five frozen
+// mappings themselves are still compared against the live file untouched.
+const FROZEN_PRODUCTION_KEYS = ['crypto', 'europe', 'global', 'sweden', 'usa'];
+const CONFIG_FILE = path.resolve(__dirname, '..', 'data', 'config.json');
+const realReadFileSync = fs.readFileSync.bind(fs);
+function frozenFiveConfigText() {
+  const full = JSON.parse(realReadFileSync(CONFIG_FILE, 'utf8'));
+  full.marketFearGreed.markets = Object.fromEntries(
+    FROZEN_PRODUCTION_KEYS.map(key => [key, full.marketFearGreed.markets[key]]));
+  return JSON.stringify(full);
+}
+fs.readFileSync = function readFileSyncServingFrozenConfig(file, options) {
+  if (typeof file === 'string' && path.resolve(file) === CONFIG_FILE) {
+    const text = frozenFiveConfigText();
+    const encoding = typeof options === 'string' ? options : options && options.encoding;
+    return encoding ? text : Buffer.from(text);
+  }
+  return realReadFileSync(file, options);
+};
+
 const TEST_PROTOCOL_STATE = Object.freeze({
   marker: validation.REQUIRED_FROZEN_PROTOCOL_MARKER,
   frozenAt: '2026-08-24T00:00:00.000Z',
@@ -477,4 +502,13 @@ test('draft/failure gates prevent network and one successful synthetic live snap
 
   await assert.rejects(validation.runStudy(args, successRuntime), /already consumed/);
   assert.equal(collectorCalls, 1, 'the second live attempt must fail before invoking any collector');
+});
+
+test('production config evolved additively: frozen five mappings intact, frozen runner refuses the six-market set', () => {
+  const live = JSON.parse(realReadFileSync(CONFIG_FILE, 'utf8')).marketFearGreed;
+  for (const key of FROZEN_PRODUCTION_KEYS) {
+    assert.deepEqual(live.markets[key].symbols, validation.FROZEN_MARKET_SYMBOLS[key], `${key} frozen production mapping drifted in the live config`);
+  }
+  assert.ok(Object.keys(live.markets).includes('ustech'), 'the additive ustech market is expected in the live config');
+  assert.throws(() => validation.validateModelConfig(live), /production market set drifted/);
 });
