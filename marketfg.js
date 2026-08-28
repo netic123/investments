@@ -353,6 +353,9 @@ function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, a
     historyEnd: lastSignal.date,
     historyObservations: history.length,
     historyTruncated: false,
+    historyScope: 'ALL_USABLE_SCORE_ROWS_FROM_CURRENT_PROVIDER_MAX_RESPONSE',
+    learnerUsesAllSuppliedHistory: true,
+    providerHistoryCompleteness: 'UNVERIFIED',
     reason,
     inputsCompleted: currentComplete,
     inputsFresh: !inputStale,
@@ -497,9 +500,12 @@ function computeMarket(key, m, S, opt) {
 }
 
 // ---------- all markets ----------
-async function getMarketFearGreed(cfg) {
+async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
   expandingBinary.assertProtocolIdentity();
   const opt = { ...DEFAULTS, ...(cfg || {}) };
+  if (includeExpandingSignal && opt.range !== 'max') {
+    throw new Error('PUBLIC_FULL_HISTORY_RANGE_REQUIRED: market Fear & Greed requires exact range "max"');
+  }
   const markets = (cfg && cfg.markets) || {};
   const symbols = [...new Set(Object.values(markets).flatMap(m => Object.values(m.symbols || {}).flatMap(spec => collectSpecSymbols(spec))))];
   // one shared deadline for the whole fetch (not 20 s per symbol × several rounds) — a hanging Yahoo must never lock the page for minutes
@@ -518,7 +524,7 @@ async function getMarketFearGreed(cfg) {
   });
   const out = {}, failed = {};
   for (const [key, m] of Object.entries(markets)) {
-    try { out[key] = computeMarket(key, m, S, { ...opt, includeExpandingSignal: true }); }
+    try { out[key] = computeMarket(key, m, S, { ...opt, includeExpandingSignal }); }
     catch (e) { failed[key] = String(e.message || e); }
   }
   return {
@@ -529,20 +535,32 @@ async function getMarketFearGreed(cfg) {
       method: 'equal-weight trailing-percentile six-component composite',
       window: opt.window, minWindowPoints: opt.minWindowPoints, range: opt.range,
       minComponents: opt.minComponents, fillDays: opt.fillDays, labels: LABELS, components: COMPONENTS,
-      expandingSignal: {
+      ...(includeExpandingSignal ? { expandingSignal: {
         id: expandingBinary.MODEL_ID,
         version: expandingBinary.SCHEMA_VERSION,
         method: 'per-market expanding standardized ridge; next-close binary target state',
         minimumMaturedRows: expandingBinary.MIN_MATURED_ROWS,
         evidenceStatus: 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_NOT_VALIDATED',
-      },
+      } } : {}),
     },
     markets: out, failed, symbolErrors: errors,
   };
 }
 
+async function getMarketFearGreed(cfg) {
+  return getMarketFearGreedWithMode(cfg, true);
+}
+
+// Internal acquisition for the permanent prospective ledger may use a bounded
+// recovery range. It deliberately cannot emit the public BUY/SELL signal or its
+// max-history claim; only getMarketFearGreed owns that public contract.
+async function getMarketFearGreedResearchHistory(cfg) {
+  return getMarketFearGreedWithMode(cfg, false);
+}
+
 module.exports = {
-  getMarketFearGreed, clearCache, LABELS, COMPONENTS, labelOf, pctScores, computeMarket,
+  getMarketFearGreed, getMarketFearGreedResearchHistory, clearCache,
+  LABELS, COMPONENTS, labelOf, pctScores, computeMarket,
   collectSpecSymbols, equalWeightReturnSeries, resolveSeriesSpec, beforeUtcDate, beforeRetrievalLocalDate,
   buildPublicExpandingSignal,
 };

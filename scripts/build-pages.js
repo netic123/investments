@@ -21,8 +21,9 @@ const PUBLIC_EXPANDING_SIGNAL_KEYS = [
   'action', 'actionMeaning', 'availableAtUtc', 'cashModel', 'currentRiskyWeight',
   'decisionAsOfClose', 'decisionSha256', 'evidenceStatus', 'executeNoEarlierThanClose',
   'expectedTargetId',
-  'historyEnd', 'historyObservations', 'historyStart', 'historyTruncated', 'inputsCompleted',
-  'inputsFresh', 'latestMaturedOutcomeThrough', 'modelId', 'modelVersion',
+  'historyEnd', 'historyObservations', 'historyScope', 'historyStart', 'historyTruncated',
+  'inputsCompleted', 'inputsFresh', 'latestMaturedOutcomeThrough',
+  'learnerUsesAllSuppliedHistory', 'modelId', 'modelVersion', 'providerHistoryCompleteness',
   'prospectiveRecorded', 'reason', 'targetId',
   'targetRiskyWeight', 'targetSuitability', 'tradeRequired', 'trainingEnd',
   'trainingRows', 'trainingStart', 'x2ClaimAllowed',
@@ -110,6 +111,7 @@ function validateSnapshot(data, publicPositions) {
   assert(!config.sources || !Object.prototype.hasOwnProperty.call(config.sources, 'fearGreed'), 'retired third-party crypto index source is still configured');
   assert(!Object.prototype.hasOwnProperty.call(config, 'cryptoFearGreed'), 'retired separate crypto model config is still present');
   assert(config.marketFearGreed && config.marketFearGreed.modelId === 'investments-unified-fear-greed' && config.marketFearGreed.version === 2, 'unified model config is missing or has drifted');
+  assert(config.marketFearGreed.range === 'max', 'public Fear & Greed must request the provider maximum history');
   assert(config.marketFearGreed.window === 252 && config.marketFearGreed.minWindowPoints === 126 && config.marketFearGreed.minComponents === 6 && config.marketFearGreed.fillDays === 7, 'unified model parameters have drifted');
   assert(JSON.stringify(Object.keys(config.marketFearGreed.markets || {}).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa', 'ustech']), 'unified config must contain exactly the six configured markets');
   assert(config.marketFearGreed.markets.crypto.barPolicy === 'completed-utc-date', 'Crypto completed-bar policy has drifted');
@@ -162,6 +164,7 @@ function validateSnapshot(data, publicPositions) {
   assert(quotes && typeof quotes === 'object' && Object.values(quotes).some(q => q && Number.isFinite(q.price)), 'all quotes are missing');
   assert(marketfg && marketfg.ok === true && marketfg.markets && typeof marketfg.markets === 'object', 'market Fear & Greed is invalid');
   assert(marketfg.model && marketfg.model.id === 'investments-unified-fear-greed' && marketfg.model.version === 2 && marketfg.model.owner === 'repository', 'market result does not identify the unified repository model');
+  assert(marketfg.model.range === 'max', 'public Fear & Greed result did not use the provider maximum history');
   assert(marketfg.model.window === 252 && marketfg.model.minWindowPoints === 126 && marketfg.model.minComponents === 6 && marketfg.model.fillDays === 7, 'unified result parameters have drifted');
   assert(marketfg.model.expandingSignal && marketfg.model.expandingSignal.id === 'FG-ONLINE-RIDGE-PREQ-V1' && marketfg.model.expandingSignal.version === 1, 'expanding binary learner identity is missing');
   assert(marketfg.model.expandingSignal.minimumMaturedRows === 252 && marketfg.model.expandingSignal.evidenceStatus === 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_NOT_VALIDATED', 'expanding learner status/seed drifted');
@@ -187,6 +190,10 @@ function validateSnapshot(data, publicPositions) {
     assert(signal.decisionAsOfClose === market.asOf && signal.targetId === market.indexSymbol && signal.expectedTargetId === expectedTargetId && signal.targetId === signal.expectedTargetId, `${name} signal does not identify the reviewed completed target close`);
     assert(signal.executeNoEarlierThanClose === 'FIRST_TARGET_CLOSE_STRICTLY_AFTER_FEATURE_CLOSE_AND_AVAILABLE_AT_UTC' && Number.isFinite(Date.parse(signal.availableAtUtc || '')), `${name} signal execution/availability contract is incomplete`);
     assert(signal.historyStart === market.history[0].date && signal.historyEnd === market.history.at(-1).date && signal.historyObservations === market.history.length && signal.historyTruncated === false, `${name} expanding signal is not using the full published score history`);
+    assert(signal.historyScope === 'ALL_USABLE_SCORE_ROWS_FROM_CURRENT_PROVIDER_MAX_RESPONSE'
+      && signal.learnerUsesAllSuppliedHistory === true
+      && signal.providerHistoryCompleteness === 'UNVERIFIED',
+    `${name} expanding signal overstates external provider-history completeness`);
     assert(Number.isInteger(signal.trainingRows) && signal.trainingRows >= 252 && signal.trainingStart && signal.trainingEnd && signal.latestMaturedOutcomeThrough, `${name} expanding training span is incomplete`);
     assert(signal.inputsCompleted === true && signal.inputsFresh === true, `${name} expanding signal was produced from incomplete or stale inputs`);
     assert(signal.targetSuitability === EXPECTED_TARGET_SUITABILITY[name], `${name} target suitability disclosure drifted`);

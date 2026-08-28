@@ -806,14 +806,14 @@ function renderRuleCard(id,N,$i){
   const reason=D.reason==='WARMUP_BUY_BASELINE'?'warm-up baseline':D.reason==='FAIL_CLOSED_DATA_INVALID'?'invalid/stale input — fail-closed':D.reason==='EXPANDING_RIDGE_PATTERN'?'expanding ridge forecast':String(D.reason||'model decision').replaceAll('_',' ').toLowerCase();
   const trade=D.tradeRequired?'position change targets the first eligible future close':`already ${current.toLowerCase()} — no new trade or cost`;
   const suitability=String(D.targetSuitability||'unreviewed target').replaceAll('_',' ').toLowerCase();
-  $i('rulenote').textContent=`${D.modelId} · ${fmt(D.historyObservations)} full-history score rows`;
+  $i('rulenote').textContent=`${D.modelId} · ${fmt(D.historyObservations)} all-supplied-history score rows`;
   el.innerHTML=`<div class="kpi"><div class="l">RESEARCH SIGNAL — RETROSPECTIVE, NOT VALIDATED</div></div>
     <div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-top:6px">
       <span class="fg-label" style="font-size:1.16rem;color:${buy?'var(--pos)':'var(--neg)'}"><b>${D.action} · ${buy?'LONG':'CASH'}</b></span>
       <span class="muted" style="font-size:.85rem">target state · ${esc(trade)}</span>
     </div>
     <div class="muted" style="font-size:.85rem;margin-top:7px">Decision close <b>${fmtDate(D.decisionAsOfClose)}</b> · inputs available ${stampStr(D.availableAtUtc)} · first target close strictly after both is the earliest execution · current filled state ${current} · ${esc(reason)}.</div>
-    <div class="muted" style="font-size:.85rem;margin-top:5px">Uses <b>all ${fmt(D.trainingRows)} matured training rows</b> from ${fmtDate(D.trainingStart)} through ${fmtDate(D.trainingEnd)}; latest matured outcome ${fmtDate(D.latestMaturedOutcomeThrough)}. Score history ${fmtDate(D.historyStart)}–${fmtDate(D.historyEnd)} (${fmt(D.historyObservations)} observations, ${D.historyTruncated?'truncated':'not truncated'}).</div>
+    <div class="muted" style="font-size:.85rem;margin-top:5px">Uses <b>all ${fmt(D.trainingRows)} matured training rows supplied to the learner</b> from ${fmtDate(D.trainingStart)} through ${fmtDate(D.trainingEnd)}; latest matured outcome ${fmtDate(D.latestMaturedOutcomeThrough)}. Usable score history ${fmtDate(D.historyStart)}–${fmtDate(D.historyEnd)} (${fmt(D.historyObservations)} observations; internally ${D.historyTruncated?'truncated':'not truncated'}). The provider's claim to globally complete history is <b>not independently verified</b>.</div>
     <div class="muted" style="font-size:.82rem;margin-top:8px"><b>Not a trusted 2× model.</b> Historical forecasts were replayed on already-inspected, current-vintage data; cash is a zero-return development assumption and no prospective decision ledger has passed. Target limitation: ${esc(suitability)}. BUY/SELL is the model's mandatory 0%/100% target state, not proof of predictive value or investment advice.</div>`;
 }
 function setFg(id,norm){ FGS[id].norm=norm; renderFg(id); if(document.body.dataset.tab===id) updateFgHeader(id); }
