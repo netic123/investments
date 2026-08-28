@@ -21,3 +21,12 @@ test('browser source requests have finite deadlines', () => {
   assert.match(html, /AbortSignal\.timeout\(timeout\)/);
   assert.match(html, /CIK0001549575\.json',\{cache:'no-store',signal:AbortSignal\.timeout\(15000\)\}/);
 });
+
+test('dashboard has one research-labelled expanding binary signal and no conflicting band/rule action', () => {
+  assert.match(html, /Expanding-history BUY\/SELL research signal/);
+  assert.match(html, /RESEARCH SIGNAL — RETROSPECTIVE, NOT VALIDATED/);
+  assert.match(html, /Uses <b>all \$\{fmt\(D\.trainingRows\)\} matured training rows/);
+  assert.match(html, /Not a trusted 2× model/);
+  assert.doesNotMatch(html, /const RULE_SPECS/);
+  assert.doesNotMatch(html, /BUY warning zone|SELL warning zone|Extreme readings double as explicit action warnings/);
+});
