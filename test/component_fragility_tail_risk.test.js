@@ -156,7 +156,7 @@ function copyFrozenLinkedWorktreeFixture(t) {
 }
 
 test('frozen production identities use the exact one-shot paths and final protocol hash', () => {
-  assert.equal(study.EXPECTED_SHA256.protocol, '3f38edba122cbdb0e51af47a3c08ddb320a2ba203a5fecaaef3af5fd29e1ba8b');
+  assert.equal(study.EXPECTED_SHA256.protocol, '30f874087de0437150ce017c649847a535a727afcb7f04bd36e1214d57b9d69f');
   assert.equal(study.EXPECTED_SHA256.input, 'ac025aec6096147aeabba61f270e2fdd9e1032068b10c474fea73cbf4999444d');
   assert.match(study.PATHS.input.replaceAll('\\', '/'), /fear-greed-v2-validation-input-2026-08-25T12-44-22Z\.json$/);
   assert.equal(study.PATHS.inputSidecar, study.PATHS.input.replace(/\.json$/, '.sha256'));
@@ -409,14 +409,23 @@ test('launcher rejects preload and NODE_OPTIONS execution before Git preflight',
 test('synthetic claim cannot poison the production repository common-directory receipt', t => {
   const fixture = copyFrozenTagFixture(t);
   const productionCommonDirectory = path.resolve(git(study.REPO_ROOT, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
+  const productionReceiptPath = path.join(productionCommonDirectory, ...launcher.ATTEMPT_RELATIVE.split('/'));
   const redirectedExec = (file, args, options) => {
     if (args.includes('--git-common-dir')) return `${productionCommonDirectory}\n`;
     return childProcess.execFileSync(file, args, options);
   };
+  if (fs.existsSync(productionReceiptPath)) {
+    // The production one-shot attempt was already claimed on this repository:
+    // preflight must refuse retry and the permanent receipt must stay untouched.
+    const claimedBytes = fs.readFileSync(productionReceiptPath);
+    assert.throws(() => launcher.preflight({ directory: fixture.directory, requireLinkedWorktree: false, expectedRepoRoot: null, execFileSync: redirectedExec }), /retry is forbidden/);
+    assert.ok(fs.readFileSync(productionReceiptPath).equals(claimedBytes));
+    return;
+  }
   const freeze = launcher.preflight({ directory: fixture.directory, requireLinkedWorktree: false, expectedRepoRoot: null, execFileSync: redirectedExec });
   assert.equal(path.resolve(freeze.commonDirectory), productionCommonDirectory);
   assert.throws(() => launcher.claimSyntheticAttemptForTest(freeze, { attemptId: 'production-common-poison' }), /outside the production repository/);
-  assert.equal(fs.existsSync(path.join(productionCommonDirectory, ...launcher.ATTEMPT_RELATIVE.split('/'))), false);
+  assert.equal(fs.existsSync(productionReceiptPath), false);
 });
 
 test('launcher orders freeze, permanent receipt, then runner load', () => {

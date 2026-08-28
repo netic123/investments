@@ -70,12 +70,12 @@ const PATHS = Object.freeze({
 });
 
 const EXPECTED_SHA256 = Object.freeze({
-  protocol: '3f38edba122cbdb0e51af47a3c08ddb320a2ba203a5fecaaef3af5fd29e1ba8b',
+  protocol: '30f874087de0437150ce017c649847a535a727afcb7f04bd36e1214d57b9d69f',
   schema5Protocol: '6f00302f57979fc94a60835c19aec8f8c3c88ec482b2ab59778180c2ac789c6d',
   schema5Reader: '846a8812bd08fa3243b3de645ac30c6c02379f7f575ea356cf78eba2dce8c374',
   schema4Math: 'b7cebf64cb0c1db55c22a18e3f41877db67f099ec9484435fae1be0755e93a0a',
-  marketEngine: '018954b001df8738d3d152969abd98764b7683516e97f7afecd8b786a9d22090',
-  productionConfig: 'c4eeae263da7052d1c16b38a829841aa6ca8cf43e6caffc407fd880d18cca7c7',
+  marketEngine: '8f033236d0a2ba952bc9ad4ce275effa72668868d511524a18ce0d680ce17d0f',
+  productionConfig: '201d31898414cb83e788db501a393b7b20f23fa85c19aa5b08b6eb17247f7f46',
   input: 'ac025aec6096147aeabba61f270e2fdd9e1032068b10c474fea73cbf4999444d',
 });
 
