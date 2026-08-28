@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const childProcess = require('node:child_process');
 const common = require('../scripts/pls1-lockbox-common');
 const seedBuilder = require('../scripts/build-pls1-lockbox-seed');
 const manifestBuilder = require('../scripts/create-pls1-lockbox-manifest');
@@ -90,9 +91,23 @@ function sessionCalendar(firstDate, horizonDate = '2029-09-30') {
   return sessions;
 }
 
-function syntheticSourceIdentityContract(firstAdjustedDate) {
+function nthSessionAfter(date, count) {
+  const cursor = new Date(`${date}T00:00:00.000Z`);
+  let latest = null;
+  for (let remaining = count; remaining > 0;) {
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+    const candidate = cursor.toISOString().slice(0, 10);
+    if (seedBuilder.isExpectedNyseSession(candidate)) {
+      latest = candidate;
+      remaining -= 1;
+    }
+  }
+  return latest;
+}
+
+function syntheticSourceIdentityContract(firstAdjustedDate, calendarHorizonDate = '2029-09-30') {
   const requiredSymbols = seedBuilder.requiredSourceSymbols();
-  const sessions = sessionCalendar(firstAdjustedDate);
+  const sessions = sessionCalendar(firstAdjustedDate, calendarHorizonDate);
   const calendarId = 'SYNTHETIC_XNYS';
   const calendars = {
     [calendarId]: {
@@ -313,10 +328,11 @@ function manifestFixture(seed, seedSha256) {
   };
 }
 
-function createFixture(t, { includeLiveSource = true } = {}) {
+function createFixture(t, { includeLiveSource = true, calendarHorizonDate = '2029-09-30',
+  liveBaseUtc = '2026-08-28T06:30:00.000Z', liveAcquiredAtUtc = '2026-08-28T06:50:00.000Z' } = {}) {
   const root = temporaryRoot(t);
   const seedFirstDate = completedSessionDates(1400, '2026-08-27')[0];
-  const sourceIdentityContract = syntheticSourceIdentityContract(seedFirstDate);
+  const sourceIdentityContract = syntheticSourceIdentityContract(seedFirstDate, calendarHorizonDate);
   const seedSource = sourceFixture(root, 'max', 1400, '2026-08-27T05:00:00.000Z', {
     sourceIdentityContract,
   });
@@ -352,11 +368,11 @@ function createFixture(t, { includeLiveSource = true } = {}) {
   const manifestPath = path.join(root, 'freeze', 'manifest.json');
   const manifestWrite = common.createCanonicalWithSidecar(manifestPath, manifest);
   const liveSource = includeLiveSource
-    ? sourceFixture(root, '5y', 1000, '2026-08-28T06:30:00.000Z', {
+    ? sourceFixture(root, '5y', 1000, liveBaseUtc, {
       sourceIdentityContract,
     }) : null;
   const acquired = liveSource ? {
-    acquiredAtUtc: '2026-08-28T06:50:00.000Z',
+    acquiredAtUtc: liveAcquiredAtUtc,
     retrievalDateUtc: liveSource.retrievalDateUtc,
     range: '5y',
     markets: liveSource.markets,
@@ -370,6 +386,27 @@ function createFixture(t, { includeLiveSource = true } = {}) {
     manifestSha256: manifestWrite.sha256, acquired,
     liveReceipts: liveSource ? liveSource.receipts : [],
   };
+}
+
+function capturedRequestsFrom(root, receipts) {
+  return receipts.map(receipt => ({
+    requestOrdinal: receipt.requestOrdinal,
+    phase: receipt.phase,
+    method: receipt.method,
+    url: receipt.url,
+    startedAtUtc: receipt.startedAtUtc,
+    completedAtUtc: receipt.completedAtUtc,
+    status: receipt.status,
+    responseUrl: receipt.responseUrl,
+    headers: receipt.headers,
+    acceptedFor: [...receipt.acceptedFor],
+    error: receipt.error,
+    bytes: common.verifyRawBlob(root, receipt),
+  }));
+}
+
+function resetAttempts(root) {
+  fs.rmSync(path.join(root, 'attempts'), { recursive: true, force: true });
 }
 
 test('schedules are retry labels only; actual cutoff is evaluated from completion time', () => {
@@ -1107,6 +1144,274 @@ test('already-recorded preflight suppresses a redundant five-year download', asy
   const report = verifier.verifyLockbox(fixture.root, { verifyPinnedFiles: false });
   assert.equal(report.decisions, 1);
   assert.equal(report.attempts, 1);
+});
+
+test('an exhausted frozen calendar fails closed without contacting the source, never as a benign skip', async t => {
+  const fixture = createFixture(t, { includeLiveSource: false, calendarHorizonDate: '2026-08-26' });
+  let acquisitionCalls = 0;
+  await assert.rejects(collector.collect({
+    lockboxRoot: fixture.root,
+    clock: () => new Date('2026-08-28T07:00:00.000Z'),
+    provenance: {
+      ...collector.localTestProvenance('2026-08-28T06:00:00.000Z'),
+      runId: 'calendar-exhaustion-test',
+    },
+    acquire: async () => {
+      acquisitionCalls += 1;
+      throw new Error('an exhausted calendar must not contact the source');
+    },
+  }), /frozen target calendar horizon is exhausted/);
+  assert.equal(acquisitionCalls, 0);
+  const attempts = common.listAttemptFiles(fixture.root);
+  assert.equal(attempts.length, 1);
+  const attempt = JSON.parse(fs.readFileSync(attempts[0], 'utf8'));
+  assert.equal(attempt.status, common.ATTEMPT_STATUS.FAILED_NO_DECISION);
+  assert.equal(attempt.failureStage, 'FROZEN_CALENDAR_HORIZON_EXHAUSTED');
+  assert.equal(attempt.reason, 'FAILED_FROZEN_CALENDAR_HORIZON_EXHAUSTED');
+  assert.deepEqual(attempt.sourceAcquisition,
+    collector.notStartedSourceAcquisition('5y', '2026-08-28'));
+  const chain = verifier.validateAttemptChain(fixture.root, fixture.manifest,
+    fixture.manifestSha256, fixture.seed, [], false);
+  assert.equal(chain.count, 1);
+});
+
+test('the verifier rejects a benign already-recorded skip written in the exhausted-calendar state', t => {
+  const fixture = createFixture(t, { includeLiveSource: false, calendarHorizonDate: '2026-08-26' });
+  collector.writeAttempt(fixture.root, '2026-08-28T07:10:00.000Z', {
+    ...collector.localTestProvenance('2026-08-28T06:00:00.000Z'),
+    runId: 'exhausted-benign-skip-test',
+  }, {
+    status: common.ATTEMPT_STATUS.SKIPPED_ALREADY_RECORDED_DATE,
+    reason: common.ATTEMPT_REASON.LATEST_COMPLETED_SOURCE_SESSION_ALREADY_IN_LEDGER,
+    failureStage: null,
+    errorSha256: null,
+    manifestSha256: fixture.manifestSha256,
+    seedSha256: fixture.seedSha256,
+    sourceAcquisition: collector.notStartedSourceAcquisition('5y', '2026-08-28'),
+  });
+  assert.throws(() => verifier.validateAttemptChain(fixture.root, fixture.manifest,
+    fixture.manifestSha256, fixture.seed, [], false),
+  /masks frozen-calendar horizon exhaustion/);
+});
+
+test('activation forward horizon is exactly 758 frozen sessions after the decision close', () => {
+  assert.equal(seedBuilder.REQUIRED_ACTIVATION_FORWARD_SESSIONS, 758);
+  const exact = syntheticSourceIdentityContract('2022-01-03', nthSessionAfter('2026-08-27', 758));
+  assert.doesNotThrow(() => seedBuilder.assertActivationForwardHorizon(exact, '2026-08-27'));
+  const short = syntheticSourceIdentityContract('2022-01-03', nthSessionAfter('2026-08-27', 757));
+  assert.throws(() => seedBuilder.assertActivationForwardHorizon(short, '2026-08-27'),
+    /only 757 sessions after activation decision 2026-08-27; 758 required/);
+  assert.throws(() => seedBuilder.assertActivationForwardHorizon(exact, '2026-08-23'),
+    /not a frozen risky-target calendar session/);
+});
+
+test('activation fails closed unless 758 frozen sessions remain strictly after the decision close', async t => {
+  const short = createFixture(t, { calendarHorizonDate: nthSessionAfter('2026-08-27', 757) });
+  await assert.rejects(collector.collect({
+    lockboxRoot: short.root,
+    clock: () => new Date('2026-08-28T07:00:00.000Z'),
+    provenance: {
+      ...collector.localTestProvenance('2026-08-28T06:00:00.000Z'),
+      runId: 'activation-horizon-short-test',
+    },
+    acquire: async () => ({ ...short.acquired,
+      requests: capturedRequestsFrom(short.root, short.liveReceipts) }),
+  }), /only 757 sessions after activation decision 2026-08-27; 758 required/);
+  const attempts = common.listAttemptFiles(short.root);
+  assert.equal(attempts.length, 1);
+  const attempt = JSON.parse(fs.readFileSync(attempts[0], 'utf8'));
+  assert.equal(attempt.status, common.ATTEMPT_STATUS.FAILED_NO_DECISION);
+  assert.equal(attempt.failureStage, 'ACTIVATION_FORWARD_HORIZON');
+  assert.equal(attempt.reason, 'FAILED_ACTIVATION_FORWARD_HORIZON');
+  assert.equal(attempt.sourceAcquisition.state, common.ACQUISITION_STATE.COMPLETE_REPLAY_VERIFIED);
+  assert.equal(common.listDecisionFiles(short.root).length, 0);
+
+  const exact = createFixture(t, { calendarHorizonDate: nthSessionAfter('2026-08-27', 758) });
+  const result = await collector.collect({
+    lockboxRoot: exact.root,
+    clock: () => new Date('2026-08-28T07:00:00.000Z'),
+    provenance: {
+      ...collector.localTestProvenance('2026-08-28T06:00:00.000Z'),
+      runId: 'activation-horizon-exact-test',
+    },
+    acquire: async () => ({ ...exact.acquired,
+      requests: capturedRequestsFrom(exact.root, exact.liveReceipts) }),
+  });
+  assert.equal(result.written, true);
+  assert.equal(result.bundle.decisionDate, '2026-08-27');
+});
+
+test('the offline verifier rejects an activation bundle without the 758-session forward horizon', t => {
+  const fixture = createFixture(t, {
+    calendarHorizonDate: nthSessionAfter('2026-08-26', 759),
+    liveBaseUtc: '2026-08-31T06:30:00.000Z',
+    liveAcquiredAtUtc: '2026-08-31T06:50:00.000Z',
+  });
+  const collectedAtUtc = '2026-08-31T07:30:00.000Z';
+  const newRowsByMarket = Object.fromEntries(common.MARKET_ORDER.map(key => [key,
+    collector.prospectiveRows(fixture.acquired.markets[key], fixture.seed.markets[key].rows,
+      collectedAtUtc),
+  ]));
+  assert.equal(newRowsByMarket.crypto.at(-1).date, '2026-08-28');
+  const bundle = collector.buildDecisionBundle({
+    seed: fixture.seed,
+    manifest: fixture.manifest,
+    seedSha256: fixture.seedSha256,
+    manifestSha256: fixture.manifestSha256,
+    manifestCommit: { commitSha: '5'.repeat(40) },
+    acquired: fixture.acquired,
+    sourceReceipts: fixture.liveReceipts,
+    bundles: [],
+    collectedAtUtc,
+    provenance: collector.localTestProvenance('2026-08-31T06:00:00.000Z'),
+    newRowsByMarket,
+  });
+  common.createCanonicalWithSidecar(common.decisionPath(fixture.root, bundle.decisionDate), bundle);
+  assert.throws(() => verifier.verifyLockbox(fixture.root, { verifyPinnedFiles: false }),
+    /only 757 sessions after activation decision 2026-08-28; 758 required/);
+});
+
+test('the verifier enforces the 12:00Z bound on no-new-decision and failed attempts', async t => {
+  const fixture = createFixture(t, {
+    liveBaseUtc: '2026-08-27T06:30:00.000Z',
+    liveAcquiredAtUtc: '2026-08-27T06:50:00.000Z',
+  });
+  const validate = () => verifier.validateAttemptChain(fixture.root, fixture.manifest,
+    fixture.manifestSha256, fixture.seed, [], false);
+  const writeSuccess = (collectedAtUtc, runId) => collector.writeAttempt(fixture.root,
+    collectedAtUtc, {
+      ...collector.localTestProvenance('2026-08-27T06:00:00.000Z'),
+      runId,
+    }, {
+      status: common.ATTEMPT_STATUS.SUCCESS_NO_NEW_DECISION,
+      reason: common.ATTEMPT_REASON.NO_NEW_COMPLETED_COMMON_TARGET_SESSION,
+      failureStage: null,
+      errorSha256: null,
+      manifestSha256: fixture.manifestSha256,
+      seedSha256: fixture.seedSha256,
+      sourceAcquisition: collector.completeSourceAcquisition(fixture.acquired,
+        fixture.liveReceipts, '2026-08-27T07:00:00.000Z'),
+    });
+  const writeFailedPartial = (collectedAtUtc, runId, receiptTimes) => collector.writeAttempt(
+    fixture.root, collectedAtUtc, {
+      ...collector.localTestProvenance('2026-08-27T06:00:00.000Z'),
+      runId,
+    }, {
+      status: common.ATTEMPT_STATUS.FAILED_NO_DECISION,
+      reason: 'FAILED_OFFLINE_REPLAY',
+      failureStage: 'OFFLINE_REPLAY',
+      errorSha256: common.sha256(Buffer.from('synthetic offline replay failure')),
+      manifestSha256: fixture.manifestSha256,
+      seedSha256: fixture.seedSha256,
+      sourceAcquisition: collector.partialSourceAcquisition('5y', '2026-08-27',
+        [{ ...fixture.liveReceipts[0], ...receiptTimes }]),
+    });
+
+  await t.test('a success attempt recorded before the cutoff verifies', () => {
+    writeSuccess('2026-08-27T11:59:59.999Z', 'success-boundary-pass');
+    assert.equal(validate().count, 1);
+  });
+
+  await t.test('a post-cutoff success attempt is rejected', () => {
+    resetAttempts(fixture.root);
+    writeSuccess('2026-08-27T14:30:00.000Z', 'success-post-cutoff');
+    assert.throws(validate, /invalid no-new-decision attempt/);
+  });
+
+  await t.test('a success attempt recorded on a later retrieval date is rejected', () => {
+    resetAttempts(fixture.root);
+    writeSuccess('2026-08-28T06:00:00.000Z', 'success-date-crossed');
+    assert.throws(validate, /invalid no-new-decision attempt/);
+  });
+
+  await t.test('a failed attempt whose receipt started before the deadline verifies', () => {
+    resetAttempts(fixture.root);
+    writeFailedPartial('2026-08-27T13:05:00.000Z', 'failed-boundary-pass', {
+      startedAtUtc: '2026-08-27T11:59:59.999Z',
+      completedAtUtc: '2026-08-27T13:00:00.000Z',
+    });
+    assert.equal(validate().count, 1);
+  });
+
+  await t.test('a failed attempt with a receipt initiated at the deadline is rejected', () => {
+    resetAttempts(fixture.root);
+    writeFailedPartial('2026-08-27T14:35:00.000Z', 'failed-at-deadline', {
+      startedAtUtc: '2026-08-27T12:00:00.000Z',
+      completedAtUtc: '2026-08-27T14:30:00.000Z',
+    });
+    assert.throws(validate, /at or past the frozen 12:00Z acquisition deadline/);
+  });
+});
+
+test('an append-only decision collision is recorded under DECISION_PERSISTENCE, not a cutoff stage', async t => {
+  const fixture = createFixture(t);
+  const collisionFile = common.decisionPath(fixture.root, '2026-08-27');
+  let clockCalls = 0;
+  await assert.rejects(collector.collect({
+    lockboxRoot: fixture.root,
+    clock: () => {
+      clockCalls += 1;
+      if (clockCalls === 4) {
+        fs.mkdirSync(path.dirname(collisionFile), { recursive: true });
+        fs.writeFileSync(collisionFile, 'concurrent duplicate');
+      }
+      return new Date('2026-08-28T07:00:00.000Z');
+    },
+    provenance: {
+      ...collector.localTestProvenance('2026-08-28T06:00:00.000Z'),
+      runId: 'collision-stage-test',
+    },
+    acquire: async () => ({ ...fixture.acquired,
+      requests: capturedRequestsFrom(fixture.root, fixture.liveReceipts) }),
+  }), /append-only decision collision at 2026-08-27/);
+  const attempts = common.listAttemptFiles(fixture.root);
+  assert.equal(attempts.length, 1);
+  const attempt = JSON.parse(fs.readFileSync(attempts[0], 'utf8'));
+  assert.equal(attempt.status, common.ATTEMPT_STATUS.FAILED_NO_DECISION);
+  assert.equal(attempt.failureStage, 'DECISION_PERSISTENCE');
+  assert.equal(attempt.reason, 'FAILED_DECISION_PERSISTENCE');
+  assert.equal(attempt.errorSha256,
+    common.sha256(Buffer.from('append-only decision collision at 2026-08-27')));
+  assert.equal(attempt.sourceAcquisition.state, common.ACQUISITION_STATE.COMPLETE_REPLAY_VERIFIED);
+});
+
+function manifestRepository(t, { forkedSource = false } = {}) {
+  const gitIn = (root, args, options = {}) => childProcess.execFileSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+    input: options.input,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  }).trim();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pls1-manifest-commit-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  gitIn(root, ['init', '-b', 'main']);
+  gitIn(root, ['config', 'user.name', 'PLS1 Test']);
+  gitIn(root, ['config', 'user.email', 'pls1-test@example.invalid']);
+  fs.writeFileSync(path.join(root, '.gitattributes'), '* -text\n');
+  fs.writeFileSync(path.join(root, 'source.js'), "'use strict';\n");
+  gitIn(root, ['add', '--', '.gitattributes', 'source.js']);
+  gitIn(root, ['commit', '-m', 'frozen source']);
+  const baseCommit = gitIn(root, ['rev-parse', 'HEAD']);
+  const sourceTreeSha = gitIn(root, ['rev-parse', `${baseCommit}^{tree}`]);
+  const sourceCommitSha = forkedSource
+    ? gitIn(root, ['commit-tree', sourceTreeSha], { input: 'forked source\n' })
+    : baseCommit;
+  const manifestPath = path.join(root, 'freeze', 'manifest.json');
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+  fs.writeFileSync(manifestPath,
+    JSON.stringify({ schema: 'test-manifest-v1', sourceCommitSha, sourceTreeSha }));
+  gitIn(root, ['add', '--', 'freeze/manifest.json']);
+  gitIn(root, ['commit', '-m', 'freeze manifest']);
+  return { root, manifestPath, manifestCommitSha: gitIn(root, ['rev-parse', 'HEAD']) };
+}
+
+test('the committed manifest must really descend from its frozen source commit', t => {
+  const descending = manifestRepository(t);
+  assert.deepEqual(collector.assertManifestCommitted(descending.manifestPath, descending.root),
+    { commitSha: descending.manifestCommitSha });
+  const forked = manifestRepository(t, { forkedSource: true });
+  assert.throws(() => collector.assertManifestCommitted(forked.manifestPath, forked.root),
+    /source commit to frozen manifest commit: required Git ancestry is absent/);
 });
 
 test('partial acquisition validation rejects a role receipt from an unrelated URL', t => {

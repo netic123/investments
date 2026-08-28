@@ -13,6 +13,8 @@ const NATIVE_BUFFER_READ_BIG_UINT64_BE = Function.prototype.call.bind(
 );
 const NATIVE_BUFFER_WRITE_DOUBLE_BE = Function.prototype.call.bind(Buffer.prototype.writeDoubleBE);
 const NATIVE_CRYPTO_CREATE_HASH = crypto.createHash.bind(crypto);
+const NATIVE_CRYPTO_HASH_DIGEST = Function.prototype.call.bind(crypto.Hash.prototype.digest);
+const NATIVE_CRYPTO_HASH_UPDATE = Function.prototype.call.bind(crypto.Hash.prototype.update);
 const NATIVE_JSON_STRINGIFY = JSON.stringify;
 const NATIVE_NUMBER_IS_FINITE = Number.isFinite;
 const NATIVE_OBJECT_FREEZE = Object.freeze;
@@ -178,7 +180,9 @@ function deepFreeze(value) {
 }
 
 function sha256Bytes(bytes) {
-  return NATIVE_CRYPTO_CREATE_HASH('sha256').update(bytes).digest('hex');
+  return NATIVE_CRYPTO_HASH_DIGEST(
+    NATIVE_CRYPTO_HASH_UPDATE(NATIVE_CRYPTO_CREATE_HASH('sha256'), bytes), 'hex',
+  );
 }
 
 function hashCanonical(value) {
@@ -192,84 +196,105 @@ function populationStandardDeviation(values) {
   return Math.sqrt(Math.max(0, variance));
 }
 
-function extractComponents(row) {
-  if (Array.isArray(row.components)) {
-    return row.components.length === COMPONENT_KEYS.length
-      ? row.components.map(value => (finite(value) ? value : null))
-      : Array(COMPONENT_KEYS.length).fill(null);
+function extractComponents(sourceComponents) {
+  if (Array.isArray(sourceComponents)) {
+    if (sourceComponents.length !== COMPONENT_KEYS.length) {
+      return Array(COMPONENT_KEYS.length).fill(null);
+    }
+    return COMPONENT_KEYS.map((unused, component) => {
+      const value = sourceComponents[component];
+      return finite(value) ? value : null;
+    });
   }
-  const source = row.components && typeof row.components === 'object' ? row.components : {};
+  const source = sourceComponents && typeof sourceComponents === 'object' ? sourceComponents : {};
   assert(NATIVE_JSON_STRINGIFY(NATIVE_ARRAY_SORT(Object.keys(source)))
     === NATIVE_JSON_STRINGIFY(NATIVE_ARRAY_SORT([...COMPONENT_KEYS])),
     'components must contain exactly the six frozen component keys');
-  return COMPONENT_KEYS.map(key => (finite(source[key]) ? source[key] : null));
+  return COMPONENT_KEYS.map(key => {
+    const value = source[key];
+    return finite(value) ? value : null;
+  });
 }
 
 function normalizeMarket(input) {
   assert(input && typeof input === 'object', 'Market input is required');
-  assert(Array.isArray(input.rows) && input.rows.length > 0, 'Market requires rows');
-  const rows = input.rows.map((source, index) => {
+  const sourceRows = input.rows;
+  assert(Array.isArray(sourceRows) && sourceRows.length > 0, 'Market requires rows');
+  const rowCount = sourceRows.length;
+  const rows = [];
+  for (let index = 0; index < rowCount; index += 1) {
+    const source = sourceRows[index];
     assert(source && typeof source === 'object', `Row ${index} must be an object`);
-    assert(exactIsoDate(source.date), `Row ${index} has invalid date`);
-    if (index > 0) assert(input.rows[index - 1].date < source.date, 'Rows must be strictly increasing');
-    assert(source.targetClose === null || (finite(source.targetClose) && source.targetClose > 0),
-      `Row ${source.date} targetClose must be positive or null`);
-    assert(source.cashClose === null || (finite(source.cashClose) && source.cashClose > 0),
-      `Row ${source.date} cashClose must be positive or null`);
-    const availableAtUtc = source.availableAtUtc == null ? null : source.availableAtUtc;
+    const date = source.date;
+    assert(exactIsoDate(date), `Row ${index} has invalid date`);
+    if (index > 0) assert(rows[index - 1].date < date, 'Rows must be strictly increasing');
+    const targetClose = source.targetClose;
+    assert(targetClose === null || (finite(targetClose) && targetClose > 0),
+      `Row ${date} targetClose must be positive or null`);
+    const cashClose = source.cashClose;
+    assert(cashClose === null || (finite(cashClose) && cashClose > 0),
+      `Row ${date} cashClose must be positive or null`);
+    const sourceAvailableAtUtc = source.availableAtUtc;
+    const availableAtUtc = sourceAvailableAtUtc == null ? null : sourceAvailableAtUtc;
     assert(exactUtcOrNull(availableAtUtc),
-      `Row ${source.date} has invalid availableAtUtc`);
+      `Row ${date} has invalid availableAtUtc`);
     if (availableAtUtc !== null) {
-      assert(index === input.rows.length - 1,
+      assert(index === rowCount - 1,
         'Only the current final row may carry live availability');
     }
-    const components = extractComponents(source);
+    const components = extractComponents(source.components);
     const hasAnyFiniteComponent = components.some(finite);
+    const referenceDate = source.referenceDate;
     if (hasAnyFiniteComponent) {
-      assert(exactIsoDate(source.referenceDate) && source.referenceDate <= source.date
-        && calendarDaysBetween(source.referenceDate, source.date) <= 7,
-      `Row ${source.date} has invalid or stale referenceDate`);
+      assert(exactIsoDate(referenceDate) && referenceDate <= date
+        && calendarDaysBetween(referenceDate, date) <= 7,
+      `Row ${date} has invalid or stale referenceDate`);
     } else {
-      assert(source.referenceDate === null,
-        `Row ${source.date} with no usable component vector requires null referenceDate`);
+      assert(referenceDate === null,
+        `Row ${date} with no usable component vector requires null referenceDate`);
     }
-    assert(source.componentAsOf && typeof source.componentAsOf === 'object',
-      `Row ${source.date} requires componentAsOf`);
-    assert(NATIVE_JSON_STRINGIFY(NATIVE_ARRAY_SORT(Object.keys(source.componentAsOf)))
+    const sourceComponentAsOf = source.componentAsOf;
+    assert(sourceComponentAsOf && typeof sourceComponentAsOf === 'object',
+      `Row ${date} requires componentAsOf`);
+    assert(NATIVE_JSON_STRINGIFY(NATIVE_ARRAY_SORT(Object.keys(sourceComponentAsOf)))
       === NATIVE_JSON_STRINGIFY(NATIVE_ARRAY_SORT([...COMPONENT_KEYS])),
-    `Row ${source.date} componentAsOf must contain exactly the six frozen component keys`);
+    `Row ${date} componentAsOf must contain exactly the six frozen component keys`);
     const componentAsOf = {};
     COMPONENT_KEYS.forEach((key, component) => {
-      const asOf = source.componentAsOf[key];
+      const asOf = sourceComponentAsOf[key];
       if (finite(components[component])) {
-        assert(exactIsoDate(asOf) && asOf <= source.date
-          && calendarDaysBetween(asOf, source.date) <= 7,
-        `Row ${source.date} ${key} has invalid, future, or stale componentAsOf`);
+        assert(exactIsoDate(asOf) && asOf <= date
+          && calendarDaysBetween(asOf, date) <= 7,
+        `Row ${date} ${key} has invalid, future, or stale componentAsOf`);
         componentAsOf[key] = asOf;
       } else {
-        assert(asOf == null, `Row ${source.date} ${key} invalid component must have null componentAsOf`);
+        assert(asOf == null, `Row ${date} ${key} invalid component must have null componentAsOf`);
         componentAsOf[key] = null;
       }
     });
-    return NATIVE_OBJECT_FREEZE({
-      date: source.date,
-      targetClose: source.targetClose,
-      cashClose: source.cashClose,
-      referenceDate: source.referenceDate,
+    rows.push(NATIVE_OBJECT_FREEZE({
+      date,
+      targetClose,
+      cashClose,
+      referenceDate,
       components: NATIVE_OBJECT_FREEZE(components),
       componentAsOf: NATIVE_OBJECT_FREEZE(componentAsOf),
       availableAtUtc,
-    });
-  });
-  assert(input.marketClass === 'crypto' || input.marketClass === 'equity',
-    'Market class must be exactly crypto or equity');
+    }));
+  }
   const marketClass = input.marketClass;
+  assert(marketClass === 'crypto' || marketClass === 'equity',
+    'Market class must be exactly crypto or equity');
+  const inputKey = input.key;
+  const inputName = input.name;
+  const inputTargetId = input.targetId;
+  const inputCashId = input.cashId;
   const normalized = deepFreeze({
     schemaVersion: SCHEMA_VERSION,
-    key: String(input.key || input.targetId || 'market'),
-    name: String(input.name || input.key || input.targetId || 'Market'),
-    targetId: String(input.targetId || input.key || 'target'),
-    cashId: String(input.cashId || 'BIL'),
+    key: String(inputKey || inputTargetId || 'market'),
+    name: String(inputName || inputKey || inputTargetId || 'Market'),
+    targetId: String(inputTargetId || inputKey || 'target'),
+    cashId: String(inputCashId || 'BIL'),
     marketClass,
     rows,
   });
@@ -687,19 +712,30 @@ function fitControlResidualPls1(trainingRows, currentControls, currentComponents
     return NATIVE_OBJECT_FREEZE({ ok: false, reason: 'NO_TRAINING_ROWS' });
   }
   if (!Array.isArray(currentControls) || currentControls.length !== CONTROL_KEYS.length
-      || !currentControls.every(finite)
-      || !Array.isArray(currentComponents) || currentComponents.length !== COMPONENT_KEYS.length
+      || !Array.isArray(currentComponents) || currentComponents.length !== COMPONENT_KEYS.length) {
+    return NATIVE_OBJECT_FREEZE({ ok: false, reason: 'INVALID_CURRENT_FEATURES' });
+  }
+  currentControls = CONTROL_KEYS.map((unused, column) => currentControls[column]);
+  currentComponents = COMPONENT_KEYS.map((unused, column) => currentComponents[column]);
+  if (!currentControls.every(finite)
       || !currentComponents.every(value => finite(value) && value >= 0 && value <= 100)) {
     return NATIVE_OBJECT_FREEZE({ ok: false, reason: 'INVALID_CURRENT_FEATURES' });
   }
   const normalizedRows = [];
   for (const row of trainingRows) {
-    if (!row || !Array.isArray(row.controls) || row.controls.length !== CONTROL_KEYS.length
-        || !row.controls.every(finite)
-        || !Array.isArray(row.components) || row.components.length !== COMPONENT_KEYS.length
-        || !row.components.every(value => finite(value) && value >= 0 && value <= 100)
-        || !finite(row.outcome)) return NATIVE_OBJECT_FREEZE({ ok: false, reason: 'INVALID_TRAINING_ROW' });
-    normalizedRows.push(row);
+    const sourceControls = row ? row.controls : null;
+    const sourceComponents = row ? row.components : null;
+    const outcome = row ? row.outcome : null;
+    if (!Array.isArray(sourceControls) || sourceControls.length !== CONTROL_KEYS.length
+        || !Array.isArray(sourceComponents) || sourceComponents.length !== COMPONENT_KEYS.length
+        || !finite(outcome)) return NATIVE_OBJECT_FREEZE({ ok: false, reason: 'INVALID_TRAINING_ROW' });
+    const controls = CONTROL_KEYS.map((unused, column) => sourceControls[column]);
+    const components = COMPONENT_KEYS.map((unused, column) => sourceComponents[column]);
+    if (!controls.every(finite)
+        || !components.every(value => finite(value) && value >= 0 && value <= 100)) {
+      return NATIVE_OBJECT_FREEZE({ ok: false, reason: 'INVALID_TRAINING_ROW' });
+    }
+    normalizedRows.push({ controls, components, outcome });
   }
   const n = normalizedRows.length;
   const controlMeans = CONTROL_KEYS.map((unused, column) => normalizedRows.reduce(
@@ -910,8 +946,10 @@ function buildLatestDecision(input, positions = { M0: 'LONG', M1: 'LONG' }, deci
   const index = decisionIndex == null ? market.rows.length - 1 : decisionIndex;
   assert(Number.isInteger(index) && index >= 0 && index < market.rows.length,
     'decisionIndex is out of range');
-  assert(positions && ['LONG', 'CASH'].includes(positions.M0)
-    && ['LONG', 'CASH'].includes(positions.M1), 'Both prior model positions are required');
+  assert(positions, 'Both prior model positions are required');
+  const priorPositions = NATIVE_OBJECT_FREEZE({ M0: positions.M0, M1: positions.M1 });
+  assert(['LONG', 'CASH'].includes(priorPositions.M0)
+    && ['LONG', 'CASH'].includes(priorPositions.M1), 'Both prior model positions are required');
   const current = buildFeatureObservation(market, index, index);
   const trainingRows = [];
   let trainingStartDate = null;
@@ -958,8 +996,8 @@ function buildLatestDecision(input, positions = { M0: 'LONG', M1: 'LONG' }, deci
     } else {
       predictions = { M0: fit.predictionM0, M1: fit.predictionM1 };
       targets = {
-        M0: chooseBinaryTarget(positions.M0, predictions.M0, COSTS[market.marketClass].stress),
-        M1: chooseBinaryTarget(positions.M1, predictions.M1, COSTS[market.marketClass].stress),
+        M0: chooseBinaryTarget(priorPositions.M0, predictions.M0, COSTS[market.marketClass].stress),
+        M1: chooseBinaryTarget(priorPositions.M1, predictions.M1, COSTS[market.marketClass].stress),
       };
       if (fit.zeroFactor) fallbackReason = ZERO_FACTOR_REASON;
     }
@@ -989,8 +1027,8 @@ function buildLatestDecision(input, positions = { M0: 'LONG', M1: 'LONG' }, deci
       earliestExecutionRule: 'FIRST_TARGET_CLOSE_STRICTLY_AFTER_FEATURE_CLOSE_AND_RECORDED_AVAILABILITY',
       action: targetPosition === 'LONG' ? 'BUY' : 'SELL',
       targetPosition,
-      filledPosition: positions[model],
-      tradeRequired: targetPosition !== positions[model],
+      filledPosition: priorPositions[model],
+      tradeRequired: targetPosition !== priorPositions[model],
       prediction: predictions[model],
       fallbackReason,
       fitFailureReason: fit && !fit.ok ? fit.reason : null,
