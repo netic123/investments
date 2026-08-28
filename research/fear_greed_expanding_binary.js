@@ -17,6 +17,9 @@ const EVIDENCE_STATUS = 'RETROSPECTIVE_PREQUENTIAL_DEVELOPMENT_ONLY';
 const FALSIFIED_STATUS = 'RETROSPECTIVE_PREQUENTIAL_FALSIFIED';
 const WARMUP_REASON = 'WARMUP_BUY_BASELINE';
 const INVALID_REASON = 'FAIL_CLOSED_DATA_INVALID';
+const NORMALIZED_MARKETS = new WeakSet();
+const NATIVE_WEAKSET_HAS = Function.prototype.call.bind(WeakSet.prototype.has);
+const NATIVE_WEAKSET_ADD = Function.prototype.call.bind(WeakSet.prototype.add);
 
 const COMPONENT_KEYS = Object.freeze([
   'momentum',
@@ -177,6 +180,7 @@ function extractComponentScores(signal) {
 
 function normalizeMarket(input) {
   assert(input && typeof input === 'object', 'Market input must be an object');
+  if (NATIVE_WEAKSET_HAS(NORMALIZED_MARKETS, input)) return input;
   const rawPrices = Array.isArray(input.prices)
     ? input.prices
     : input.prices && Array.isArray(input.prices.rows) ? input.prices.rows : null;
@@ -239,7 +243,7 @@ function normalizeMarket(input) {
   const annualization = isFiniteNumber(input.annualization) && input.annualization > 0
     ? input.annualization
     : marketClass === 'crypto' ? 365 : 252;
-  return Object.freeze({
+  const normalized = Object.freeze({
     schemaVersion: SCHEMA_VERSION,
     key: String(input.key || input.targetId || 'market'),
     name: String(input.name || input.key || input.targetId || 'market'),
@@ -249,6 +253,8 @@ function normalizeMarket(input) {
     prices: Object.freeze(prices),
     signals: Object.freeze(signals),
   });
+  NATIVE_WEAKSET_ADD(NORMALIZED_MARKETS, normalized);
+  return normalized;
 }
 
 function populationStandardDeviation(values) {
@@ -259,7 +265,7 @@ function populationStandardDeviation(values) {
 }
 
 function buildFeatureObservation(normalizedMarket, signalIndex) {
-  const market = normalizedMarket.schemaVersion === SCHEMA_VERSION
+  const market = NATIVE_WEAKSET_HAS(NORMALIZED_MARKETS, normalizedMarket)
     ? normalizedMarket
     : normalizeMarket(normalizedMarket);
   assert(Number.isInteger(signalIndex) && signalIndex >= 0 && signalIndex < market.signals.length,
@@ -580,7 +586,7 @@ function binaryDecisionRecord({
 }
 
 function buildDecisionLedgers(input) {
-  const market = input.schemaVersion === SCHEMA_VERSION ? input : normalizeMarket(input);
+  const market = NATIVE_WEAKSET_HAS(NORMALIZED_MARKETS, input) ? input : normalizeMarket(input);
   const costs = COSTS[market.marketClass];
   const statsM1 = createSufficientStatistics(M1_FEATURE_NAMES.length);
   const statsM0 = createSufficientStatistics(M0_FEATURE_NAMES.length);
@@ -759,7 +765,7 @@ function completedCashEpisodes(decisions) {
 }
 
 function replayDecisionLedger(input, decisions, oneWayCost) {
-  const market = input.schemaVersion === SCHEMA_VERSION ? input : normalizeMarket(input);
+  const market = NATIVE_WEAKSET_HAS(NORMALIZED_MARKETS, input) ? input : normalizeMarket(input);
   assert(Array.isArray(decisions) && decisions.length > 0, 'At least one decision is required');
   assert(isFiniteNumber(oneWayCost) && oneWayCost >= 0 && oneWayCost < 1, 'Invalid one-way cost');
   const startIndex = decisions[0].decisionPriceIndex;

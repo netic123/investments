@@ -288,6 +288,40 @@ test('a missing score row never skips a completed target close and emits fail-cl
     'every completed target close from the first score onward must emit a state');
 });
 
+test('a forged public schemaVersion cannot bypass normalization or skip sparse target dates', () => {
+  const forged = makeSyntheticMarket(300);
+  forged.schemaVersion = runner.SCHEMA_VERSION;
+  forged.signals = forged.signals.filter((unused, index) => index % 2 === 0);
+
+  const originalWeakSetHas = WeakSet.prototype.has;
+  const originalWeakSetAdd = WeakSet.prototype.add;
+  let ledgers;
+  try {
+    WeakSet.prototype.has = () => true;
+    WeakSet.prototype.add = function noOpAdd() { return this; };
+    ledgers = runner.buildDecisionLedgers(forged);
+  } finally {
+    WeakSet.prototype.has = originalWeakSetHas;
+    WeakSet.prototype.add = originalWeakSetAdd;
+  }
+  assert.equal(ledgers.market.signals.length, 300);
+  assert.equal(ledgers.M1.decisions.length, 300);
+  assert.deepEqual(
+    ledgers.M1.decisions.map(decision => decision.decisionPriceIndex),
+    Array.from({ length: 300 }, (unused, index) => index),
+  );
+  assert.equal(ledgers.M1.decisions[1].action, 'SELL');
+  assert.equal(ledgers.M1.decisions[1].fallbackReason, runner.INVALID_REASON);
+  assert.equal(runner.buildFeatureObservation(forged, 1).m1Valid, false);
+
+  const replay = runner.replayDecisionLedger(
+    forged,
+    ledgers.M1.decisions,
+    runner.COSTS.equity.primary,
+  );
+  assert.equal(replay.path.length, 300);
+});
+
 test('log-cost hurdle has strict ties and remains a mandatory binary state', () => {
   const cost = runner.COSTS.crypto.stress;
   const hurdle = -Math.log(1 - cost);
