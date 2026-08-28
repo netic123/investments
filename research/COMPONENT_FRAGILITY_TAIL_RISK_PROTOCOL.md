@@ -5,6 +5,7 @@
 <!-- COMPONENT_FRAGILITY_TAIL_INITIAL_INTEGRITY_FREEZE_AT: 2026-08-26T08:30:34.171Z -->
 <!-- COMPONENT_FRAGILITY_TAIL_DISCLOSURE_REFREEZE_AT: 2026-08-26T08:39:10.443Z -->
 <!-- COMPONENT_FRAGILITY_TAIL_FINAL_NUMERICAL_INTEGRITY_REFREEZE_AT: 2026-08-26T08:48:51.262Z -->
+<!-- COMPONENT_FRAGILITY_TAIL_UPSTREAM_DEPENDENCY_IDENTITY_REFREEZE_AT: 2026-08-28T16:32:44.129Z -->
 
 Status: **the core statistical hypothesis was frozen at the first timestamp;
 initial integrity code at the second; an input-access disclosure at the third;
@@ -14,6 +15,13 @@ computed. The fourth refreeze changes only invalid/underflow inference handling,
 not the feature, timing, model, threshold, market family, or stop rule: finite
 nonconstant data whose HAC variance underflows to zero now fail inference instead
 of being treated as significant.
+The fifth refreeze re-pins only the upstream dependency identities
+(`marketfg.js` and `data/config.json`) after post-freeze upstream work added
+the public expanding-signal research subsystem to the engine and the ustech
+dashboard market to the production config; the frozen schema-5 input, feature,
+timing, model, threshold, market family, stop rule, and inference are
+unchanged, and no component-fragility production-snapshot outcome has been
+computed.
 Retrospective cross-market falsification only; not validated, investable, or
 approved for production**.
 

@@ -715,6 +715,13 @@ function validateAttemptChain(root, manifest, manifestSha256, seed, accepted, pr
     const sourceResult = validateAttemptSource(root, attempt.sourceAcquisition, attempt, seed,
       `${file}: attempt source`);
     receiptPaths.push(...sourceResult.receiptPaths);
+    const requestInitiationDeadlineUtc = seedBuilder.sourceRequestInitiationDeadlineUtc(
+      attempt.sourceAcquisition.retrievalDateUtc);
+    for (const receipt of attempt.sourceAcquisition.rawResponses) {
+      if (receipt.startedAtUtc >= requestInitiationDeadlineUtc) {
+        throw new Error(`${file}: source request initiated at or past the frozen 12:00Z acquisition deadline`);
+      }
+    }
     const nonFailure = attempt.failureStage === null && attempt.errorSha256 === null;
     if (attempt.status === common.ATTEMPT_STATUS.SKIPPED_PAST_CUTOFF) {
       if (!nonFailure || attempt.reason !== common.ATTEMPT_REASON.PRE_ACQUISITION_CUTOFF
@@ -726,17 +733,25 @@ function validateAttemptChain(root, manifest, manifestSha256, seed, accepted, pr
       const prior = accepted.filter(bundle => bundle.collectedAtUtc < attempt.collectedAtUtc);
       const latestFrozen = seedBuilder.frozenTargetCalendar(
         seed.sourceIdentityContract, attempt.sourceAcquisition.retrievalDateUtc).at(-1);
+      const ledgerDate = permanentLedgerTerminalDate(seed, prior);
       if (!nonFailure
           || attempt.reason !== common.ATTEMPT_REASON.LATEST_COMPLETED_SOURCE_SESSION_ALREADY_IN_LEDGER
           || attempt.sourceAcquisition.state !== common.ACQUISITION_STATE.NOT_STARTED
           || new Date(attempt.collectedAtUtc).getUTCHours() >= 12
-          || latestFrozen !== permanentLedgerTerminalDate(seed, prior)) {
+          || latestFrozen !== ledgerDate) {
         throw new Error(`${file}: false already-recorded-date attempt`);
+      }
+      if (ledgerDate === seedBuilder.frozenTargetCalendarSessions(seed.sourceIdentityContract).at(-1)) {
+        throw new Error(`${file}: already-recorded-date skip masks frozen-calendar horizon exhaustion`);
       }
     } else if (attempt.status === common.ATTEMPT_STATUS.SUCCESS_NO_NEW_DECISION) {
       if (!nonFailure || attempt.reason !== common.ATTEMPT_REASON.NO_NEW_COMPLETED_COMMON_TARGET_SESSION
           || attempt.sourceAcquisition.state !== common.ACQUISITION_STATE.COMPLETE_REPLAY_VERIFIED
-          || !sourceResult.replay) throw new Error(`${file}: invalid no-new-decision attempt`);
+          || !sourceResult.replay
+          || new Date(attempt.collectedAtUtc).getUTCHours() >= 12
+          || attempt.collectedAtUtc.slice(0, 10) !== attempt.sourceAcquisition.retrievalDateUtc) {
+        throw new Error(`${file}: invalid no-new-decision attempt`);
+      }
       const prior = accepted.filter(bundle => bundle.collectedAtUtc < attempt.collectedAtUtc);
       for (const key of common.MARKET_ORDER) {
         if (expectedProspectiveRows(sourceResult.replay.markets[key], primaryRows(seed, prior, key),
@@ -745,17 +760,26 @@ function validateAttemptChain(root, manifest, manifestSha256, seed, accepted, pr
         }
       }
     } else if (attempt.status === common.ATTEMPT_STATUS.FAILED_NO_DECISION) {
-      if (!common.ATTEMPT_FAILURE_STAGE.includes(attempt.failureStage)
+      const { ATTEMPT_FAILURE_STAGE } = require('./pls1-lockbox-collect');
+      if (!ATTEMPT_FAILURE_STAGE.includes(attempt.failureStage)
           || attempt.reason !== `FAILED_${attempt.failureStage}` || !sha(attempt.errorSha256)) {
         throw new Error(`${file}: failure attempt is not stage-coded`);
       }
-      const expectedState = attempt.failureStage === 'PREFLIGHT'
+      const expectedState = ['PREFLIGHT', 'FROZEN_CALENDAR_HORIZON_EXHAUSTED']
+        .includes(attempt.failureStage)
         ? common.ACQUISITION_STATE.NOT_STARTED
         : (['ACQUISITION', 'RAW_PERSISTENCE', 'OFFLINE_REPLAY'].includes(attempt.failureStage)
           ? common.ACQUISITION_STATE.PARTIAL_UNVERIFIED
           : common.ACQUISITION_STATE.COMPLETE_REPLAY_VERIFIED);
       if (attempt.sourceAcquisition.state !== expectedState) {
         throw new Error(`${file}: failure stage/acquisition state mismatch`);
+      }
+      if (attempt.failureStage === 'FROZEN_CALENDAR_HORIZON_EXHAUSTED') {
+        const prior = accepted.filter(bundle => bundle.collectedAtUtc < attempt.collectedAtUtc);
+        if (permanentLedgerTerminalDate(seed, prior)
+            !== seedBuilder.frozenTargetCalendarSessions(seed.sourceIdentityContract).at(-1)) {
+          throw new Error(`${file}: exhaustion failure without an exhausted frozen calendar`);
+        }
       }
     } else {
       throw new Error(`${file}: unknown attempt status ${attempt.status}`);
@@ -847,6 +871,9 @@ function verifyLockbox(root = common.LOCKBOX_ROOT,
     if (new Date(bundle.collectedAtUtc).getUTCHours() >= 12) throw new Error(`${file}: post-cutoff decision`);
     const expectedMode = accepted.length ? 'DAILY_OR_RECOVERY_REMOTE_RUN' : 'POST_MANIFEST_REMOTE_ACTIVATION';
     if (bundle.mode !== expectedMode) throw new Error(`${file}: collection mode mismatch`);
+    if (!accepted.length) {
+      seedBuilder.assertActivationForwardHorizon(seed.sourceIdentityContract, bundle.decisionDate);
+    }
     if (!sha(bundle.manifestCommitSha, 40)) throw new Error(`${file}: manifest commit identity invalid`);
     if (manifestCommitSha === null) manifestCommitSha = bundle.manifestCommitSha;
     else if (manifestCommitSha !== bundle.manifestCommitSha) throw new Error(`${file}: manifest commit identity changed`);
@@ -969,11 +996,19 @@ function verifyLockbox(root = common.LOCKBOX_ROOT,
   }
   const attemptResult = validateAttemptChain(root, manifest, manifestSha256, seed, accepted, production,
     terminalRunAttempts, remoteGitCache);
-  if (production && manifestCommitSha !== null) {
+  if (production) {
+    const relativeManifest = path.relative(common.ROOT, common.MANIFEST_PATH).replace(/\\/g, '/');
+    const resolvedManifestCommitSha = manifestCommitSha !== null
+      ? manifestCommitSha
+      : gitText(['log', '-1', '--format=%H', '--', relativeManifest]);
+    if (!sha(resolvedManifestCommitSha, 40)) throw new Error('manifest commit identity is invalid');
+    if (resolvedManifestCommitSha === manifest.sourceCommitSha) {
+      throw new Error('manifest commit must strictly descend from its frozen source commit');
+    }
     require('./pls1-lockbox-git-binding').assertGitObjectBinding({
       repoRoot: common.ROOT,
       manifestPath: common.MANIFEST_PATH,
-      manifestCommitSha,
+      manifestCommitSha: resolvedManifestCommitSha,
     });
   }
   for (const file of attemptResult.files) {
