@@ -17,6 +17,16 @@ const API_OUT = path.join(OUT, 'api');
 const ENDPOINTS = ['config', 'holdings', 'dalal', 'nav', 'perf', 'quotes', 'marketfg'];
 const EXPECTED_FILES = ['.nojekyll', 'index.html', 'api/build.json', ...ENDPOINTS.map(name => `api/${name}.json`)].sort();
 const PUBLIC_POSITION_KEYS = ['currency', 'entry', 'fundTicker', 'nextReport', 'nextReportApprox', 'nextReportNote', 'secTicker', 'ticker', 'yahoo'];
+const PUBLIC_EXPANDING_SIGNAL_KEYS = [
+  'action', 'actionMeaning', 'availableAtUtc', 'cashModel', 'currentRiskyWeight',
+  'decisionAsOfClose', 'decisionSha256', 'evidenceStatus', 'executeNoEarlierThanClose',
+  'expectedTargetId',
+  'historyEnd', 'historyObservations', 'historyStart', 'historyTruncated', 'inputsCompleted',
+  'inputsFresh', 'latestMaturedOutcomeThrough', 'modelId', 'modelVersion',
+  'prospectiveRecorded', 'reason', 'targetId',
+  'targetRiskyWeight', 'targetSuitability', 'tradeRequired', 'trainingEnd',
+  'trainingRows', 'trainingStart', 'x2ClaimAllowed',
+].sort();
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -33,6 +43,14 @@ const EXPECTED_MARKET_SYMBOLS = {
   europe: { index: '^STOXX', vol: null, bond: 'SXRQ.DE', hy: 'IHYG.L', ig: 'IEAC.L', small: 'EXSE.DE', large: 'EXSA.DE' },
   global: { index: 'ACWI', vol: '^VIX', bond: 'IEF', hy: 'HYLD.L', ig: 'CORP.L', small: 'WSML.L', large: 'IWDA.L' },
 };
+const EXPECTED_TARGET_SUITABILITY = Object.freeze({
+  crypto: 'SYNTHETIC_ANALYTICAL_BASKET_NOT_INVESTABLE',
+  sweden: 'GROSS_RETURN_REFERENCE_INDEX_NOT_EXECUTABLE_INSTRUMENT',
+  usa: 'INVESTABLE_ETF_TOTAL_RETURN_PROXY_NOT_EXECUTION_RECORD_ZERO_CASH',
+  ustech: 'INVESTABLE_ETF_TOTAL_RETURN_PROXY_OUTSIDE_SCHEMA5_ZERO_CASH',
+  europe: 'PRICE_RETURN_INDEX_OMITS_DIVIDENDS_NOT_INVESTABLE_X2_TARGET',
+  global: 'INVESTABLE_ETF_TOTAL_RETURN_PROXY_NOT_EXECUTION_RECORD_ZERO_CASH',
+});
 
 function normalizedMapping(symbols) {
   const actual = symbols || {};
@@ -145,6 +163,8 @@ function validateSnapshot(data, publicPositions) {
   assert(marketfg && marketfg.ok === true && marketfg.markets && typeof marketfg.markets === 'object', 'market Fear & Greed is invalid');
   assert(marketfg.model && marketfg.model.id === 'investments-unified-fear-greed' && marketfg.model.version === 2 && marketfg.model.owner === 'repository', 'market result does not identify the unified repository model');
   assert(marketfg.model.window === 252 && marketfg.model.minWindowPoints === 126 && marketfg.model.minComponents === 6 && marketfg.model.fillDays === 7, 'unified result parameters have drifted');
+  assert(marketfg.model.expandingSignal && marketfg.model.expandingSignal.id === 'FG-ONLINE-RIDGE-PREQ-V1' && marketfg.model.expandingSignal.version === 1, 'expanding binary learner identity is missing');
+  assert(marketfg.model.expandingSignal.minimumMaturedRows === 252 && marketfg.model.expandingSignal.evidenceStatus === 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_NOT_VALIDATED', 'expanding learner status/seed drifted');
   assert(JSON.stringify(Object.keys(marketfg.markets).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa', 'ustech']), 'unified model must return exactly the six configured markets');
   const componentKeys = ['breadth', 'credit', 'momentum', 'safeHaven', 'strength', 'volatility'];
   for (const name of ['crypto', 'sweden', 'usa', 'ustech', 'europe', 'global']) {
@@ -156,6 +176,23 @@ function validateSnapshot(data, publicPositions) {
     assert(Object.values(market.components).every(component => Number.isFinite(component.score) && component.asOf), `${name} has an unavailable current component`);
     assert(market.history.every(row => Number.isFinite(row.score) && row.score >= 0 && row.score <= 100 && row.n === 6), `${name} history changes the unified model definition`);
     assertMarketMapping(name, market.mapping && market.mapping.symbols, 'result');
+    assert(market.mapping && market.mapping.barPolicy === 'completed-source-local-date' && market.intraday === false, `${name} does not prove source-local completed bars`);
+    const signal = market.expandingSignal;
+    assert(signal && JSON.stringify(Object.keys(signal).sort()) === JSON.stringify(PUBLIC_EXPANDING_SIGNAL_KEYS), `${name} expanding signal public allowlist drifted`);
+    assert(signal.modelId === 'FG-ONLINE-RIDGE-PREQ-V1' && signal.modelVersion === 1 && ['BUY', 'SELL'].includes(signal.action), `${name} expanding signal identity/action is invalid`);
+    assert(signal.actionMeaning === 'TARGET_POSITION' && [0, 1].includes(signal.targetRiskyWeight) && [0, 1].includes(signal.currentRiskyWeight) && typeof signal.tradeRequired === 'boolean', `${name} expanding signal is not an exact binary target state`);
+    const expectedTargetId = typeof EXPECTED_MARKET_SYMBOLS[name].index === 'object'
+      ? EXPECTED_MARKET_SYMBOLS[name].index.id
+      : EXPECTED_MARKET_SYMBOLS[name].index;
+    assert(signal.decisionAsOfClose === market.asOf && signal.targetId === market.indexSymbol && signal.expectedTargetId === expectedTargetId && signal.targetId === signal.expectedTargetId, `${name} signal does not identify the reviewed completed target close`);
+    assert(signal.executeNoEarlierThanClose === 'FIRST_TARGET_CLOSE_STRICTLY_AFTER_FEATURE_CLOSE_AND_AVAILABLE_AT_UTC' && Number.isFinite(Date.parse(signal.availableAtUtc || '')), `${name} signal execution/availability contract is incomplete`);
+    assert(signal.historyStart === market.history[0].date && signal.historyEnd === market.history.at(-1).date && signal.historyObservations === market.history.length && signal.historyTruncated === false, `${name} expanding signal is not using the full published score history`);
+    assert(Number.isInteger(signal.trainingRows) && signal.trainingRows >= 252 && signal.trainingStart && signal.trainingEnd && signal.latestMaturedOutcomeThrough, `${name} expanding training span is incomplete`);
+    assert(signal.inputsCompleted === true && signal.inputsFresh === true, `${name} expanding signal was produced from incomplete or stale inputs`);
+    assert(signal.targetSuitability === EXPECTED_TARGET_SUITABILITY[name], `${name} target suitability disclosure drifted`);
+    assert(signal.cashModel === 'ZERO_RETURN_DEVELOPMENT_ASSUMPTION' && signal.evidenceStatus === 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_NOT_VALIDATED' && signal.prospectiveRecorded === false && signal.x2ClaimAllowed === false, `${name} expanding signal overstates evidence or cash`);
+    assert(/^[0-9a-f]{64}$/.test(signal.decisionSha256 || ''), `${name} expanding decision hash is missing`);
+    assert(!Object.prototype.hasOwnProperty.call(signal, 'prices') && !Object.prototype.hasOwnProperty.call(signal, 'parts') && !Object.prototype.hasOwnProperty.call(signal, 'features') && !Object.prototype.hasOwnProperty.call(signal, 'coefficients'), `${name} expanding signal exposes internal histories or fit parameters`);
   }
   const crypto = marketfg.markets.crypto;
   assert(crypto.indexSymbol === 'CRYPTO-BROAD-EW' && crypto.indexName === 'Broad crypto equal-weight basket', 'Crypto result is not using the broad repository-owned benchmark');
@@ -163,7 +200,7 @@ function validateSnapshot(data, publicPositions) {
     assert(JSON.stringify(crypto.components[component].symbols) === JSON.stringify(['CRYPTO-BROAD-EW']), `Crypto ${component} is not based on the broad benchmark`);
   }
   assert(JSON.stringify(crypto.components.safeHaven.symbols) === JSON.stringify(['CRYPTO-BROAD-EW', 'IEF']), 'Crypto safe-haven component is not based on the broad benchmark');
-  assert(crypto.mapping && crypto.mapping.barPolicy === 'completed-utc-date' && crypto.intraday === false, 'Crypto result does not prove completed UTC bars');
+  assert(crypto.mapping && crypto.mapping.configuredBarPolicy === 'completed-utc-date' && crypto.mapping.barPolicy === 'completed-source-local-date' && crypto.intraday === false, 'Crypto result does not prove completed source-local bars');
   assert(crypto.asOf < new Date().toISOString().slice(0, 10), 'Crypto result includes the still-forming current UTC bar');
 }
 

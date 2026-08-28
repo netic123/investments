@@ -17,18 +17,30 @@
 // Composite = the equal-weight mean of all six indicators. Labels:
 // 0–24 Extreme Fear · 25–44 Fear · 45–55 Neutral · 56–74 Greed · 75–100 Extreme Greed.
 
+const expandingBinary = require('./research/fear_greed_expanding_binary');
+
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Investments/1.0';
 const SERIES_TTL_MS = 15 * 60 * 1000; // daily data effectively changes once a day — don't fetch more often
-const seriesCache = new Map();         // symbol -> { t, p }
-const lastGood = new Map();            // symbol -> last successful series (fallback if Yahoo does not respond)
+const seriesCache = new Map();         // symbol + requested range -> { t, p }
+const lastGood = new Map();            // symbol + requested range -> last successful series
 
 // range 'max' = each series' full history on Yahoo (SPY since 1993, ^VIX since 1990 …); the composite reaches back as far as ≥ minComponents indicators exist
 const DEFAULTS = {
   modelId: 'investments-unified-fear-greed', version: 2,
   range: 'max', window: 252, minWindowPoints: 126, minComponents: 6,
-  fillDays: 7, historyPoints: 8000, timeoutMs: 25000, concurrency: 6,
+  // Score history is intentionally uncapped: the expanding learner and public
+  // chart both retain the entire usable history for each market.
+  fillDays: 7, timeoutMs: 25000, concurrency: 6,
 };
 const LABELS = [[0, 24, 'Extreme Fear'], [25, 44, 'Fear'], [45, 55, 'Neutral'], [56, 74, 'Greed'], [75, 100, 'Extreme Greed']];
+const TARGET_DISCLOSURES = Object.freeze({
+  crypto: Object.freeze({ expectedTargetId: 'CRYPTO-BROAD-EW', requiresAdjusted: false, suitability: 'SYNTHETIC_ANALYTICAL_BASKET_NOT_INVESTABLE' }),
+  sweden: Object.freeze({ expectedTargetId: '^OMXSBGI', requiresAdjusted: false, suitability: 'GROSS_RETURN_REFERENCE_INDEX_NOT_EXECUTABLE_INSTRUMENT' }),
+  usa: Object.freeze({ expectedTargetId: 'SPY', requiresAdjusted: true, suitability: 'INVESTABLE_ETF_TOTAL_RETURN_PROXY_NOT_EXECUTION_RECORD_ZERO_CASH' }),
+  ustech: Object.freeze({ expectedTargetId: 'XLK', requiresAdjusted: true, suitability: 'INVESTABLE_ETF_TOTAL_RETURN_PROXY_OUTSIDE_SCHEMA5_ZERO_CASH' }),
+  europe: Object.freeze({ expectedTargetId: '^STOXX', requiresAdjusted: false, suitability: 'PRICE_RETURN_INDEX_OMITS_DIVIDENDS_NOT_INVESTABLE_X2_TARGET' }),
+  global: Object.freeze({ expectedTargetId: 'ACWI', requiresAdjusted: true, suitability: 'INVESTABLE_ETF_TOTAL_RETURN_PROXY_NOT_EXECUTION_RECORD_ZERO_CASH' }),
+});
 
 const COMPONENTS = {
   momentum:   { name: 'Momentum',         desc: 'Benchmark vs its 125-observation moving average', unit: '%', dir: 1 },
@@ -93,15 +105,16 @@ async function fetchSeries(symbol, range, signal) {
 }
 
 function getSeries(symbol, range, signal) {
-  const hit = seriesCache.get(symbol);
+  const cacheKey = `${symbol}\u0000${range}`;
+  const hit = seriesCache.get(cacheKey);
   if (hit && Date.now() - hit.t < SERIES_TTL_MS) return hit.p;
-  const p = fetchSeries(symbol, range, signal).then(s => { lastGood.set(symbol, s); return s; }, e => {
-    seriesCache.delete(symbol);
-    const g = lastGood.get(symbol);
+  const p = fetchSeries(symbol, range, signal).then(s => { lastGood.set(cacheKey, s); return s; }, e => {
+    seriesCache.delete(cacheKey);
+    const g = lastGood.get(cacheKey);
     if (g) return { ...g, stale: true, fetchError: String(e.message || e) };
     throw e;
   });
-  seriesCache.set(symbol, { t: Date.now(), p });
+  seriesCache.set(cacheKey, { t: Date.now(), p });
   return p;
 }
 function clearCache() { seriesCache.clear(); }
@@ -196,6 +209,22 @@ function beforeUtcDate(series, utcDate) {
   return { ...series, rows, lastDate: rows[rows.length - 1].date, intraday: false };
 }
 
+// Conservative completed-bar wrapper for live/public calculations.  A source's
+// exchange-local retrieval date is still forming or may still be revised by
+// the provider, so only strictly earlier local dates enter a research score or
+// learned decision.  This also makes the rule independent of the server's own
+// timezone.
+function beforeRetrievalLocalDate(series) {
+  if (!series || !series.fetchedAt || !series.tz) return null;
+  const instant = new Date(series.fetchedAt);
+  if (!Number.isFinite(instant.getTime())) return null;
+  let cutoff;
+  try { cutoff = instant.toLocaleDateString('sv-SE', { timeZone: series.tz }); }
+  catch { return null; }
+  const completed = beforeUtcDate(series, cutoff);
+  return completed ? { ...completed, completedBeforeLocalDate: cutoff, sourceFetchedAt: series.fetchedAt } : null;
+}
+
 function equalWeightReturnSeries(spec, sourceMap) {
   if (!spec || spec.method !== 'equalWeightReturns' || !Array.isArray(spec.symbols) || spec.symbols.length < 2) return null;
   if (new Set(spec.symbols).size !== spec.symbols.length) throw new Error(`${specLabel(spec)} contains duplicate constituents`);
@@ -243,12 +272,119 @@ function resolveSeriesSpec(spec, sourceMap) {
   return null;
 }
 
+function latestIsoTimestamp(values) {
+  return values.filter(value => typeof value === 'string' && Number.isFinite(Date.parse(value)))
+    .sort().at(-1) || null;
+}
+
+function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, annualization) {
+  const disclosure = TARGET_DISCLOSURES[key] || Object.freeze({
+    expectedTargetId: null,
+    requiresAdjusted: false,
+    suitability: 'UNREVIEWED_TARGET_NOT_INVESTABLE_X2',
+  });
+  const relevantSymbols = [...new Set(Object.values(symbols || {}).flatMap(spec => collectSpecSymbols(spec)))];
+  const relevantSources = relevantSymbols.map(symbol => marketSources.get(symbol)).filter(Boolean);
+  const availableAtUtc = latestIsoTimestamp(relevantSources.map(series => series.sourceFetchedAt || series.fetchedAt));
+  const inputStale = relevantSources.length !== relevantSymbols.length || relevantSources.some(series => series.stale);
+  const targetIdentityValid = disclosure.expectedTargetId === idx.symbol;
+  const targetAdjustmentValid = !disclosure.requiresAdjusted || idx.adjusted === true;
+  const targetInputValid = targetIdentityValid && targetAdjustmentValid;
+  const lastTarget = idx.rows.at(-1);
+  const lastSignal = history.at(-1);
+  const currentComplete = Boolean(targetInputValid && lastTarget && lastSignal && lastTarget.date === lastSignal.date && lastSignal.n === 6);
+  const signalByDate = new Map(history.map(row => [row.date, row]));
+  const scheduledSignals = idx.rows
+    .filter(row => row.date >= history[0].date)
+    .map(row => {
+      const signal = signalByDate.get(row.date);
+      const isLatestTarget = row.date === lastTarget.date;
+      const usableSignal = targetInputValid && signal && !(isLatestTarget && (inputStale || !currentComplete));
+      return usableSignal ? {
+        date: row.date,
+        publishedScore: round1(signal.score),
+        components: signal.parts,
+        availableAtUtc: isLatestTarget ? availableAtUtc : null,
+      } : {
+        date: row.date,
+        publishedScore: null,
+        components: {},
+        availableAtUtc: isLatestTarget ? availableAtUtc : null,
+      };
+    });
+  const input = {
+    key,
+    name: idx.name,
+    targetId: idx.symbol,
+    marketClass: key === 'crypto' ? 'crypto' : 'equity',
+    annualization,
+    prices: idx.rows,
+    signals: scheduledSignals,
+  };
+  const ledgers = expandingBinary.buildDecisionLedgers(input);
+  const decision = ledgers.M1.decisions.at(-1);
+  if (!decision) throw new Error(`${key}: expanding learner emitted no decision`);
+  const validFreshDecision = !inputStale && currentComplete;
+  const action = decision.action;
+  const targetRiskyWeight = action === 'BUY' ? 1 : 0;
+  const currentRiskyWeight = decision.filledPosition === 'LONG' ? 1 : 0;
+  const reason = decision.fallbackReason || 'EXPANDING_RIDGE_PATTERN';
+  const targetSuitability = !targetIdentityValid
+    ? 'TARGET_IDENTITY_MISMATCH_UNREVIEWED'
+    : !targetAdjustmentValid
+      ? 'UNADJUSTED_CLOSE_NOT_TOTAL_RETURN'
+      : disclosure.suitability;
+  const publicDecision = {
+    modelId: expandingBinary.MODEL_ID,
+    modelVersion: expandingBinary.SCHEMA_VERSION,
+    action,
+    actionMeaning: 'TARGET_POSITION',
+    targetRiskyWeight,
+    currentRiskyWeight,
+    tradeRequired: targetRiskyWeight !== currentRiskyWeight,
+    decisionAsOfClose: decision.decisionDate,
+    executeNoEarlierThanClose: 'FIRST_TARGET_CLOSE_STRICTLY_AFTER_FEATURE_CLOSE_AND_AVAILABLE_AT_UTC',
+    availableAtUtc,
+    latestMaturedOutcomeThrough: decision.latestMaturedOutcomeClose,
+    trainingRows: decision.trainingRowCount,
+    trainingStart: decision.trainingStartDate,
+    trainingEnd: decision.trainingEndDate,
+    historyStart: history[0].date,
+    historyEnd: lastSignal.date,
+    historyObservations: history.length,
+    historyTruncated: false,
+    reason,
+    inputsCompleted: currentComplete,
+    inputsFresh: !inputStale,
+    targetId: idx.symbol,
+    expectedTargetId: disclosure.expectedTargetId,
+    targetSuitability,
+    cashModel: 'ZERO_RETURN_DEVELOPMENT_ASSUMPTION',
+    evidenceStatus: 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_NOT_VALIDATED',
+    prospectiveRecorded: false,
+    x2ClaimAllowed: false,
+  };
+  return Object.freeze({
+    ...publicDecision,
+    decisionSha256: decision.decisionSha256,
+  });
+}
+
 // ---------- one market ----------
 function computeMarket(key, m, S, opt) {
   const sym = m.symbols || {};
   const marketSources = new Map();
   const utcCutoff = m.barPolicy === 'completed-utc-date' ? new Date().toISOString().slice(0, 10) : null;
-  for (const [symbol, series] of S) marketSources.set(symbol, utcCutoff ? beforeUtcDate(series, utcCutoff) : series);
+  for (const [symbol, series] of S) {
+    // getMarketFearGreed has already applied the stronger source-local wrapper.
+    // Keep the legacy direct-compute Crypto wrapper only for callers/tests that
+    // provide raw series, and never cut an already completed cached series a
+    // second time against a later wall-clock date.
+    const completed = series && series.completedBeforeLocalDate
+      ? series
+      : utcCutoff ? beforeUtcDate(series, utcCutoff) : series;
+    marketSources.set(symbol, completed);
+  }
   const get = slot => sym[slot] ? resolveSeriesSpec(sym[slot], marketSources) : null;
   const idx = get('index');
   if (!idx) throw new Error(`index series (${specLabel(sym.index) || '—'}) missing`);
@@ -322,6 +458,12 @@ function computeMarket(key, m, S, opt) {
       lag: !!(p && p.asOf !== last.date),       // older date than the index (other exchange closed) — not an error
     };
   }
+  const expandingSignal = opt.includeExpandingSignal
+    ? buildPublicExpandingSignal(
+      key, idx, history, marketSources, sym,
+      key === 'crypto' ? 365 : 252,
+    )
+    : null;
   return {
     key, name: m.name || key, currency: m.currency || idx.currency, indexSymbol: idx.symbol, indexName: idx.name,
     asOf: last.date, score: round1(last.score), label: labelOf(last.score), n: last.n, total: Object.keys(COMPONENTS).length,
@@ -330,8 +472,15 @@ function computeMarket(key, m, S, opt) {
       week: week ? round1(week.score) : null, weekDate: week ? week.date : null, month: month ? round1(month.score) : null, monthDate: month ? month.date : null,
       year: year ? round1(year.score) : null, yearDate: year ? year.date : null },
     components, warnings,
-    mapping: { barPolicy: m.barPolicy || 'exchange-local daily bars', symbols: sym },
-    history: history.slice(-opt.historyPoints).map(h => {
+    ...(expandingSignal ? { expandingSignal } : {}),
+    mapping: {
+      barPolicy: opt.includeExpandingSignal && [...marketSources.values()].some(series => series && series.completedBeforeLocalDate)
+        ? 'completed-source-local-date'
+        : m.barPolicy || 'exchange-local daily bars',
+      ...(opt.includeExpandingSignal ? { configuredBarPolicy: m.barPolicy || 'exchange-local daily bars' } : {}),
+      symbols: sym,
+    },
+    history: history.map(h => {
       const row = { date: h.date, score: round1(h.score), label: labelOf(h.score), n: h.n };
       // Research runs can request the causal component observations used for each
       // composite row. The public/server contract stays compact by default.
@@ -349,6 +498,7 @@ function computeMarket(key, m, S, opt) {
 
 // ---------- all markets ----------
 async function getMarketFearGreed(cfg) {
+  expandingBinary.assertProtocolIdentity();
   const opt = { ...DEFAULTS, ...(cfg || {}) };
   const markets = (cfg && cfg.markets) || {};
   const symbols = [...new Set(Object.values(markets).flatMap(m => Object.values(m.symbols || {}).flatMap(spec => collectSpecSymbols(spec))))];
@@ -359,10 +509,16 @@ async function getMarketFearGreed(cfg) {
   try { fetched = await mapLimit(symbols, opt.concurrency, s => getSeries(s, opt.range, ac.signal).then(v => ({ ok: true, v }), e => ({ ok: false, e: String(e.message || e) }))); }
   finally { clearTimeout(deadline); }
   const S = new Map(), errors = {};
-  fetched.forEach((r, i) => { if (r.ok) { S.set(symbols[i], r.v); if (r.v.stale) errors[symbols[i]] = r.v.fetchError; } else errors[symbols[i]] = r.e; });
+  fetched.forEach((r, i) => {
+    if (!r.ok) { errors[symbols[i]] = r.e; return; }
+    const completed = beforeRetrievalLocalDate(r.v);
+    if (!completed) { errors[symbols[i]] = `${symbols[i]} has no completed source-local bar`; return; }
+    S.set(symbols[i], completed);
+    if (r.v.stale) errors[symbols[i]] = r.v.fetchError;
+  });
   const out = {}, failed = {};
   for (const [key, m] of Object.entries(markets)) {
-    try { out[key] = computeMarket(key, m, S, opt); }
+    try { out[key] = computeMarket(key, m, S, { ...opt, includeExpandingSignal: true }); }
     catch (e) { failed[key] = String(e.message || e); }
   }
   return {
@@ -373,6 +529,13 @@ async function getMarketFearGreed(cfg) {
       method: 'equal-weight trailing-percentile six-component composite',
       window: opt.window, minWindowPoints: opt.minWindowPoints, range: opt.range,
       minComponents: opt.minComponents, fillDays: opt.fillDays, labels: LABELS, components: COMPONENTS,
+      expandingSignal: {
+        id: expandingBinary.MODEL_ID,
+        version: expandingBinary.SCHEMA_VERSION,
+        method: 'per-market expanding standardized ridge; next-close binary target state',
+        minimumMaturedRows: expandingBinary.MIN_MATURED_ROWS,
+        evidenceStatus: 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_NOT_VALIDATED',
+      },
     },
     markets: out, failed, symbolErrors: errors,
   };
@@ -380,5 +543,6 @@ async function getMarketFearGreed(cfg) {
 
 module.exports = {
   getMarketFearGreed, clearCache, LABELS, COMPONENTS, labelOf, pctScores, computeMarket,
-  collectSpecSymbols, equalWeightReturnSeries, resolveSeriesSpec, beforeUtcDate,
+  collectSpecSymbols, equalWeightReturnSeries, resolveSeriesSpec, beforeUtcDate, beforeRetrievalLocalDate,
+  buildPublicExpandingSignal,
 };
