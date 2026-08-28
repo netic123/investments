@@ -6,7 +6,8 @@ const crypto = require('node:crypto');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  beforeRetrievalLocalDate, computeMarket, equalWeightReturnSeries, labelOf, pctScores,
+  beforeRetrievalLocalDate, clearCache, computeMarket, equalWeightReturnSeries,
+  getMarketFearGreed, getMarketFearGreedResearchHistory, labelOf, pctScores,
 } = require('../marketfg');
 
 const CRYPTO = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'];
@@ -176,6 +177,58 @@ test('public score history is never truncated by the legacy historyPoints option
   assert.deepEqual(result.history, computeMarket('crypto', MARKET, fixture(), OPTIONS).history);
 });
 
+test('public signal acquisition rejects every provider range except exact max', async () => {
+  const originalFetch = global.fetch;
+  let requested = false;
+  global.fetch = async () => {
+    requested = true;
+    throw new Error('network must not be reached');
+  };
+  try {
+    await assert.rejects(
+      getMarketFearGreed({ range: '5y', markets: { usa: { symbols: { index: 'SPY' } } } }),
+      /PUBLIC_FULL_HISTORY_RANGE_REQUIRED/,
+    );
+  } finally {
+    global.fetch = originalFetch;
+  }
+  assert.equal(requested, false);
+});
+
+test('bounded private recovery can acquire rows but cannot emit a public signal', async () => {
+  const originalFetch = global.fetch;
+  let requested = 0;
+  const firstTimestamp = Date.parse('2020-01-01T00:00:00Z') / 1000;
+  const timestamps = Array.from({ length: 40 }, (_, i) => firstTimestamp + i * 86400);
+  const closes = timestamps.map((_, i) => 100 + i);
+  global.fetch = async () => {
+    requested++;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ chart: { result: [{
+        meta: { longName: 'Private recovery fixture', currency: 'USD', exchangeTimezoneName: 'UTC' },
+        timestamp: timestamps,
+        indicators: { quote: [{ close: closes }], adjclose: [{ adjclose: closes }] },
+      }], error: null } }),
+    };
+  };
+  clearCache();
+  try {
+    const result = await getMarketFearGreedResearchHistory({
+      range: '5y', timeoutMs: 1000, concurrency: 1,
+      markets: { usa: { name: 'USA', currency: 'USD', symbols: { index: 'PRIVATE-RECOVERY-TEST' } } },
+    });
+    assert.equal(requested, 1);
+    assert.equal(result.model.range, '5y');
+    assert.equal(Object.prototype.hasOwnProperty.call(result.model, 'expandingSignal'), false);
+    assert.equal(Object.values(result.markets).some(market => Object.prototype.hasOwnProperty.call(market, 'expandingSignal')), false);
+  } finally {
+    clearCache();
+    global.fetch = originalFetch;
+  }
+});
+
 test('expanding learner uses full internal prices and parts but publishes only a binary decision summary', () => {
   const result = computeMarket('crypto', MARKET, fixture(), { ...OPTIONS, includeExpandingSignal: true });
   const signal = result.expandingSignal;
@@ -190,6 +243,9 @@ test('expanding learner uses full internal prices and parts but publishes only a
   assert.equal(signal.historyEnd, result.history.at(-1).date);
   assert.equal(signal.historyObservations, result.history.length);
   assert.equal(signal.historyTruncated, false);
+  assert.equal(signal.historyScope, 'ALL_USABLE_SCORE_ROWS_FROM_CURRENT_PROVIDER_MAX_RESPONSE');
+  assert.equal(signal.learnerUsesAllSuppliedHistory, true);
+  assert.equal(signal.providerHistoryCompleteness, 'UNVERIFIED');
   assert.equal(signal.expectedTargetId, 'CRYPTO-BROAD-EW');
   assert.equal(signal.targetId, signal.expectedTargetId);
   assert.ok(signal.trainingRows >= 252);
