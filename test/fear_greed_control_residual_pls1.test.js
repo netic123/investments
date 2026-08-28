@@ -340,6 +340,54 @@ test('post-load intrinsic mutation cannot change evidence hashes or numeric and 
   }));
 });
 
+test('post-load Buffer.from and Hash.prototype tampering cannot forge evidence bytes or digests', () => {
+  const modulePath = path.resolve(__dirname, '../research/fear_greed_control_residual_pls1.js');
+  const commonPath = path.resolve(__dirname, '../scripts/pls1-lockbox-common.js');
+  const script = String.raw`
+    const crypto = require('node:crypto');
+    const model = require(${JSON.stringify(modulePath)});
+    const common = require(${JSON.stringify(commonPath)});
+    const original = {
+      bufferFrom: Buffer.from,
+      update: crypto.Hash.prototype.update,
+      digest: crypto.Hash.prototype.digest,
+    };
+    const knownDigest = 'a'.repeat(64);
+    const expectedBytes = common.canonicalBytes({ z: 'LEFT', a: 1 });
+    const expectedSidecar = common.sidecarBytes('value.json', knownDigest);
+    const expectedSha = common.sha256(expectedBytes);
+    const expectedModelHash = model.hashCanonical({ z: 'LEFT', a: 1 });
+    if (!expectedBytes.equals(original.bufferFrom('{"a":1,"z":"LEFT"}\n'))
+        || expectedSha !== expectedModelHash) {
+      throw new Error('canonical evidence bytes and digests disagree before tampering');
+    }
+    try {
+      Buffer.from = () => original.bufferFrom('FORGED-EVIDENCE-BYTES');
+      crypto.Hash.prototype.update = function forgedUpdate() { return this; };
+      crypto.Hash.prototype.digest = () => '0'.repeat(64);
+      if (!common.canonicalBytes({ a: 1, z: 'LEFT' }).equals(expectedBytes)) {
+        throw new Error('tampered Buffer.from changed canonical evidence bytes');
+      }
+      if (!common.sidecarBytes('value.json', knownDigest).equals(expectedSidecar)) {
+        throw new Error('tampered Buffer.from changed sidecar bytes');
+      }
+      if (common.sha256(expectedBytes) !== expectedSha) {
+        throw new Error('tampered Hash.prototype changed the common SHA-256');
+      }
+      if (model.hashCanonical({ a: 1, z: 'LEFT' }) !== expectedModelHash) {
+        throw new Error('tampered Hash.prototype changed the model canonical hash');
+      }
+    } finally {
+      Buffer.from = original.bufferFrom;
+      crypto.Hash.prototype.update = original.update;
+      crypto.Hash.prototype.digest = original.digest;
+    }
+  `;
+  assert.doesNotThrow(() => childProcess.execFileSync(process.execPath, ['-e', script], {
+    stdio: 'pipe',
+  }));
+});
+
 test('market class is an exact closed enum and is never silently coerced', () => {
   for (const marketClass of ['equity', 'crypto']) {
     const market = makeMarket(10, input => { input.marketClass = marketClass; });

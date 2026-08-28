@@ -94,7 +94,13 @@ const NATIVE_CRYPTO_CREATE_PUBLIC_KEY = NATIVE_CRYPTO_CREATE_PUBLIC_KEY_FUNCTION
 const HASH_PROTOTYPE = NATIVE_OBJECT_GET_PROTOTYPE_OF(NATIVE_CRYPTO_CREATE_HASH('sha256'));
 const NATIVE_HASH_UPDATE = HASH_PROTOTYPE.update;
 const NATIVE_HASH_DIGEST = HASH_PROTOTYPE.digest;
-const UTF8_FATAL_DECODER = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false });
+const PUBLIC_KEY_OBJECT_PROTOTYPE = NATIVE_OBJECT_GET_PROTOTYPE_OF(NATIVE_CRYPTO_CREATE_PUBLIC_KEY({
+  key: NATIVE_BUFFER_FROM(`302a300506032b6570032100${'00'.repeat(32)}`, 'hex'),
+  type: 'spki',
+  format: 'der',
+}));
+const NATIVE_KEY_OBJECT_EXPORT = PUBLIC_KEY_OBJECT_PROTOTYPE.export;
+const UTF8_FATAL_DECODER = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
 const ANCHOR_SCHEMA = 'fg-control-residual-pls1-decision-anchor-v1';
 const ANCHOR_STATUS = 'SINGLE_EVENT_CRYPTOGRAPHIC_ANCHOR_VERIFIED';
@@ -221,6 +227,7 @@ function assertCleanPinnedNodeIntrinsics() {
     && crypto.createHash === NATIVE_CRYPTO_CREATE_HASH_FUNCTION
     && crypto.verify === NATIVE_CRYPTO_VERIFY_FUNCTION
     && crypto.createPublicKey === NATIVE_CRYPTO_CREATE_PUBLIC_KEY_FUNCTION
+    && PUBLIC_KEY_OBJECT_PROTOTYPE.export === NATIVE_KEY_OBJECT_EXPORT
     && HASH_PROTOTYPE.update === NATIVE_HASH_UPDATE && HASH_PROTOTYPE.digest === NATIVE_HASH_DIGEST;
   assert(clean,
     'clean pinned Node process required: a security-critical intrinsic was mutated after module load');
@@ -1365,21 +1372,30 @@ function verifyTufThreshold(envelope, trustedRootSigned, roleName, context) {
   assert(role, `${context} trusted root is missing role ${roleName}`);
   const authorized = new Set(role.keyids);
   const signedBytes = canonicalTufSignedBytes(envelope.signed);
-  let verifiedCount = 0;
+  const verifiedKeyMaterials = new Set();
   for (const signature of envelope.signatures) {
     if (!authorized.has(signature.keyid)) continue;
     const key = trustedRootSigned.keys[signature.keyid];
     assert(key, `${context} authorized key ${signature.keyid} is absent from root`);
+    let publicKey;
+    try {
+      publicKey = NATIVE_CRYPTO_CREATE_PUBLIC_KEY(key.keyval.public);
+    } catch (error) {
+      fail(`${context} authorized key ${signature.keyid} cannot be parsed: ${error.message}`);
+    }
     let valid = false;
     try {
       const algorithm = key.scheme === 'ed25519' ? null : 'sha256';
-      valid = NATIVE_CRYPTO_VERIFY(algorithm, signedBytes, key.keyval.public,
+      valid = NATIVE_CRYPTO_VERIFY(algorithm, signedBytes, publicKey,
         Buffer.from(signature.sig, 'hex'));
     } catch (error) {
       fail(`${context} signature verification errored: ${error.message}`);
     }
-    if (valid) verifiedCount += 1;
+    if (valid) {
+      verifiedKeyMaterials.add(hashCanonical(NATIVE_KEY_OBJECT_EXPORT.call(publicKey, { format: 'jwk' })));
+    }
   }
+  const verifiedCount = verifiedKeyMaterials.size;
   assert(verifiedCount >= role.threshold,
     `${context} has ${verifiedCount} valid ${roleName} signatures; threshold is ${role.threshold}`);
   return verifiedCount;
@@ -1703,7 +1719,7 @@ function validateTrustedRootTlog(log, context) {
   };
 }
 
-function selectTransparencyLogFromTrustedRoot(trustedRoot, selected, verificationTimeUtc, context) {
+function selectTransparencyLogFromTrustedRoot(trustedRoot, selected, integrationTimeUtc, context) {
   assertExactKeys(trustedRoot,
     ['certificateAuthorities', 'ctlogs', 'mediaType', 'timestampAuthorities', 'tlogs'], context);
   assert(trustedRoot.mediaType === 'application/vnd.dev.sigstore.trustedroot+json;version=0.1',
@@ -1728,11 +1744,11 @@ function selectTransparencyLogFromTrustedRoot(trustedRoot, selected, verificatio
   assert(projection.validFromUtc === selected.validFromUtc
     && projection.validUntilUtc === selected.validUntilUtc,
   `${context} selected transparency-log validity differs from trusted material`);
-  const verificationMs = exactTufUtc(verificationTimeUtc, `${context} verification time`);
-  assert(verificationMs >= Date.parse(projection.validFromUtc),
+  const integrationMs = exactTufUtc(integrationTimeUtc, `${context} log integration time`);
+  assert(integrationMs >= Date.parse(projection.validFromUtc),
     `${context} selected transparency-log key was not yet valid`);
   if (projection.validUntilUtc !== null) {
-    assert(verificationMs < Date.parse(projection.validUntilUtc),
+    assert(integrationMs < Date.parse(projection.validUntilUtc),
       `${context} selected transparency-log key was expired`);
   }
   return projection;
@@ -1826,8 +1842,8 @@ function validateDecisionTufBinding(decision, decisionEvidence, policy, bootstra
 }
 
 function verifyTufSelectionReceiptEvidence({ lockboxRoot, receiptReference, purpose,
-  verificationTimeUtc, rollbackFloor, bootstrapPin, expectedLockboxId, expectedPath,
-  expectedLogIdentity, evidenceReader }) {
+  verificationTimeUtc, logIntegrationTimeUtc, rollbackFloor, bootstrapPin, expectedLockboxId,
+  expectedPath, expectedLogIdentity, evidenceReader }) {
   validateDigestReference(receiptReference, `${purpose} selection receipt reference`);
   assert(receiptReference.path === expectedPath,
     `${purpose} selection receipt path is not the exact frozen path`);
@@ -1994,7 +2010,7 @@ function verifyTufSelectionReceiptEvidence({ lockboxRoot, receiptReference, purp
   equalCanonical(jsonlValues[selected.jsonlEntryIndex], targetValue,
     `${purpose} TUF target and selected compact trusted-root JSONL entry`);
   const selectedLog = selectTransparencyLogFromTrustedRoot(targetValue,
-    receipt.selectedTransparencyLog, verificationTimeUtc,
+    receipt.selectedTransparencyLog, logIntegrationTimeUtc,
     `${purpose} authenticated trusted root`);
   assert(selectedLog.baseUrl === expectedLogIdentity.baseUrl
     && selectedLog.logIdKeyId === expectedLogIdentity.logIdKeyId
@@ -2055,8 +2071,9 @@ function verifyOfflineTufReplayWithBootstrap(input) {
     'Sigstore bundle log ID differs from the decision-bound TUF selection');
   assert(new Date(parsedBundle.integratedTimeUnix * 1000).toISOString() === policy.eventTimeUtc,
     'TUF replay event time differs from the bundle integrated time');
-  assert(parsedBundle.integratedTimeUnix * 1000 >= Date.parse(decision.signalKnownAtUtc),
-    'TUF replay event time predates the exact decision signal-known instant');
+  assert(parsedBundle.integratedTimeUnix
+    >= Math.floor(Date.parse(decision.signalKnownAtUtc) / 1000),
+  'TUF replay event time predates the decision signal-known second');
   const expectedLogIdentity = {
     baseUrl: binding.selectedLogBaseUrl,
     logIdKeyId: binding.selectedLogIdKeyId,
@@ -2069,6 +2086,7 @@ function verifyOfflineTufReplayWithBootstrap(input) {
   };
   const event = verifyTufSelectionReceiptEvidence({ lockboxRoot, receiptReference: eventReference,
     purpose: 'EVENT_TIME', verificationTimeUtc: policy.eventTimeUtc,
+    logIntegrationTimeUtc: policy.eventTimeUtc,
     rollbackFloor: policy.eventRollbackFloor, bootstrapPin,
     expectedLockboxId: policy.lockboxId,
     expectedPath: eventTufSelectionRelativePath(policy.decisionDate), expectedLogIdentity,
@@ -2081,6 +2099,7 @@ function verifyOfflineTufReplayWithBootstrap(input) {
   const current = verifyTufSelectionReceiptEvidence({ lockboxRoot,
     receiptReference: policy.currentSelectionReceipt, purpose: 'CURRENT_POLICY',
     verificationTimeUtc: policy.currentPolicyTimeUtc,
+    logIntegrationTimeUtc: policy.eventTimeUtc,
     rollbackFloor: policy.currentRollbackFloor, bootstrapPin,
     expectedLockboxId: policy.lockboxId,
     expectedPath: currentTufSelectionRelativePath(policy.decisionDate,

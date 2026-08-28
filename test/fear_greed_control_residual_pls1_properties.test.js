@@ -479,6 +479,129 @@ test('alignment preserves target sessions through an invalid component gap', () 
   }
 });
 
+test('normalized session ordering validates the stored ledger, never a re-read of caller rows', () => {
+  function sessionRow(date) {
+    return {
+      date,
+      targetClose: 100,
+      cashClose: 100,
+      referenceDate: date,
+      components: Object.fromEntries(model.COMPONENT_KEYS.map(key => [key, 50])),
+      componentAsOf: Object.fromEntries(model.COMPONENT_KEYS.map(key => [key, date])),
+      availableAtUtc: null,
+    };
+  }
+  const laterOnFirstRead = sessionRow('2020-01-05');
+  const earlierOnSecondRead = sessionRow('2020-01-01');
+  const rows = [sessionRow('2020-01-04'), sessionRow('2020-01-05'), sessionRow('2020-01-02')];
+  let middleRowReads = 0;
+  Object.defineProperty(rows, '1', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      middleRowReads += 1;
+      return middleRowReads === 1 ? laterOnFirstRead : earlierOnSecondRead;
+    },
+  });
+  const market = {
+    key: 'toctou', name: 'TOCTOU synthetic market', targetId: 'SYNTH', cashId: 'BIL',
+    marketClass: 'equity', rows,
+  };
+  assert.throws(() => model.normalizeMarket(market), /Rows must be strictly increasing/);
+  assert.equal(middleRowReads, 1, 'each caller-supplied row must be read exactly once');
+
+  assert.throws(() => model.normalizeMarket({
+    ...market,
+    rows: [sessionRow('2020-01-04'), sessionRow('2020-01-04')],
+  }), /Rows must be strictly increasing/, 'an exactly equal session date must never be stored');
+  assert.deepEqual(model.normalizeMarket({
+    ...market,
+    rows: [sessionRow('2020-01-04'), sessionRow('2020-01-05')],
+  }).rows.map(row => row.date), ['2020-01-04', '2020-01-05']);
+
+  let classReads = 0;
+  const divergentIdentity = {
+    key: 'toctou', name: 'TOCTOU synthetic market', targetId: 'SYNTH', cashId: 'BIL',
+    rows: [sessionRow('2020-01-04')],
+  };
+  Object.defineProperty(divergentIdentity, 'marketClass', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      classReads += 1;
+      return classReads === 1 ? 'crypto' : 'equity';
+    },
+  });
+  const normalized = model.normalizeMarket(divergentIdentity);
+  assert.equal(classReads, 1, 'the market class must be read exactly once');
+  assert.equal(normalized.marketClass, 'crypto',
+    'the stored market class must be the validated first read');
+});
+
+test('prior model positions are read exactly once and bound into the frozen decision', () => {
+  const market = makeMarket(200);
+  let m0Reads = 0;
+  const positions = { M1: 'LONG' };
+  Object.defineProperty(positions, 'M0', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      m0Reads += 1;
+      return m0Reads === 1 ? 'LONG' : 'CASH';
+    },
+  });
+  const decision = model.buildLatestDecision(market, positions);
+  assert.equal(m0Reads, 1, 'each prior position must be read exactly once');
+  assert.equal(decision.M0.fallbackReason, model.WARMUP_REASON);
+  assert.equal(decision.M0.targetPosition, 'LONG');
+  assert.equal(decision.M0.filledPosition, 'LONG',
+    'the recorded filled position must be the validated first read');
+  assert.equal(decision.M0.tradeRequired, false);
+});
+
+test('fitting reads each caller-supplied training and current value exactly once', () => {
+  const rows = makeTrainingRows(400);
+  const currentControls = [0.4, -0.2, 0.7, 0.018, -0.1];
+  const currentComponents = [58, 44, 62, 51, 49, 55];
+  const baseline = model.fitControlResidualPls1(rows, currentControls, currentComponents);
+  assert.equal(baseline.ok, true);
+
+  const hostileRows = clone(rows);
+  const honestControls = hostileRows[7].controls;
+  let controlsReads = 0;
+  Object.defineProperty(hostileRows[7], 'controls', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      controlsReads += 1;
+      return controlsReads === 1 ? honestControls : honestControls.map(() => 1e9);
+    },
+  });
+  const hostileRowFit = model.fitControlResidualPls1(hostileRows, currentControls,
+    currentComponents);
+  assert.equal(controlsReads, 1, 'training controls must be read exactly once');
+  assert.equal(hostileRowFit.ok, true);
+  assert.equal(hostileRowFit.fitSha256, baseline.fitSha256,
+    'the fit must be a function of the validated first read only');
+
+  const hostileCurrent = [...currentControls];
+  let currentReads = 0;
+  Object.defineProperty(hostileCurrent, '0', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      currentReads += 1;
+      return currentReads === 1 ? 0.4 : 40;
+    },
+  });
+  const hostileCurrentFit = model.fitControlResidualPls1(rows, hostileCurrent,
+    currentComponents);
+  assert.equal(currentReads, 1, 'current controls must be read exactly once');
+  assert.equal(hostileCurrentFit.ok, true);
+  assert.equal(hostileCurrentFit.fitSha256, baseline.fitSha256,
+    'the current design must be a function of the validated first read only');
+});
+
 test('fill records require a target session strictly later than the decision session', () => {
   const decisionDate = '2026-08-27';
   const decisions = Object.fromEntries(['M0', 'M1'].map((key, index) => [key, {

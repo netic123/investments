@@ -165,6 +165,46 @@ test('bounded body reader cancels an oversized chunked body before accumulating 
   assert.equal(released, true);
 });
 
+test('fetch capture blocks request initiation at or past its frozen deadline', async () => {
+  assert.equal(seedBuilder.sourceRequestInitiationDeadlineUtc('2026-08-28'),
+    '2026-08-28T12:00:00.000Z');
+  assert.throws(() => seedBuilder.sourceRequestInitiationDeadlineUtc('2026-02-30'),
+    /invalid retrieval date/);
+  let networkCalls = 0;
+  const nativeFetch = async () => {
+    networkCalls += 1;
+    throw new Error('must not be reached');
+  };
+  const blocked = seedBuilder.installFetchCapture(nativeFetch, '2000-01-01T12:00:00.000Z');
+  blocked.setPhase('COMPONENT');
+  await assert.rejects(blocked.capturedFetch('https://example.test/blocked'),
+    /at or past the frozen deadline/);
+  assert.equal(networkCalls, 0);
+  assert.equal(blocked.requests.length, 0);
+
+  const open = seedBuilder.installFetchCapture(async request => streamingResponse([123, 125], {
+    url: request.url, headers: { 'content-type': 'application/json' },
+  }), '9999-12-31T12:00:00.000Z');
+  open.setPhase('COMPONENT');
+  await open.capturedFetch('https://example.test/allowed');
+  assert.equal(open.requests.length, 1);
+  assert.equal(open.requests[0].status, 200);
+  assert.throws(() => seedBuilder.installFetchCapture(nativeFetch, '2000-01-01T12:00:00Z'),
+    /exact millisecond UTC/);
+});
+
+test('bounded-recovery acquisition never initiates a source request past the 12:00Z deadline', async t => {
+  let networkCalls = 0;
+  t.mock.method(globalThis, 'fetch', async () => {
+    networkCalls += 1;
+    throw new Error('post-deadline acquisition must not reach the network');
+  });
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  await assert.rejects(seedBuilder.acquireAlignedData({ range: '5y', retrievalDateUtc: yesterday }));
+  assert.equal(networkCalls, 0,
+    'every request initiation after the frozen deadline must be refused before network contact');
+});
+
 test('source capture rejects an oversized declared body without retaining bytes', async () => {
   let readerRequested = false;
   const nativeFetch = async request => ({
