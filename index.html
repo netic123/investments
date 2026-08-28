@@ -619,7 +619,7 @@ function renderDates(){
   $('#dates').innerHTML = html || '<li class="empty">No upcoming dates — add to the list in data/config.json (dates).</li>';
 }
 
-// ---- Fear & Greed: one shared six-component model, five market mappings, one renderer.
+// ---- Fear & Greed: one shared six-component model, six market mappings, one renderer.
 const MARKET_BANDS=[[0,24,'Extreme Fear'],[25,44,'Fear'],[45,55,'Neutral'],[56,74,'Greed'],[75,100,'Extreme Greed']];
 const FG_TABS=[
   {id:'crypto',tab:'Crypto',forName:'the broad 7-asset crypto index',hash:'#crypto',kind:'market',market:'crypto',bands:MARKET_BANDS},
@@ -731,7 +731,7 @@ function fgPanelHtml(t){
   </div>
 </section>
 <section class="fg-data">
-  <div class="sec-head"><h2>Buy/sell signal — slow rule</h2><span class="note" id="${id}-rulenote">—</span></div>
+  <div class="sec-head"><h2>Expanding-history BUY/SELL research signal</h2><span class="note" id="${id}-rulenote">—</span></div>
   <div class="card" id="${id}-rule"><div class="empty">—</div></div>
 </section>
 ${t.kind==='market'?`<section class="fg-data">
@@ -781,7 +781,7 @@ function normMarket(M,model,fetchedAt){
     ? `<p class="muted" style="font-size:.82rem;margin:10px 0 0"><b>Crypto mapping:</b> the benchmark is a fixed, daily-rebalanced equal-weight return index of BTC, ETH, SOL, XRP, ADA, DOGE and BNB; each contributes one seventh of each day’s return. It is broader than BTC alone, but it is <b>not literally every coin, not market-cap weighted and not investable</b>. IEF is the US Treasury safe-haven proxy; HYG/LQD measures external US corporate-credit appetite. Breadth compares a non-core basket (SOL/XRP/ADA/DOGE/BNB) with a BTC/ETH core basket, so those assets overlap the benchmark. Selecting today’s surviving assets in August 2026 and reconstructing them backward creates hindsight-selection and survivorship bias; history also starts only when all seven assets have common Yahoo daily closes. The current UTC candle is excluded. Because crypto trades seven days a week, 252 observations cover about 8.3 months, not a full calendar year; US bond components carry their latest score over weekends.</p>`
     : `<p class="muted" style="font-size:.82rem;margin:10px 0 0">No published Fear &amp; Greed index with an open data source exists for ${esc(M.name)}${M.key==='usa'?' apart from CNN’s published US index':''}, hence the own computation. Scores are relative to the last 252 observations — after a calm period a moderate pullback can read as "extreme fear".${realised?' Volatility = realised 20-observation because this market is not configured with a matching implied-volatility series; it is backward-looking and behaves differently from a VIX-style measure.':''}${M.key==='usa'?' <b>One-off comparison (23 Aug 2026):</b> against CNN’s published index over 398 trading days this model had correlation 0.88, a mean gap of 8.9 points and read on average 6 points greedier; this is a non-reproducible reasonableness check, not proof of predictive value.':' The same construction applied to the US market had correlation 0.88 in that one-off check (see the USA tab).'}</p>`;
   const explain=`<div class="kpi"><div class="l">One shared repository model · v${esc(model.version||1)}</div></div>
-    <p style="margin:8px 0 0;font-size:.9rem">Crypto, Sweden, USA, Europe and Global use the <b>same six-component engine, ${model.window}-observation percentile scoring, equal weights, directions and labels</b>. Raw market proxies differ: volatility uses an implied-volatility level where configured and benchmark realised volatility otherwise. Each raw indicator gets a causal 0–100 percentile rank within the last ${model.window} ${observationText}; volatility is inverted and the six ranks are averaged. All ${model.minComponents} components are required. There are no fitted weights and no third-party sentiment score.</p>
+    <p style="margin:8px 0 0;font-size:.9rem">All six configured markets — Crypto, Sweden, USA, US Tech, Europe and Global — use the <b>same six-component engine, ${model.window}-observation percentile scoring, equal weights, directions and labels</b>. Raw market proxies differ: volatility uses an implied-volatility level where configured and benchmark realised volatility otherwise. Each raw indicator gets a causal 0–100 percentile rank within the last ${model.window} ${observationText}; volatility is inverted and the six ranks are averaged. All ${model.minComponents} components are required. There are no fitted score weights and no third-party sentiment score. The BUY/SELL learner below is separate and refits on every matured row from the full available history.</p>
     <ul class="fg-comp" style="list-style:disc">${seriesList}</ul>
     ${disclosure}
     <p class="muted" style="font-size:.82rem;margin:8px 0 0">This is a descriptive relative price/risk regime, not a survey of emotion or a probability of future gains. Not investment advice.</p>`;
@@ -789,65 +789,32 @@ function normMarket(M,model,fetchedAt){
     sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous observation · `:'')+'as of '+when,
     kpiSub:M.label+' · '+fmtDate(M.asOf), prevLabel:'Previous observation', prev:row(P.close,P.closeDate),
     stats:[['Now',now],['Previous observation',row(P.close,P.closeDate)],['1 week ago',row(P.week,P.weekDate)],['1 month ago',row(P.month,P.monthDate)],['1 year ago',row(P.year,P.yearDate)],['Yearly high',hi],['Yearly low',lo]],
-    history:H, total:M.total, livePoint:false, callouts, components:comps, compnote:`${M.n} of ${M.total} indicators · as of ${fmtDate(M.asOf)}`,
+    history:H, total:M.total, livePoint:false, callouts, components:comps, expandingSignal:M.expandingSignal||null, compnote:`${M.n} of ${M.total} indicators · as of ${fmtDate(M.asOf)}`,
     explain, explnote:`${esc(model.id||'repository model')} · 0–100`,
     footer:`<p><b>One model, separate raw mappings:</b> this repository calculates every market score in <span class="mono">marketfg.js</span>; Yahoo Finance supplies raw daily histories, not an index score. No CoinMarketCap or Alternative.me score enters the calculation. Yahoo’s chart feed has no contractual public API SLA.</p><p><b>Descriptive indicator only — predictive value must be tested separately.</b></p>` };
 }
 
-// Slow buy/sell rule per market — FG-EXTREMES-RETRO-V1 (research/FG_EXTREMES_RETRO_V1.md).
-// The smoothed composite score drives a two-threshold state machine: sell the market at the
-// greed threshold, buy back at the fear threshold, checked at the tab's cadence. Thresholds
-// were selected retrospectively (best of 1,458 tested configurations per market on
-// already-inspected history) — a tested mechanical rule, not a validated prediction.
-const RULE_SPECS={
-  crypto:{F:20,G:80,k:10,c:'me',hist:'2021–2026: 1.36× the index (≈ +5.4%/yr), 3 trades'},
-  sweden:{F:20,G:70,k:10,c:'d',hist:'2023–2026: 1.16× the index (≈ +4.4%/yr), 7 trades'},
-  usa:{F:5,G:85,k:21,c:'me',hist:'2008–2026: 1.04× the index (≈ +0.2%/yr), 2 trades'},
-  europe:{F:45,G:80,k:42,c:'d',hist:'2011–2026: 1.74× the index (≈ +3.7%/yr), 8 trades'},
-  global:{F:45,G:75,k:63,c:'w',hist:'2019–2026: 1.24× the index (≈ +2.8%/yr), 6 trades'}};
-const RULE_CADENCE={d:'every trading day',w:'the first trading day of each week',me:'the last trading day of each month'};
-function ruleReplay(H,spec){
-  let pos=1,last=null,sm=null,sum=0,prevDow=null; const q=[];
-  const dow=d=>{const n=new Date(d+'T00:00:00Z').getUTCDay(); return n===0?7:n;};
-  for(let i=0;i<H.length;i++){
-    const s=H[i].value; q.push(s); sum+=s; if(q.length>spec.k) sum-=q.shift();
-    sm=q.length===spec.k?sum/spec.k:null;
-    let fire=false;
-    if(spec.c==='d') fire=true;
-    else if(spec.c==='me') fire=i+1<H.length && H[i].date.slice(0,7)!==H[i+1].date.slice(0,7);
-    else if(spec.c==='w'){const cur=dow(H[i].date); fire=prevDow!=null&&cur<prevDow; prevDow=cur;}
-    if(fire&&sm!=null){
-      const I=Math.round(Math.round(sm*10)/10);
-      if(pos===1&&I>=spec.G){pos=0;last={side:'SELL',date:H[i].date,value:I};}
-      else if(pos===0&&I<=spec.F){pos=1;last={side:'BUY',date:H[i].date,value:I};}
-    }
-  }
-  return {pos,last,smoothed:sm};
-}
 function renderRuleCard(id,N,$i){
-  const spec=RULE_SPECS[id], el=$i('rule');
+  const D=N.expandingSignal, el=$i('rule');
   if(!el) return;
-  if(!spec){
-    el.innerHTML = id==='ustech'
-      ? '<div class="muted" style="font-size:.85rem"><b>No rule — deliberately.</b> Backtested 27 Aug 2026: across 1,458 tested threshold/smoothing/cadence configurations (2008–2026, XLK total return, T-bill cash, costs), only 6 beat buy-and-hold at all and the best (+0.4%/yr) performed below the median of the same search run on shuffled, informationless scores (placebo p = 0.52). For US tech the score carries no tradeable timing signal; the gauge above is descriptive only.</div>'
-      : '<div class="muted" style="font-size:.85rem">No tested rule for this tab yet — thresholds exist only for tabs whose rule was backtested and frozen (research/FG_EXTREMES_RETRO_V1.md). The score above is descriptive.</div>';
+  if(!D||!['BUY','SELL'].includes(D.action)){
+    el.innerHTML='<div class="empty">No expanding-history research decision is available.</div>';
     $i('rulenote').textContent='—';
     return;
   }
-  const H=N.history||[];
-  if(H.length<spec.k+5){ el.innerHTML='<div class="empty">Not enough history to evaluate the rule yet.</div>'; $i('rulenote').textContent='—'; return; }
-  const r=ruleReplay(H,spec);
-  const smInt=r.smoothed==null?null:Math.round(Math.round(r.smoothed*10)/10);
-  const long=r.pos===1;
-  const trigger=long?`sell if the smoothed score reaches <b>≥ ${spec.G}</b>`:`buy back if the smoothed score falls to <b>≤ ${spec.F}</b>`;
-  $i('rulenote').textContent=`checked ${RULE_CADENCE[spec.c]} · ${spec.k}-observation average`;
-  el.innerHTML=`<div class="kpi"><div class="l">Rule state now</div></div>
+  const buy=D.action==='BUY', current=D.currentRiskyWeight===1?'LONG':'CASH';
+  const reason=D.reason==='WARMUP_BUY_BASELINE'?'warm-up baseline':D.reason==='FAIL_CLOSED_DATA_INVALID'?'invalid/stale input — fail-closed':D.reason==='EXPANDING_RIDGE_PATTERN'?'expanding ridge forecast':String(D.reason||'model decision').replaceAll('_',' ').toLowerCase();
+  const trade=D.tradeRequired?'position change targets the first eligible future close':`already ${current.toLowerCase()} — no new trade or cost`;
+  const suitability=String(D.targetSuitability||'unreviewed target').replaceAll('_',' ').toLowerCase();
+  $i('rulenote').textContent=`${D.modelId} · ${fmt(D.historyObservations)} full-history score rows`;
+  el.innerHTML=`<div class="kpi"><div class="l">RESEARCH SIGNAL — RETROSPECTIVE, NOT VALIDATED</div></div>
     <div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-top:6px">
-      <span class="fg-label" style="font-size:1.02rem"><b>${long?'HOLDING THE MARKET':'IN CASH (T-BILLS)'}</b></span>
-      <span class="muted" style="font-size:.85rem">smoothed score ${smInt==null?'—':smInt} · ${trigger}</span>
+      <span class="fg-label" style="font-size:1.16rem;color:${buy?'var(--pos)':'var(--neg)'}"><b>${D.action} · ${buy?'LONG':'CASH'}</b></span>
+      <span class="muted" style="font-size:.85rem">target state · ${esc(trade)}</span>
     </div>
-    <div class="muted" style="font-size:.85rem;margin-top:6px">${r.last?`Last signal: <b>${esc(r.last.side)}</b> on ${fmtDate(r.last.date)} at smoothed score ${r.last.value}`:'No signal in the loaded history — the rule has been holding the market throughout.'}</div>
-    <div class="muted" style="font-size:.82rem;margin-top:8px">Backtest ${esc(spec.hist)}, costs and T-bill cash included. Thresholds were <b>selected retrospectively</b> from 1,458 tested configurations on already-inspected history (research/FG_EXTREMES_RETRO_V1.md); ${id==='europe'?'a stricter variant (sell ≥ 85, buy back ≤ 35, month-end checks) is under live prospective validation since Aug 2026; ':''}past results do not predict future returns. Not investment advice.</div>`;
+    <div class="muted" style="font-size:.85rem;margin-top:7px">Decision close <b>${fmtDate(D.decisionAsOfClose)}</b> · inputs available ${stampStr(D.availableAtUtc)} · first target close strictly after both is the earliest execution · current filled state ${current} · ${esc(reason)}.</div>
+    <div class="muted" style="font-size:.85rem;margin-top:5px">Uses <b>all ${fmt(D.trainingRows)} matured training rows</b> from ${fmtDate(D.trainingStart)} through ${fmtDate(D.trainingEnd)}; latest matured outcome ${fmtDate(D.latestMaturedOutcomeThrough)}. Score history ${fmtDate(D.historyStart)}–${fmtDate(D.historyEnd)} (${fmt(D.historyObservations)} observations, ${D.historyTruncated?'truncated':'not truncated'}).</div>
+    <div class="muted" style="font-size:.82rem;margin-top:8px"><b>Not a trusted 2× model.</b> Historical forecasts were replayed on already-inspected, current-vintage data; cash is a zero-return development assumption and no prospective decision ledger has passed. Target limitation: ${esc(suitability)}. BUY/SELL is the model's mandatory 0%/100% target state, not proof of predictive value or investment advice.</div>`;
 }
 function setFg(id,norm){ FGS[id].norm=norm; renderFg(id); if(document.body.dataset.tab===id) updateFgHeader(id); }
 
@@ -867,14 +834,7 @@ function renderFg(id){
   panel.classList.remove('nodata');
   const bands=N.bands, v=Math.max(0,Math.min(100,N.value)), b=fgBand(v,bands);
   $i('title').textContent=N.title; $i('note').innerHTML=N.note;
-  // Extreme readings double as explicit action warnings: extreme fear = BUY,
-  // extreme greed = SELL. The band name stays visible under the action word,
-  // and the callout points at the signal card for each tab's tested thresholds.
-  const action = b===0 ? {word:'BUY', color:'var(--pos)'} : b===bands.length-1 ? {word:'SELL', color:'var(--neg)'} : null;
-  const actionCallout = action
-    ? [`<b style="color:${action.color}">${action.word} warning</b> — the score is in ${esc(N.label)} territory (${fmt(v)}). Mechanical extremes warning; each tab's tested thresholds and their evidence are on the signal card below. Not investment advice.`]
-    : [];
-  $i('error').innerHTML=actionCallout.concat(N.callouts).map(c=>`<div class="callout">${c}</div>`).join('');
+  $i('error').innerHTML=N.callouts.map(c=>`<div class="callout">${c}</div>`).join('');
   // gauge: five coloured bands, marker on the arc, the value in the middle
   const seg=bands.map(([lo,hi],i)=>{ const e=Math.min(100,hi+1); const [x1,y1]=arcPt(lo+0.6,80),[x2,y2]=arcPt(e-0.6,80);
     return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}A80 80 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${FG_COL[i]}" stroke-opacity="${FG_OP[i]}" stroke-width="16"/>`; }).join('');
@@ -883,9 +843,7 @@ function renderFg(id){
     `<circle cx="${dx.toFixed(1)}" cy="${dy.toFixed(1)}" r="6.5" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/>`+
     `<text class="n" x="100" y="98" text-anchor="middle">${fmt(v)}</text>`+
     `<text class="t" x="4" y="121" text-anchor="start">0 · fear</text><text class="t" x="100" y="121" text-anchor="middle">50</text><text class="t" x="196" y="121" text-anchor="end">greed · 100</text>`;
-  $i('label').innerHTML = action
-    ? `<span style="display:block;color:${action.color};font-size:1.3em;letter-spacing:.08em;font-weight:700">${action.word}</span><span class="fg-c${b}" style="font-size:.72em;opacity:.85">${esc(N.label)}</span>`
-    : `<span class="fg-c${b}">${esc(N.label)}</span>`;
+  $i('label').innerHTML = `<span class="fg-c${b}">${esc(N.label)}</span>`;
   $i('sub').innerHTML=N.sub;
   const stat=(l,r)=> !r ? `<div><div class="l">${l}</div><div class="v">—</div><div class="s">&nbsp;</div></div>`
     : `<div><div class="l">${l}</div><div class="v fg-c${fgBand(r.value,bands)}">${fmt(r.value)}</div><div class="s">${esc(r.label)} · ${r.live?'today':fmtDate(r.date)}</div></div>`;
@@ -899,7 +857,7 @@ function renderFg(id){
       <td class="fg-c${fgBand(c.score,bands)}">${c.label?esc(c.label):'—'}${c.lag?' <span class="pill">as of '+dayMon(c.asOf)+'</span>':''}${c.stale?' <span class="pill no">fallback data</span>':''}</td>
       <td class="mono" style="font-size:.78rem">${c.symbols.map(esc).join(' / ')}</td></tr>`).join('');
   }
-  $i('bands').innerHTML=bands.map(([lo,hi,name],i)=>`<li><span class="swatch" style="background:${FG_COL[i]};opacity:${FG_OP[i]}"></span><span class="r">${lo}–${hi}</span><span>${esc(name)}${i===0?' <span class="muted" style="font-size:.85em">· BUY warning zone</span>':''}${i===bands.length-1?' <span class="muted" style="font-size:.85em">· SELL warning zone</span>':''}</span>${i===b?'<span class="now">now</span>':''}</li>`).join('');
+  $i('bands').innerHTML=bands.map(([lo,hi,name],i)=>`<li><span class="swatch" style="background:${FG_COL[i]};opacity:${FG_OP[i]}"></span><span class="r">${lo}–${hi}</span><span>${esc(name)}</span>${i===b?'<span class="now">now</span>':''}</li>`).join('');
   $i('explain').innerHTML=N.explain; $i('explnote').textContent=N.explnote; $i('footer').innerHTML=N.footer;
   renderFgChart(id);
 }

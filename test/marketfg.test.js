@@ -6,7 +6,7 @@ const crypto = require('node:crypto');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  computeMarket, equalWeightReturnSeries, labelOf, pctScores,
+  beforeRetrievalLocalDate, computeMarket, equalWeightReturnSeries, labelOf, pctScores,
 } = require('../marketfg');
 
 const CRYPTO = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'];
@@ -59,7 +59,7 @@ const MARKET = {
 };
 
 const OPTIONS = {
-  window: 252, minWindowPoints: 126, minComponents: 6, fillDays: 7, historyPoints: 8000,
+  window: 252, minWindowPoints: 126, minComponents: 6, fillDays: 7,
 };
 
 test('midrank percentiles use only the trailing window', () => {
@@ -79,6 +79,23 @@ test('daily-rebalanced equal-weight series uses the arithmetic mean constituent 
   assert.deepEqual(result.rows.map(row => [row.date, Number(row.close.toFixed(4))]), [
     ['2026-01-01', 100], ['2026-01-02', 105], ['2026-01-03', 99.75],
   ]);
+});
+
+test('completed-bar wrapper excludes each source retrieval-local date', () => {
+  const source = {
+    symbol: 'TEST', tz: 'Europe/Stockholm', fetchedAt: '2026-08-28T09:15:00.000Z', intraday: true,
+    rows: [
+      { date: '2026-08-27', close: 100 },
+      { date: '2026-08-28', close: 101 },
+      { date: '2026-08-29', close: 102 },
+    ],
+  };
+  const completed = beforeRetrievalLocalDate(source);
+  assert.deepEqual(completed.rows, [{ date: '2026-08-27', close: 100 }]);
+  assert.equal(completed.completedBeforeLocalDate, '2026-08-28');
+  assert.equal(completed.sourceFetchedAt, source.fetchedAt);
+  assert.equal(completed.intraday, false);
+  assert.equal(beforeRetrievalLocalDate({ ...source, tz: 'Not/A-Timezone' }), null);
 });
 
 test('all markets use one bounded, labelled, exactly equal-weighted six-component engine', () => {
@@ -151,6 +168,55 @@ test('causal component history is opt-in research data and does not change publi
     researchResult.history.map(({ parts, ...row }) => row),
     publicResult.history,
   );
+});
+
+test('public score history is never truncated by the legacy historyPoints option', () => {
+  const result = computeMarket('crypto', MARKET, fixture(), { ...OPTIONS, historyPoints: 25 });
+  assert.ok(result.history.length > 25);
+  assert.deepEqual(result.history, computeMarket('crypto', MARKET, fixture(), OPTIONS).history);
+});
+
+test('expanding learner uses full internal prices and parts but publishes only a binary decision summary', () => {
+  const result = computeMarket('crypto', MARKET, fixture(), { ...OPTIONS, includeExpandingSignal: true });
+  const signal = result.expandingSignal;
+  assert.ok(signal);
+  assert.equal(signal.modelId, 'FG-ONLINE-RIDGE-PREQ-V1');
+  assert.ok(['BUY', 'SELL'].includes(signal.action));
+  assert.equal(signal.actionMeaning, 'TARGET_POSITION');
+  assert.ok([0, 1].includes(signal.targetRiskyWeight));
+  assert.ok([0, 1].includes(signal.currentRiskyWeight));
+  assert.equal(typeof signal.tradeRequired, 'boolean');
+  assert.equal(signal.historyStart, result.history[0].date);
+  assert.equal(signal.historyEnd, result.history.at(-1).date);
+  assert.equal(signal.historyObservations, result.history.length);
+  assert.equal(signal.historyTruncated, false);
+  assert.equal(signal.expectedTargetId, 'CRYPTO-BROAD-EW');
+  assert.equal(signal.targetId, signal.expectedTargetId);
+  assert.ok(signal.trainingRows >= 252);
+  assert.equal(signal.x2ClaimAllowed, false);
+  assert.match(signal.evidenceStatus, /NOT_VALIDATED/);
+  assert.match(signal.decisionSha256, /^[0-9a-f]{64}$/);
+  assert.equal(Object.prototype.hasOwnProperty.call(signal, 'prices'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(signal, 'components'), false);
+  assert.equal(result.history.some(row => Object.prototype.hasOwnProperty.call(row, 'parts')), false);
+});
+
+test('reviewed ETF targets fail closed when Yahoo falls back to unadjusted closes', () => {
+  const series = fixture();
+  const source = series.get('BTC-USD');
+  series.set('SPY', { ...source, symbol: 'SPY', name: 'SPY', adjusted: false });
+  const usaMarket = {
+    ...MARKET,
+    name: 'USA',
+    barPolicy: 'exchange-local daily bars',
+    symbols: { ...MARKET.symbols, index: 'SPY' },
+  };
+  const result = computeMarket('usa', usaMarket, series, { ...OPTIONS, includeExpandingSignal: true });
+  assert.equal(result.expandingSignal.action, 'SELL');
+  assert.equal(result.expandingSignal.reason, 'FAIL_CLOSED_DATA_INVALID');
+  assert.equal(result.expandingSignal.inputsCompleted, false);
+  assert.equal(result.expandingSignal.expectedTargetId, 'SPY');
+  assert.equal(result.expandingSignal.targetSuitability, 'UNADJUSTED_CLOSE_NOT_TOTAL_RETURN');
 });
 
 test('a missing broad-index constituent cannot silently narrow the Crypto benchmark', () => {
