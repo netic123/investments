@@ -23,7 +23,13 @@ cannot establish this clean module-load boundary is invalid evidence and fails
 closed. Security-critical native operations are captured when their modules
 load so later same-process mutation of those captured properties cannot alter
 canonical bytes, hashes, exact binary64 certificates, schema ordering, finite
-number gates, or immutable evidence snapshots. This protects against mutation
+number gates, or immutable evidence snapshots. Caller-supplied market rows,
+identity fields, prior positions, and training inputs are snapshotted at their
+trust boundary: each property is read exactly once into a local, only the
+validated locals are stored in the frozen normalized ledger, and session
+monotonicity is asserted against the previously stored normalized row, so an
+accessor-based time-of-check/time-of-use input can never bless an out-of-order
+or divergent ledger. This protects against mutation
 after module load only; it is not a claim to defend a process or realm already
 compromised before the modules load.
 
@@ -92,8 +98,17 @@ provider metadata cannot prove itself and a second hand-written calendar cannot
 overrule it. Its future horizon must contain the activation
 session, all first 756 post-activation decision origins, and the two later
 sessions needed to fill and mature the 756th origin. The activation decision is
-not one of those 756 forecast origins. An exceptional closure not present in
-the frozen calendar terminates this candidate unless the pre-registered
+not one of those 756 forecast origins. That horizon is enforced twice. The seed
+build requires at least 759 future sessions beyond its own retrieval boundary
+as an early gate only; the binding check is anchored at activation, which
+happens after manifest review and therefore later than the seed boundary.
+Before the activation decision is persisted, the frozen risky-target calendar
+must still contain at least 758 sessions strictly after the activation decision
+close; otherwise the run fails closed as `FAILED_ACTIVATION_FORWARD_HORIZON`
+and writes no decision. The offline verifier independently re-derives the same
+758-session bound from the activation bundle's recorded decision close and
+rejects any activation bundle that lacks it. An exceptional closure not present
+in the frozen calendar terminates this candidate unless the pre-registered
 exception mechanism permits it; it is never silently guessed after seeing
 outcomes.
 
@@ -346,9 +361,24 @@ the latest completed session in the frozen target calendar against the terminal
 date already in the permanent ledger. A post-cutoff run records
 `SKIPPED_PAST_CUTOFF`; a run whose latest completed session is already recorded
 records `SKIPPED_ALREADY_RECORDED_DATE`. Neither may contact the data source.
+The frozen calendar is finite, so once the permanent ledger's terminal date
+equals the calendar's absolute final session the horizon is exhausted: every
+later run must fail closed as `FAILED_FROZEN_CALENDAR_HORIZON_EXHAUSTED`
+without contacting the data source and may never record the benign
+already-recorded skip, because exhaustion is a stalled experiment, not a
+recorded state. Continuing requires a new independently reviewed calendar
+freeze. The verifier rejects any chain that records the benign skip in the
+exhausted state.
 Every other non-decision run is exactly `SUCCESS_NO_NEW_DECISION` or
 `FAILED_NO_DECISION`. Failures use one frozen stage code and a SHA-256 of the
-diagnostic text, not mutable free-form semantics. Acquisition state is exactly
+diagnostic text, not mutable free-form semantics. No live-collection source
+request may be initiated at or after 12:00Z on its retrieval date; the
+collector refuses such an initiation before any network contact, and the
+verifier rejects any attempt containing an archived receipt whose start time is
+not strictly before that deadline. A `SUCCESS_NO_NEW_DECISION` attempt must
+additionally be recorded strictly before the 12:00Z cutoff on its own retrieval
+date; a `FAILED_NO_DECISION` record time may legitimately land later, but its
+receipts remain bound by the initiation deadline. Acquisition state is exactly
 `NOT_STARTED`, `PARTIAL_UNVERIFIED`, or `COMPLETE_REPLAY_VERIFIED`; only exact
 offline equality between the captured result and every role-bound archived body
 permits the final state. Partial receipts are still checked against the frozen
@@ -373,8 +403,13 @@ repository ID, workflow ID/path/ref,
 head SHA, workflow SHA, ref, runner environment, request URL, and response URL.
 The manifest's declared source tree must equal the actual Git tree object. The
 manifest bytes must equal the blob in the frozen manifest commit, that commit
-must descend from the source commit, and every recorded remote head must contain
-the same manifest and unchanged pinned source files on the same ancestor chain.
+must strictly descend from the source commit, and every recorded remote head
+must contain the same manifest and unchanged pinned source files on the same
+ancestor chain. The strict-descent rule is enforced by the collector before any
+decision, including the automatic activation, and the verifier re-derives and
+checks it even when no decision bundle has recorded a manifest commit yet; a
+merge-base check of the manifest commit against its own history is not
+evidence.
 Before each qualifying market-data acquisition, the complete effective branch
 policy must hash to the snapshot frozen in the manifest. That snapshot includes
 the applicable branch-protection object, every effective repository or
@@ -426,24 +461,39 @@ selection receipt identifying the authenticated root, signing key, transparency
 log ID, and log key used for that event. Its separate immutable anchor proof
 must cryptographically cover that exact decision hash, bind the declared public
 repository and pinned signer workflow/run attempt, and prove an external
-integrated time before the first eligible execution. The execution deadline is
+integrated time before the first eligible execution. Because Rekor truncates
+integration timestamps to whole seconds, every signal-known-before-integration
+comparison is made at whole-second precision — the integration second must be
+no earlier than the signal-known instant floored to its second — in both the
+anchor-receipt layer and the offline TUF replay layer. The execution deadline is
 independently derived from the frozen signed session calendar and the recorded
 decision date; a caller-supplied deadline is never authoritative. A one-time
 free-text service reference, Git commit, GitHub API timestamp, unsigned receipt,
-or merely uploaded attestation is insufficient. Missing or unverifiable
-per-decision proof blocks the decision from the trusted endpoint.
+or merely uploaded attestation is insufficient. Strict-JSON TUF metadata,
+selection receipts, and compact trusted-root JSONL inputs are rejected when
+their raw bytes begin with a UTF-8 byte-order mark, so two byte-distinct
+encodings of the same metadata can never both be valid chain links. Missing or
+unverifiable per-decision proof blocks the decision from the trusted endpoint.
 One static Sigstore trusted-root snapshot is not a long-horizon policy because
 the signing and transparency-log roots rotate. Activation remains blocked until
 a separately frozen TUF bootstrap and append-only archive can authenticate and
 offline-replay the complete root, timestamp, snapshot, targets, and selected
 trusted-root update chain for every decision. Log selection is made by the
 authenticated log ID/key in that event's trusted material rather than a
-hard-coded historical Rekor URL. Verification must replay the event-time policy
+hard-coded historical Rekor URL. In every replay — event-time and
+current-policy alike — the selected log key's validity window is checked
+against the entry's Rekor integration time, never against the replay
+wall-clock, so a routine log-key rotation recorded in the current trusted root
+cannot retroactively invalidate honest historical evidence; freshness,
+rollback-floor, and root-chain expiry checks continue to use the replay's own
+policy time. Verification must replay the event-time policy
 and also revalidate the evidence under the current frozen acceptance policy. A
 receipt cannot nominate its own new root, and a cryptographically valid
 single-event test is not endpoint readiness. A local offline verifier now
 supports the exact pinned Sigstore root-10 bootstrap, sequential threshold root
-rotation, timestamp/snapshot/targets replay, rollback/freeze/mix-and-match
+rotation with thresholds counted over distinct verified key material (the
+canonical parsed public-key projection), never over distinct keyids,
+timestamp/snapshot/targets replay, rollback/freeze/mix-and-match
 checks, dynamic log selection, and separate event-time/current-policy selection
 receipts for one decision. That layer deliberately does not verify the Sigstore
 bundle cryptography and cannot establish complete per-decision coverage. No

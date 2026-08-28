@@ -167,8 +167,8 @@ function buildFixture(options = {}) {
     baseUrl: 'https://rekor.synthetic.example',
     logIdKeyId,
     publicKeySha256: sha256(logPublicDer),
-    validFromUtc: '2026-01-01T00:00:00Z',
-    validUntilUtc: '2027-01-01T00:00:00Z',
+    validFromUtc: options.logValidFromUtc || '2026-01-01T00:00:00Z',
+    validUntilUtc: options.logValidUntilUtc || '2027-01-01T00:00:00Z',
   };
   const trustedRoot = {
     mediaType: 'application/vnd.dev.sigstore.trustedroot+json;version=0.1',
@@ -241,8 +241,25 @@ function buildFixture(options = {}) {
   const timestampReference = fileReference(anchor.__test.timestampRelativePath(7), timestampBytes, 7);
   writeBound(root, timestampReference.path, timestampBytes);
 
-  const root1Envelope = signEnvelope(
-    rootSigned(1, oldRootKey, timestampKey, snapshotKey, targetsKey), [oldRootKey]);
+  const root1SignedValue = rootSigned(1, oldRootKey, timestampKey, snapshotKey, targetsKey);
+  let root1Envelope;
+  if (options.duplicateBootstrapRootKeyMaterial) {
+    const aliasKeyId = sha256(Buffer.from(`alias:${oldRootKey.id}`));
+    root1SignedValue.keys[aliasKeyId] = {
+      keytype: 'ed25519',
+      scheme: 'ed25519',
+      keyval: { public: `${oldRootKey.tuf.keyval.public}\n` },
+    };
+    root1SignedValue.roles.root = { keyids: [oldRootKey.id, aliasKeyId], threshold: 2 };
+    const signedBytes = anchor.__test.canonicalTufSignedBytes(root1SignedValue);
+    const sig = crypto.sign(null, signedBytes, oldRootKey.privateKey).toString('hex');
+    root1Envelope = {
+      signatures: [{ keyid: oldRootKey.id, sig }, { keyid: aliasKeyId, sig }],
+      signed: root1SignedValue,
+    };
+  } else {
+    root1Envelope = signEnvelope(root1SignedValue, [oldRootKey]);
+  }
   const root1Bytes = metadataBytes(root1Envelope);
   const bootstrapPin = {
     version: 1,
@@ -258,6 +275,7 @@ function buildFixture(options = {}) {
   const root2Reference = fileReference(anchor.__test.rootHistoryRelativePath(2), root2Bytes, 2);
   writeBound(root, root2Reference.path, root2Bytes);
 
+  const rootChain = options.duplicateBootstrapRootKeyMaterial ? [] : [root2Reference];
   const eventReceiptPath = anchor.__test.eventTufSelectionRelativePath(decisionDate);
   const eventReceipt = selectionReceipt({
     purpose: 'EVENT_TIME', selectionTimeUtc: '2026-08-28T09:59:00.000Z', lockboxId,
@@ -265,7 +283,7 @@ function buildFixture(options = {}) {
       path: bootstrapPin.relativePath, bytes: bootstrapPin.bytes,
       sha256: bootstrapPin.sha256, version: bootstrapPin.version,
     },
-    rootChain: [root2Reference], timestampReference, snapshotReference, targetsReference,
+    rootChain, timestampReference, snapshotReference, targetsReference,
     targetReference, jsonlReference, selectedLog,
     unknownField: options.eventReceiptUnknownField,
   });
@@ -279,7 +297,7 @@ function buildFixture(options = {}) {
       path: bootstrapPin.relativePath, bytes: bootstrapPin.bytes,
       sha256: bootstrapPin.sha256, version: bootstrapPin.version,
     },
-    rootChain: [root2Reference], timestampReference, snapshotReference, targetsReference,
+    rootChain, timestampReference, snapshotReference, targetsReference,
     targetReference, jsonlReference, selectedLog,
   });
   const currentReceiptBytes = anchor.canonicalBytes(currentReceipt);
@@ -290,8 +308,8 @@ function buildFixture(options = {}) {
     status: 'PROSPECTIVE_CANDIDATE_NOT_YET_TRUSTED',
     lockboxId,
     modelId: 'FG-CONTROL-RESIDUAL-PLS1-PREQ-V1',
-    collectedAtUtc: '2026-08-28T10:00:00.000Z',
-    signalKnownAtUtc: '2026-08-28T10:00:00.000Z',
+    collectedAtUtc: options.signalKnownAtUtc || '2026-08-28T10:00:00.000Z',
+    signalKnownAtUtc: options.signalKnownAtUtc || '2026-08-28T10:00:00.000Z',
     decisionDate,
     tufTrustSelection: {
       schema: anchor.TUF_TRUST_BINDING_SCHEMA,
@@ -313,7 +331,9 @@ function buildFixture(options = {}) {
   writeBound(root, anchor.bundleRelativePath(decisionDate), sigstoreBundleBytes);
 
   const floor = {
-    root: { version: 2, sha256: root2Reference.sha256 },
+    root: options.duplicateBootstrapRootKeyMaterial
+      ? { version: 1, sha256: bootstrapPin.sha256 }
+      : { version: 2, sha256: root2Reference.sha256 },
     timestamp: { version: 7, sha256: timestampReference.sha256 },
     snapshot: { version: 5, sha256: snapshotReference.sha256 },
     targets: { version: 3, sha256: targetsReference.sha256 },
@@ -378,6 +398,132 @@ test('root rotation requires sequential old-root and new-root threshold authoriz
   assert.throws(() => runFixture(fixture), /old-root authorization has 0 valid root signatures/);
 });
 
+test('one physical key under two keyids can never satisfy a 2-of-2 threshold', () => {
+  const key = tufKey();
+  const aliasKeyId = sha256(Buffer.from(`alias:${key.id}`));
+  const signed = {
+    _type: 'root', spec_version: '1.0', version: 1, expires: '2027-12-31T23:59:59Z',
+  };
+  const signedBytes = anchor.__test.canonicalTufSignedBytes(signed);
+  const sig = crypto.sign(null, signedBytes, key.privateKey).toString('hex');
+
+  const sameMaterial = {
+    roles: { root: { keyids: [key.id, aliasKeyId], threshold: 2 } },
+    keys: {
+      [key.id]: key.tuf,
+      [aliasKeyId]: {
+        keytype: 'ed25519', scheme: 'ed25519',
+        keyval: { public: key.tuf.keyval.public },
+      },
+    },
+  };
+  assert.throws(() => anchor.__test.verifyTufThreshold(
+    { signatures: [{ keyid: key.id, sig }, { keyid: aliasKeyId, sig }], signed },
+    sameMaterial, 'root', 'duplicate key material'),
+  /duplicate key material has 1 valid root signatures; threshold is 2/);
+
+  const reencodedMaterial = {
+    roles: { root: { keyids: [key.id, aliasKeyId], threshold: 2 } },
+    keys: {
+      [key.id]: key.tuf,
+      [aliasKeyId]: {
+        keytype: 'ed25519', scheme: 'ed25519',
+        keyval: { public: key.tuf.keyval.public.replace(/\n/g, '\r\n') },
+      },
+    },
+  };
+  assert.throws(() => anchor.__test.verifyTufThreshold(
+    { signatures: [{ keyid: key.id, sig }, { keyid: aliasKeyId, sig }], signed },
+    reencodedMaterial, 'root', 're-encoded key material'),
+  /re-encoded key material has 1 valid root signatures; threshold is 2/);
+
+  const ecPair = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  const ecJwk = ecPair.publicKey.export({ format: 'jwk' });
+  const xBytes = Buffer.from(ecJwk.x, 'base64url');
+  const yBytes = Buffer.from(ecJwk.y, 'base64url');
+  const compressedPoint = Buffer.concat(
+    [Buffer.from([(yBytes[yBytes.length - 1] & 1) ? 3 : 2]), xBytes]);
+  const algorithmId = Buffer.from('301306072a8648ce3d020106082a8648ce3d030107', 'hex');
+  const bitString = Buffer.concat(
+    [Buffer.from([3, compressedPoint.length + 1, 0]), compressedPoint]);
+  const spkiBody = Buffer.concat([algorithmId, bitString]);
+  const compressedSpki = Buffer.concat([Buffer.from([48, spkiBody.length]), spkiBody]);
+  const compressedPem = ['-----BEGIN PUBLIC KEY-----',
+    compressedSpki.toString('base64'), '-----END PUBLIC KEY-----', ''].join('\n');
+  const ecId = sha256(ecPair.publicKey.export({ type: 'spki', format: 'der' }));
+  const ecAliasId = sha256(compressedSpki);
+  const ecSig = crypto.sign('sha256', signedBytes, ecPair.privateKey).toString('hex');
+  const compressedMaterial = {
+    roles: { root: { keyids: [ecId, ecAliasId], threshold: 2 } },
+    keys: {
+      [ecId]: {
+        keytype: 'ecdsa', scheme: 'ecdsa-sha2-nistp256',
+        keyval: { public: ecPair.publicKey.export({ type: 'spki', format: 'pem' }).toString() },
+      },
+      [ecAliasId]: {
+        keytype: 'ecdsa', scheme: 'ecdsa-sha2-nistp256',
+        keyval: { public: compressedPem },
+      },
+    },
+  };
+  assert.throws(() => anchor.__test.verifyTufThreshold(
+    { signatures: [{ keyid: ecId, sig: ecSig }, { keyid: ecAliasId, sig: ecSig }], signed },
+    compressedMaterial, 'root', 'compressed key material'),
+  /compressed key material has 1 valid root signatures; threshold is 2/);
+
+  const other = tufKey();
+  const otherSig = crypto.sign(null, signedBytes, other.privateKey).toString('hex');
+  const distinctMaterial = {
+    roles: { root: { keyids: [key.id, other.id], threshold: 2 } },
+    keys: { [key.id]: key.tuf, [other.id]: other.tuf },
+  };
+  assert.equal(anchor.__test.verifyTufThreshold(
+    { signatures: [{ keyid: key.id, sig }, { keyid: other.id, sig: otherSig }], signed },
+    distinctMaterial, 'root', 'distinct key material'), 2);
+});
+
+test('a bootstrap root aliasing one key under two keyids fails its 2-of-2 replay', t => {
+  const fixture = buildFixture({ duplicateBootstrapRootKeyMaterial: true });
+  t.after(() => fs.rmSync(fixture.root, { recursive: true, force: true }));
+  assert.throws(() => runFixture(fixture),
+    /bootstrap self-signature has 1 valid root signatures; threshold is 2/);
+});
+
+test('current-policy replay checks the log key window at the event integration time', t => {
+  const rotatedAfterEvent = buildFixture({ logValidUntilUtc: '2026-08-29T00:00:00Z' });
+  t.after(() => fs.rmSync(rotatedAfterEvent.root, { recursive: true, force: true }));
+  const rotatedResult = runFixture(rotatedAfterEvent);
+  assert.equal(rotatedResult.status, 'SINGLE_DECISION_TUF_DUAL_REPLAY_VERIFIED_ENDPOINT_BLOCKED');
+  assert.equal(rotatedResult.current.selectionVerifiedForOneDecisionOnly, true);
+
+  const notYetValid = buildFixture({ logValidFromUtc: '2026-08-28T11:00:00Z' });
+  t.after(() => fs.rmSync(notYetValid.root, { recursive: true, force: true }));
+  assert.throws(() => runFixture(notYetValid),
+    /selected transparency-log key was not yet valid/);
+
+  const endedAtEvent = buildFixture({ logValidUntilUtc: '2026-08-28T10:00:02.000Z' });
+  t.after(() => fs.rmSync(endedAtEvent.root, { recursive: true, force: true }));
+  assert.throws(() => runFixture(endedAtEvent),
+    /selected transparency-log key was expired/);
+
+  const startsAtEvent = buildFixture({ logValidFromUtc: '2026-08-28T10:00:02.000Z' });
+  t.after(() => fs.rmSync(startsAtEvent.root, { recursive: true, force: true }));
+  assert.equal(runFixture(startsAtEvent).status,
+    'SINGLE_DECISION_TUF_DUAL_REPLAY_VERIFIED_ENDPOINT_BLOCKED');
+});
+
+test('same-second Rekor integration passes and a later signal-known second fails closed', t => {
+  const sameSecond = buildFixture({ signalKnownAtUtc: '2026-08-28T10:00:02.123Z' });
+  t.after(() => fs.rmSync(sameSecond.root, { recursive: true, force: true }));
+  assert.equal(runFixture(sameSecond).status,
+    'SINGLE_DECISION_TUF_DUAL_REPLAY_VERIFIED_ENDPOINT_BLOCKED');
+
+  const priorSecond = buildFixture({ signalKnownAtUtc: '2026-08-28T10:00:03.123Z' });
+  t.after(() => fs.rmSync(priorSecond.root, { recursive: true, force: true }));
+  assert.throws(() => runFixture(priorSecond),
+    /event time predates the decision signal-known second/);
+});
+
 test('timestamp-to-snapshot and targets-to-selected-root mix-and-match attacks fail closed', t => {
   const snapshotMismatch = buildFixture({ snapshotDescriptorSha256: 'f'.repeat(64) });
   t.after(() => fs.rmSync(snapshotMismatch.root, { recursive: true, force: true }));
@@ -426,6 +572,19 @@ test('strict TUF JSON rejects duplicate names and trusted-root JSONL must be exa
     /not exact compact JSON/);
   assert.throws(() => anchor.__test.parseCompactTrustedRootJsonl(Buffer.from('{}\r\n'), 'JSONL fixture'),
     /without CR bytes/);
+});
+
+test('BOM-prefixed strict TUF JSON and trusted-root JSONL are rejected byte-for-byte', () => {
+  const bom = Buffer.from([0xef, 0xbb, 0xbf]);
+  assert.throws(() => anchor.__test.parseStrictJsonBytes(
+    Buffer.concat([bom, Buffer.from('{"a":1}')]), 'BOM strict fixture'),
+  /must not contain a UTF-8 BOM/);
+  assert.throws(() => anchor.__test.parseCompactTrustedRootJsonl(
+    Buffer.concat([bom, Buffer.from('{"a":1}\n')]), 'BOM JSONL fixture'),
+  /must not contain a UTF-8 BOM/);
+  assert.equal(anchor.__test.parseStrictJsonBytes(Buffer.from('{"a":1}'), 'clean fixture').a, 1);
+  assert.equal(anchor.__test.parseCompactTrustedRootJsonl(
+    Buffer.from('{"a":1}\n'), 'clean JSONL fixture').length, 1);
 });
 
 test('post-load intrinsic mutation and prototype setters cannot produce an accepted replay', t => {

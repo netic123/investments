@@ -8,6 +8,11 @@ const seedBuilder = require('./build-pls1-lockbox-seed');
 const model = require('../research/fear_greed_control_residual_pls1');
 
 const MAX_GITHUB_API_RESPONSE_BYTES = 2 * 1024 * 1024;
+const ATTEMPT_FAILURE_STAGE = Object.freeze([
+  ...common.ATTEMPT_FAILURE_STAGE,
+  'FROZEN_CALENDAR_HORIZON_EXHAUSTED',
+  'ACTIVATION_FORWARD_HORIZON',
+]);
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -19,24 +24,35 @@ function canonicalWithoutHash(value, hashKey) {
   return copy;
 }
 
-function gitBytesAtHead(relativePath) {
+function gitBytesAtHead(relativePath, repoRoot = common.ROOT) {
   try {
-    return childProcess.execFileSync('git', ['show', `HEAD:${relativePath}`], { cwd: common.ROOT });
+    return childProcess.execFileSync('git', ['show', `HEAD:${relativePath}`], { cwd: repoRoot });
   } catch {
     throw new Error(`${relativePath}: file must be committed in HEAD`);
   }
 }
 
-function assertManifestCommitted(manifestPath = common.MANIFEST_PATH) {
-  const relative = path.relative(common.ROOT, manifestPath).replace(/\\/g, '/');
-  const committed = gitBytesAtHead(relative);
+function assertManifestCommitted(manifestPath = common.MANIFEST_PATH, repoRoot = common.ROOT) {
+  const relative = path.relative(repoRoot, manifestPath).replace(/\\/g, '/');
+  const committed = gitBytesAtHead(relative, repoRoot);
   const current = fs.readFileSync(manifestPath);
   if (!committed.equals(current)) throw new Error('working manifest differs from committed HEAD bytes');
   const commitSha = childProcess.execFileSync('git', ['log', '-1', '--format=%H', '--', relative], {
-    cwd: common.ROOT, encoding: 'utf8',
+    cwd: repoRoot, encoding: 'utf8',
   }).trim();
   if (!/^[a-f0-9]{40}$/.test(commitSha)) throw new Error('manifest commit identity is invalid');
-  childProcess.execFileSync('git', ['merge-base', '--is-ancestor', commitSha, 'HEAD'], { cwd: common.ROOT });
+  const sourceCommitSha = JSON.parse(current.toString('utf8')).sourceCommitSha;
+  if (!/^[a-f0-9]{40}$/.test(String(sourceCommitSha))) {
+    throw new Error('manifest source commit identity is invalid');
+  }
+  if (commitSha === sourceCommitSha) {
+    throw new Error('manifest commit must strictly descend from its frozen source commit');
+  }
+  require('./pls1-lockbox-git-binding').assertGitObjectBinding({
+    repoRoot,
+    manifestPath,
+    manifestCommitSha: commitSha,
+  });
   return { commitSha };
 }
 
@@ -588,7 +604,7 @@ function latestPermanentLedgerDate(seed, bundles) {
 }
 
 function attemptFailureReason(stage) {
-  if (!common.ATTEMPT_FAILURE_STAGE.includes(stage)) {
+  if (!ATTEMPT_FAILURE_STAGE.includes(stage)) {
     throw new Error(`unknown attempt failure stage ${stage}`);
   }
   return `FAILED_${stage}`;
@@ -659,6 +675,10 @@ async function collect(options = {}) {
     if (latestFrozenSession < ledgerDate) {
       throw new Error(`frozen target calendar regressed behind permanent ledger: ${latestFrozenSession} < ${ledgerDate}`);
     }
+    if (ledgerDate === seedBuilder.frozenTargetCalendarSessions(seed.sourceIdentityContract).at(-1)) {
+      failureStage = 'FROZEN_CALENDAR_HORIZON_EXHAUSTED';
+      throw new Error(`frozen target calendar horizon is exhausted at recorded terminal ${ledgerDate}; a new independently reviewed calendar freeze is required`);
+    }
     if (latestFrozenSession === ledgerDate) {
       writeAttempt(lockboxRoot, startedAtUtc, provenance, {
         status: common.ATTEMPT_STATUS.SKIPPED_ALREADY_RECORDED_DATE,
@@ -726,6 +746,11 @@ async function collect(options = {}) {
       });
       return { written: false, reason: 'NO_NEW_DECISION_DATE' };
     }
+    if (!bundles.length) {
+      failureStage = 'ACTIVATION_FORWARD_HORIZON';
+      seedBuilder.assertActivationForwardHorizon(seed.sourceIdentityContract,
+        newRowsByMarket[common.MARKET_ORDER[0]].at(-1).date);
+    }
     failureStage = 'MODEL_COMPUTATION';
     const computed = computeDecisionBundleMarkets({ seed, bundles, newRowsByMarket });
     const signalKnownAtUtc = maxUtc([clock().toISOString(), dataAvailableAtUtc]);
@@ -734,6 +759,7 @@ async function collect(options = {}) {
         || !beforeSafetyCutoff(signalKnownAtUtc)) {
       throw new Error('PAST_1200Z_SAFETY_CUTOFF_AFTER_MODEL_COMPUTATION');
     }
+    failureStage = 'DECISION_PERSISTENCE';
     const bundle = buildDecisionBundle({
       seed, manifest, seedSha256, manifestSha256, manifestCommit, acquired,
       sourceReceipts, bundles, collectedAtUtc: signalKnownAtUtc, signalKnownAtUtc,
@@ -741,7 +767,6 @@ async function collect(options = {}) {
     });
     const file = common.decisionPath(lockboxRoot, bundle.decisionDate);
     if (fs.existsSync(file)) throw new Error(`append-only decision collision at ${bundle.decisionDate}`);
-    failureStage = 'DECISION_PERSISTENCE';
     const written = common.createCanonicalWithSidecar(file, bundle);
     decisionTerminalWritten = true;
     process.stdout.write(`${JSON.stringify({
@@ -822,6 +847,7 @@ module.exports = Object.freeze({
   completeSourceAcquisition,
   latestPermanentLedgerDate,
   attemptFailureReason,
+  ATTEMPT_FAILURE_STAGE,
   MAX_GITHUB_API_RESPONSE_BYTES,
   collect,
 });

@@ -409,6 +409,12 @@ test('Rekor proof fails closed at or after the first eligible execution', () => 
   assert.throws(() => anchor.__test.validateVerifiedGhOutput(beforeSignal.output,
     beforeSignal.parsedBundle, beforeSignal.decisionEvidence, beforeSignal.policy),
   /predates the decision signal-known second/);
+
+  const sameSecond = replaceIntegratedTime(verifiedFixture(), '2026-08-28T10:00:00.000Z');
+  const verified = anchor.__test.validateVerifiedGhOutput(sameSecond.output,
+    sameSecond.parsedBundle, sameSecond.decisionEvidence, sameSecond.policy);
+  assert.equal(verified.integratedTimeUnix,
+    Math.floor(Date.parse('2026-08-28T10:00:00.123Z') / 1000));
 });
 
 test('only a verified Public Good Rekor timestamp with inclusion proof is accepted', () => {

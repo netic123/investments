@@ -7,7 +7,10 @@ const zlib = require('node:zlib');
 const model = require('../research/fear_greed_control_residual_pls1');
 
 const NATIVE_ARRAY_SORT = Function.prototype.call.bind(Array.prototype.sort);
+const NATIVE_BUFFER_FROM = Buffer.from;
 const NATIVE_CRYPTO_CREATE_HASH = crypto.createHash.bind(crypto);
+const NATIVE_CRYPTO_HASH_DIGEST = Function.prototype.call.bind(crypto.Hash.prototype.digest);
+const NATIVE_CRYPTO_HASH_UPDATE = Function.prototype.call.bind(crypto.Hash.prototype.update);
 const NATIVE_NUMBER_IS_FINITE = Number.isFinite;
 const NATIVE_OBJECT_FREEZE = Object.freeze;
 
@@ -192,7 +195,9 @@ async function readResponseBodyLimited(response, maxBytes = MAX_RAW_BYTES,
 }
 
 function sha256(bytes) {
-  return NATIVE_CRYPTO_CREATE_HASH('sha256').update(bytes).digest('hex');
+  return NATIVE_CRYPTO_HASH_DIGEST(
+    NATIVE_CRYPTO_HASH_UPDATE(NATIVE_CRYPTO_CREATE_HASH('sha256'), bytes), 'hex',
+  );
 }
 
 function isExactDate(value) {
@@ -237,11 +242,11 @@ function isPathWithin(root, value) {
 }
 
 function canonicalBytes(value) {
-  return Buffer.from(model.canonicalStringify(value));
+  return NATIVE_BUFFER_FROM(model.canonicalStringify(value));
 }
 
 function sidecarBytes(fileName, digest) {
-  return Buffer.from(`${digest}  ${fileName}\n`);
+  return NATIVE_BUFFER_FROM(`${digest}  ${fileName}\n`);
 }
 
 function fsyncDirectory(directory) {

@@ -13,6 +13,10 @@ const MIN_LIVE_SOURCE_SESSIONS = 756;
 // post-activation decision origins, and the two later sessions needed to mature
 // the final origin. This is deliberately a session count, not elapsed days.
 const REQUIRED_FUTURE_SOURCE_SESSIONS = 1 + 756 + 2;
+// Once the activation decision close is fixed, the frozen risky-target
+// calendar must still contain the 756 post-activation decision origins plus
+// the two later sessions that fill and mature the final origin.
+const REQUIRED_ACTIVATION_FORWARD_SESSIONS = 756 + 2;
 
 function daysBetween(earlier, later) {
   return (Date.parse(`${later}T00:00:00.000Z`) - Date.parse(`${earlier}T00:00:00.000Z`)) / 86400000;
@@ -147,8 +151,16 @@ function selectedHeaders(headers) {
   return result;
 }
 
-function installFetchCapture(nativeFetch = global.fetch) {
+function sourceRequestInitiationDeadlineUtc(retrievalDateUtc) {
+  if (!exactDate(retrievalDateUtc)) throw new Error(`invalid retrieval date ${retrievalDateUtc}`);
+  return `${retrievalDateUtc}T12:00:00.000Z`;
+}
+
+function installFetchCapture(nativeFetch = global.fetch, requestInitiationDeadlineUtc = null) {
   if (typeof nativeFetch !== 'function') throw new Error('Node global fetch is unavailable');
+  if (requestInitiationDeadlineUtc !== null && !exactUtc(requestInitiationDeadlineUtc)) {
+    throw new Error('request initiation deadline must be exact millisecond UTC');
+  }
   const requests = [];
   let phase = 'UNSPECIFIED';
   async function capturedFetch(input, init = {}) {
@@ -156,6 +168,9 @@ function installFetchCapture(nativeFetch = global.fetch) {
     const url = effectiveRequest.url;
     const requestOrdinal = requests.length;
     const startedAtUtc = new Date().toISOString();
+    if (requestInitiationDeadlineUtc !== null && startedAtUtc >= requestInitiationDeadlineUtc) {
+      throw new Error(`source request ${requestOrdinal} initiation at ${startedAtUtc} is at or past the frozen deadline ${requestInitiationDeadlineUtc}`);
+    }
     const record = {
       requestOrdinal,
       phase,
@@ -404,9 +419,9 @@ function calendarLocalDate(calendar, retrievalDateUtc) {
     .toLocaleDateString('sv-SE', { timeZone: calendar.timezone });
 }
 
-function frozenTargetCalendar(contract, retrievalDateUtc) {
-  if (!contract || !contract.identities || !contract.calendars || !exactDate(retrievalDateUtc)) {
-    throw new Error('frozen source contract and exact retrieval date are required for target calendar');
+function frozenTargetCalendarAuthority(contract) {
+  if (!contract || !contract.identities || !contract.calendars) {
+    throw new Error('frozen source contract is required for target calendar');
   }
   const targetSymbols = [...new Set(common.MARKET_ORDER.map(key => common.TARGETS[key].symbol))];
   const targetIdentities = targetSymbols.map(symbol => {
@@ -420,12 +435,44 @@ function frozenTargetCalendar(contract, retrievalDateUtc) {
   if (calendarIds.length !== 1) {
     throw new Error('risky targets do not share one frozen source calendar authority');
   }
-  const calendar = contract.calendars[calendarIds[0]];
-  const firstAdjustedDate = targetIdentities.map(identity => identity.firstAdjustedDate).sort()[0];
+  return {
+    calendar: contract.calendars[calendarIds[0]],
+    firstAdjustedDate: targetIdentities.map(identity => identity.firstAdjustedDate).sort()[0],
+  };
+}
+
+function frozenTargetCalendarSessions(contract) {
+  const { calendar, firstAdjustedDate } = frozenTargetCalendarAuthority(contract);
+  const sessions = calendar.sessions.filter(date => date >= firstAdjustedDate);
+  if (!sessions.length) throw new Error('frozen risky-target calendar has no sessions');
+  return sessions;
+}
+
+function frozenTargetCalendar(contract, retrievalDateUtc) {
+  if (!contract || !contract.identities || !contract.calendars || !exactDate(retrievalDateUtc)) {
+    throw new Error('frozen source contract and exact retrieval date are required for target calendar');
+  }
+  const { calendar, firstAdjustedDate } = frozenTargetCalendarAuthority(contract);
   const currentLocalDate = calendarLocalDate(calendar, retrievalDateUtc);
   const sessions = calendar.sessions.filter(date => date >= firstAdjustedDate && date < currentLocalDate);
   if (!sessions.length) throw new Error('frozen risky-target calendar has no completed sessions');
   return sessions;
+}
+
+function assertActivationForwardHorizon(contract, activationDecisionDate,
+  minimumForwardSessions = REQUIRED_ACTIVATION_FORWARD_SESSIONS) {
+  if (!exactDate(activationDecisionDate) || !Number.isInteger(minimumForwardSessions)
+      || minimumForwardSessions < 1) {
+    throw new Error('activation forward horizon requires an exact decision date and positive forward-session count');
+  }
+  const sessions = frozenTargetCalendarSessions(contract);
+  if (!sessions.includes(activationDecisionDate)) {
+    throw new Error(`activation decision ${activationDecisionDate} is not a frozen risky-target calendar session`);
+  }
+  const forwardSessions = sessions.filter(date => date > activationDecisionDate);
+  if (forwardSessions.length < minimumForwardSessions) {
+    throw new Error(`frozen risky-target calendar has only ${forwardSessions.length} sessions after activation decision ${activationDecisionDate}; ${minimumForwardSessions} required`);
+  }
 }
 
 function assertSourceCalendarHorizon(contract, retrievalDateUtc,
@@ -592,7 +639,8 @@ async function acquireAlignedData({ range = 'max', retrievalDateUtc = null,
     sourceIdentityContract || loadSourceIdentityContract(),
   );
   const nativeFetch = global.fetch;
-  const capture = installFetchCapture(nativeFetch);
+  const capture = installFetchCapture(nativeFetch,
+    range === '5y' ? sourceRequestInitiationDeadlineUtc(date) : null);
   global.fetch = capture.capturedFetch;
   try {
     const config = JSON.parse(fs.readFileSync(path.join(common.ROOT, 'data', 'config.json'), 'utf8'));
@@ -1238,6 +1286,7 @@ module.exports = Object.freeze({
   SOURCE_IDENTITY_PATH,
   MIN_LIVE_SOURCE_SESSIONS,
   REQUIRED_FUTURE_SOURCE_SESSIONS,
+  REQUIRED_ACTIVATION_FORWARD_SESSIONS,
   daysBetween,
   exactDate,
   SPECIAL_NYSE_CLOSURES,
@@ -1253,7 +1302,10 @@ module.exports = Object.freeze({
   validateSourceIdentity,
   validateSourceCalendar,
   frozenTargetCalendar,
+  frozenTargetCalendarSessions,
   assertSourceCalendarHorizon,
+  assertActivationForwardHorizon,
+  sourceRequestInitiationDeadlineUtc,
   fetchYahooChart,
   alignMarketRows,
   fearGreedProjection,
