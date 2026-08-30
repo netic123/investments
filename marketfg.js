@@ -3,8 +3,8 @@
 // Used by server.js (/api/marketfg). No dependencies, requires Node 18+.
 //
 // The model is CNN-inspired (CNN Fear & Greed Index for the US) but computed entirely locally from daily closes
-// in Yahoo Finance. Crypto and equity markets use the same six-component engine, percentile scoring,
-// window, directions and weights; only the explicitly configured raw-market proxies differ. In particular,
+// in Yahoo Finance. Crypto and equity markets use the same six-component engine, causal expanding-percentile
+// scoring, directions and weights; only the explicitly configured raw-market proxies differ. In particular,
 // volatility is an implied-volatility level where configured and benchmark realised volatility otherwise.
 // Six indicators, the same for every market:
 //   momentum   benchmark vs its 125-observation average                         (+ = greed)
@@ -13,9 +13,9 @@
 //   safeHaven  20-common-observation return of benchmark minus safe-haven proxy   (+ = greed)
 //   credit     high yield / investment grade vs 125-observation average          (+ = greed)
 //   breadth    configured broader-risk / core proxy vs 63-observation average     (+ = greed)
-// Each raw series → percentile rank (0–100) within a rolling window of 252 observations.
+// Each raw series → percentile rank (0–100) against every finite observation available through that date.
 // Composite = the equal-weight mean of all six indicators. Labels:
-// 0–24 Extreme Fear · 25–44 Fear · 45–55 Neutral · 56–74 Greed · 75–100 Extreme Greed.
+// 0–24.9 Extreme Fear · 25–44.9 Fear · 45–55.9 Neutral · 56–74.9 Greed · 75–100 Extreme Greed.
 
 const expandingBinary = require('./research/fear_greed_expanding_binary');
 
@@ -26,13 +26,18 @@ const lastGood = new Map();            // symbol + requested range -> last succe
 
 // range 'max' = each series' full history on Yahoo (SPY since 1993, ^VIX since 1990 …); the composite reaches back as far as ≥ minComponents indicators exist
 const DEFAULTS = {
-  modelId: 'investments-unified-fear-greed', version: 2,
-  range: 'max', window: 252, minWindowPoints: 126, minComponents: 6,
+  modelId: 'investments-unified-fear-greed', version: 3,
+  range: 'max', percentileMode: 'expanding', strengthWindow: 252,
+  percentileMinPoints: 126, minComponents: 6,
   // Score history is intentionally uncapped: the expanding learner and public
   // chart both retain the entire usable history for each market.
   fillDays: 7, timeoutMs: 25000, concurrency: 6,
 };
-const LABELS = [[0, 24, 'Extreme Fear'], [25, 44, 'Fear'], [45, 55, 'Neutral'], [56, 74, 'Greed'], [75, 100, 'Extreme Greed']];
+const LABELS = [[0, 24.9, 'Extreme Fear'], [25, 44.9, 'Fear'], [45, 55.9, 'Neutral'], [56, 74.9, 'Greed'], [75, 100, 'Extreme Greed']];
+const LEGACY_LABELS = [[0, 24, 'Extreme Fear'], [25, 44, 'Fear'], [45, 55, 'Neutral'], [56, 74, 'Greed'], [75, 100, 'Extreme Greed']];
+const PUBLIC_PERCENTILE_SCOPE = 'ALL_FINITE_COMPONENT_RAW_OBSERVATIONS_FROM_CURRENT_PROVIDER_MAX_RESPONSE_THROUGH_EACH_DATE';
+const PUBLIC_SIGNAL_MODEL_ID = 'FG-ONLINE-RIDGE-PREQ-FG3-V1';
+const PUBLIC_SIGNAL_MODEL_VERSION = 1;
 const TARGET_DISCLOSURES = Object.freeze({
   crypto: Object.freeze({ expectedTargetId: 'CRYPTO-BROAD-EW', requiresAdjusted: false, suitability: 'SYNTHETIC_ANALYTICAL_BASKET_NOT_INVESTABLE' }),
   sweden: Object.freeze({ expectedTargetId: '^OMXSBGI', requiresAdjusted: false, suitability: 'GROSS_RETURN_REFERENCE_INDEX_NOT_EXECUTABLE_INSTRUMENT' }),
@@ -53,30 +58,78 @@ const COMPONENTS = {
 
 function labelOf(score, labels = LABELS) {
   if (score == null || !Number.isFinite(score)) return null;
-  const s = Math.round(Math.round(score * 10) / 10); // same rounding as the displayed value (1 decimal) → label and number always agree
+  const s = round1(score);
   const hit = labels.find(([a, b]) => s >= a && s <= b);
+  return hit ? hit[2] : null;
+}
+function legacyLabelOf(score) {
+  if (score == null || !Number.isFinite(score)) return null;
+  const s = Math.round(round1(score));
+  const hit = LEGACY_LABELS.find(([a, b]) => s >= a && s <= b);
   return hit ? hit[2] : null;
 }
 const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const round1 = v => v == null ? null : Math.round(v * 10) / 10;
 
 // ---------- Yahoo ----------
+function makeExchangeDateFormatter(timeZone) {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+  });
+}
+
+async function fetchYahooChart(host, symbol, query, signal) {
+  const url = `https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}?${query}`;
+  const attemptController = new AbortController();
+  const relayAbort = () => attemptController.abort(signal && signal.reason);
+  if (signal) {
+    if (signal.aborted) relayAbort();
+    else signal.addEventListener('abort', relayAbort, { once: true });
+  }
+  const attemptDeadline = setTimeout(() => attemptController.abort(new Error(`${host} timed out (${symbol})`)), 12000);
+  let response, json;
+  try {
+    response = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: attemptController.signal });
+    json = await response.json().catch(() => null);
+  } catch (error) {
+    if (signal && signal.aborted) throw signal.reason || error;
+    throw new Error(`${host} did not respond (${symbol})`);
+  } finally {
+    clearTimeout(attemptDeadline);
+    if (signal) signal.removeEventListener('abort', relayAbort);
+  }
+  if (!response.ok) {
+    const description = json && json.chart && json.chart.error && json.chart.error.description;
+    throw new Error(`${host} HTTP ${response.status}${description ? ` ${description}` : ''} (${symbol})`);
+  }
+  const result = json && json.chart && json.chart.result && json.chart.result[0];
+  if (!result) throw new Error(`${host} returned no chart result (${symbol})`);
+  const providerSymbol = result.meta && result.meta.symbol;
+  if (providerSymbol !== symbol) {
+    throw new Error(`${host} symbol identity mismatch: requested ${symbol}, received ${providerSymbol || 'missing'} (${symbol})`);
+  }
+  return { result, host };
+}
+
 async function fetchSeries(symbol, range, signal) {
   // 'max' must be requested as an explicit period: range=max makes Yahoo downgrade to monthly bars, period1=0 keeps daily ones
   const q = range === 'max' ? `period1=0&period2=${Math.floor(Date.now() / 1000) + 86400}&interval=1d` : `range=${encodeURIComponent(range)}&interval=1d`;
-  const u = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?${q}`;
-  let r;
-  try { r = await fetch(u, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: signal || AbortSignal.timeout(20000) }); }
-  catch (e) { const m = (e && e.message) || ''; throw new Error(/Yahoo did not respond/.test(m) ? `${m} (${symbol})` : `no contact with Yahoo (${symbol})`); }
-  const j = await r.json().catch(() => null);
-  if (!r.ok) {
-    const desc = j && j.chart && j.chart.error && j.chart.error.description;
-    throw new Error(`Yahoo ${r.status}${desc ? ' ' + desc : ''} (${symbol})`);
+  const failures = [];
+  let acquired = null;
+  for (const host of ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']) {
+    try {
+      acquired = await fetchYahooChart(host, symbol, q, signal);
+      break;
+    } catch (error) {
+      failures.push(String(error && error.message || error));
+      if (signal && signal.aborted) break;
+    }
   }
-  const res = j && j.chart && j.chart.result && j.chart.result[0];
-  if (!res) throw new Error(`no result from Yahoo (${symbol})`);
+  if (!acquired) throw new Error(`Yahoo chart unavailable: ${failures.join('; ')}`);
+  const res = acquired.result;
   const meta = res.meta || {};
   const tz = meta.exchangeTimezoneName || 'UTC';
+  const dateFormatter = makeExchangeDateFormatter(tz);
   const ts = res.timestamp || [];
   const quoteClose = (((res.indicators || {}).quote || [])[0] || {}).close || [];
   const adjClose = (((res.indicators || {}).adjclose || [])[0] || {}).adjclose || [];
@@ -90,7 +143,7 @@ async function fetchSeries(symbol, range, signal) {
   for (let i = 0; i < ts.length; i++) {
     const c = closes[i];
     if (c == null || !Number.isFinite(c) || c <= 0) continue;
-    byDate.set(new Date(ts[i] * 1000).toLocaleDateString('sv-SE', { timeZone: tz }), c); // exchange-local date as YYYY-MM-DD (sv-SE gives ISO order); same day twice → latest wins
+    byDate.set(dateFormatter.format(new Date(ts[i] * 1000)), c); // exchange-local date as YYYY-MM-DD (sv-SE gives ISO order); same day twice → latest wins
   }
   const rows = [...byDate.entries()].map(([date, close]) => ({ date, close })).sort((a, b) => a.date.localeCompare(b.date));
   if (rows.length < 30) throw new Error(`too little history from Yahoo (${symbol}: ${rows.length} days)`);
@@ -100,7 +153,7 @@ async function fetchSeries(symbol, range, signal) {
     symbol, name: String(meta.longName || meta.shortName || symbol).replace(/\s+/g, ' ').trim(), currency: meta.currency || null, tz, rows, adjusted,
     lastDate: rows[rows.length - 1].date,
     intraday: !!(reg && Number.isFinite(reg.start) && now >= reg.start && now <= reg.end),
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: new Date().toISOString(), sourceHost: acquired.host, providerSymbol: meta.symbol,
   };
 }
 
@@ -128,12 +181,35 @@ async function mapLimit(items, limit, fn) {
 
 // ---------- maths ----------
 function smaAt(arr, i, n) { if (i < n - 1) return null; let s = 0; for (let k = i - n + 1; k <= i; k++) s += arr[k]; return s / n; }
+// Frozen v2 research replay only. Public v3 must use expandingPctScores.
 function pctScores(raw, window, minPts) {
   return raw.map((v, i) => {
     if (v == null || !Number.isFinite(v)) return null;
     let n = 0, below = 0, eq = 0;
     for (let k = Math.max(0, i - window + 1); k <= i; k++) { const x = raw[k]; if (x == null || !Number.isFinite(x)) continue; n++; if (x < v) below++; else if (x === v) eq++; }
     return n < minPts ? null : 100 * (below + 0.5 * eq) / n;
+  });
+}
+
+// Exact causal expanding midranks in O(N log N). Coordinate compression sees
+// the set of possible numeric keys, but counts are inserted only as each row is
+// reached, so future values cannot affect an earlier percentile.
+function expandingPctScores(raw, minPts) {
+  const finite = raw.filter(value => Number.isFinite(value));
+  const values = [...new Set(finite)].sort((a, b) => a - b);
+  const ranks = new Map(values.map((value, index) => [value, index + 1]));
+  const tree = new Int32Array(values.length + 1);
+  const add = index => { for (let i = index; i < tree.length; i += i & -i) tree[i]++; };
+  const sum = index => { let total = 0; for (let i = index; i > 0; i -= i & -i) total += tree[i]; return total; };
+  let n = 0;
+  return raw.map(value => {
+    if (!Number.isFinite(value)) return null;
+    const rank = ranks.get(value);
+    add(rank);
+    n++;
+    const below = sum(rank - 1);
+    const equal = sum(rank) - below;
+    return n < minPts ? null : 100 * (below + 0.5 * equal) / n;
   });
 }
 function join(a, b) {
@@ -277,7 +353,18 @@ function latestIsoTimestamp(values) {
     .sort().at(-1) || null;
 }
 
-function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, annualization) {
+function hashPublicDecision(signal) {
+  const { decisionSha256: ignored, learnerDecisionSha256, ...publicDecision } = signal || {};
+  return expandingBinary.hashCanonical({ publicDecision, learnerDecisionSha256 });
+}
+
+function hashPublishedScoreHistory(history) {
+  return expandingBinary.hashCanonical((history || []).map(row => ({
+    date: row.date, score: round1(row.score), n: row.n,
+  })));
+}
+
+function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, annualization, scoreModel) {
   const disclosure = TARGET_DISCLOSURES[key] || Object.freeze({
     expectedTargetId: null,
     requiresAdjusted: false,
@@ -285,6 +372,15 @@ function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, a
   });
   const relevantSymbols = [...new Set(Object.values(symbols || {}).flatMap(spec => collectSpecSymbols(spec)))];
   const relevantSources = relevantSymbols.map(symbol => marketSources.get(symbol)).filter(Boolean);
+  const sourceHostBySymbol = Object.fromEntries(relevantSymbols.map(symbol => [
+    symbol,
+    (marketSources.get(symbol) || {}).sourceHost || null,
+  ]));
+  const providerSymbolByRequestedSymbol = Object.fromEntries(relevantSymbols.map(symbol => [
+    symbol,
+    (marketSources.get(symbol) || {}).providerSymbol || null,
+  ]));
+  const sourceHosts = [...new Set(Object.values(sourceHostBySymbol).filter(Boolean))].sort();
   const availableAtUtc = latestIsoTimestamp(relevantSources.map(series => series.sourceFetchedAt || series.fetchedAt));
   const inputStale = relevantSources.length !== relevantSymbols.length || relevantSources.some(series => series.stale);
   const targetIdentityValid = disclosure.expectedTargetId === idx.symbol;
@@ -327,7 +423,9 @@ function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, a
   const validFreshDecision = !inputStale && currentComplete;
   const action = decision.action;
   const targetRiskyWeight = action === 'BUY' ? 1 : 0;
-  const currentRiskyWeight = decision.filledPosition === 'LONG' ? 1 : 0;
+  const simulatedFilledRiskyWeight = decision.filledPosition === 'LONG' ? 1 : 0;
+  const targetPosition = action === 'BUY' ? 'LONG' : 'CASH';
+  const simulatedFilledPosition = simulatedFilledRiskyWeight === 1 ? 'LONG' : 'CASH';
   const reason = decision.fallbackReason || 'EXPANDING_RIDGE_PATTERN';
   const targetSuitability = !targetIdentityValid
     ? 'TARGET_IDENTITY_MISMATCH_UNREVIEWED'
@@ -335,13 +433,22 @@ function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, a
       ? 'UNADJUSTED_CLOSE_NOT_TOTAL_RETURN'
       : disclosure.suitability;
   const publicDecision = {
-    modelId: expandingBinary.MODEL_ID,
-    modelVersion: expandingBinary.SCHEMA_VERSION,
+    modelId: PUBLIC_SIGNAL_MODEL_ID,
+    modelVersion: PUBLIC_SIGNAL_MODEL_VERSION,
+    learnerModelId: expandingBinary.MODEL_ID,
+    learnerModelVersion: expandingBinary.SCHEMA_VERSION,
+    upstreamScoreModelId: scoreModel.id,
+    upstreamScoreModelVersion: Number(scoreModel.version),
+    upstreamScorePercentileMode: scoreModel.percentileMode,
+    upstreamScorePercentileScope: scoreModel.percentileScope,
     action,
     actionMeaning: 'TARGET_POSITION',
+    targetPosition,
+    positionStateMeaning: 'RETROSPECTIVE_SIMULATION_ONLY_NOT_ACTUAL_HOLDING_OR_EXECUTION',
+    simulatedFilledPosition,
     targetRiskyWeight,
-    currentRiskyWeight,
-    tradeRequired: targetRiskyWeight !== currentRiskyWeight,
+    simulatedFilledRiskyWeight,
+    simulatedTransitionRequired: targetRiskyWeight !== simulatedFilledRiskyWeight,
     decisionAsOfClose: decision.decisionDate,
     executeNoEarlierThanClose: 'FIRST_TARGET_CLOSE_STRICTLY_AFTER_FEATURE_CLOSE_AND_AVAILABLE_AT_UTC',
     availableAtUtc,
@@ -354,8 +461,14 @@ function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, a
     historyObservations: history.length,
     historyTruncated: false,
     historyScope: 'ALL_USABLE_SCORE_ROWS_FROM_CURRENT_PROVIDER_MAX_RESPONSE',
+    publishedScoreHistorySha256: hashPublishedScoreHistory(history),
+    learnerInputHistorySha256: expandingBinary.hashCanonical(input),
     learnerUsesAllSuppliedHistory: true,
     providerHistoryCompleteness: 'UNVERIFIED',
+    providerSymbolByRequestedSymbol,
+    sourceHostBySymbol,
+    sourceHostFallbackUsed: sourceHosts.includes('query2.finance.yahoo.com'),
+    sourceHosts,
     reason,
     inputsCompleted: currentComplete,
     inputsFresh: !inputStale,
@@ -363,18 +476,31 @@ function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, a
     expectedTargetId: disclosure.expectedTargetId,
     targetSuitability,
     cashModel: 'ZERO_RETURN_DEVELOPMENT_ASSUMPTION',
-    evidenceStatus: 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_NOT_VALIDATED',
+    evidenceStatus: 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_REQUIRES_REVALIDATION_FOR_UPSTREAM_SCORE_V3_NOT_VALIDATED',
     prospectiveRecorded: false,
     x2ClaimAllowed: false,
   };
-  return Object.freeze({
+  const boundDecision = {
     ...publicDecision,
-    decisionSha256: decision.decisionSha256,
+    learnerDecisionSha256: decision.decisionSha256,
+  };
+  return Object.freeze({
+    ...boundDecision,
+    decisionSha256: hashPublicDecision(boundDecision),
   });
 }
 
 // ---------- one market ----------
 function computeMarket(key, m, S, opt) {
+  const percentileMode = opt.percentileMode || 'trailing-window';
+  if (!['expanding', 'trailing-window'].includes(percentileMode)) {
+    throw new Error(`unsupported percentile mode ${percentileMode}`);
+  }
+  const strengthWindow = Number(opt.strengthWindow ?? opt.window ?? 252);
+  const percentileMinPoints = Number(opt.percentileMinPoints ?? opt.minWindowPoints ?? 126);
+  if (!Number.isInteger(strengthWindow) || strengthWindow < 2) throw new Error('strengthWindow must be an integer >= 2');
+  if (!Number.isInteger(percentileMinPoints) || percentileMinPoints < 1) throw new Error('percentileMinPoints must be a positive integer');
+  const scoreLabel = percentileMode === 'expanding' ? labelOf : legacyLabelOf;
   const sym = m.symbols || {};
   const marketSources = new Map();
   const utcCutoff = m.barPolicy === 'completed-utc-date' ? new Date().toISOString().slice(0, 10) : null;
@@ -408,7 +534,9 @@ function computeMarket(key, m, S, opt) {
     const missing = series.filter(s => !s);
     if (missing.length) return; // slot not configured / data missing → the indicator is omitted
     const c = build();
-    const score = pctScores(c.raw, opt.window, opt.minWindowPoints);
+    const score = percentileMode === 'expanding'
+      ? expandingPctScores(c.raw, percentileMinPoints)
+      : pctScores(c.raw, Number(opt.window ?? strengthWindow), percentileMinPoints);
     if (definitions[k].dir < 0) for (let i = 0; i < score.length; i++) if (score[i] != null) score[i] = 100 - score[i];
     comps[k] = { ...c, score, symbols: series.map(s => s.symbol), names: series.map(s => s.name), stale: series.some(s => s.stale), note: note || null };
     for (const s of series) if (s.stale && !staleSeen.has(s.symbol)) { // fallback series (last successful fetch) — say why, once per symbol
@@ -417,7 +545,7 @@ function computeMarket(key, m, S, opt) {
     }
   };
   add('momentum', [idx], () => compMomentum(idx));
-  add('strength', [idx], () => compStrength(idx, opt.window, opt.minWindowPoints));
+  add('strength', [idx], () => compStrength(idx, strengthWindow, percentileMinPoints));
   // a fallback (stale) VIX series is preferred over silently switching the model to realised volatility for the whole history
   // scored as the level relative to its 50-day average (CNN's definition) — the level's 1-year percentile alone made a calm
   // market read as extreme greed for months and put the USA model ~11 points above CNN's published index
@@ -455,7 +583,7 @@ function computeMarket(key, m, S, opt) {
     const p = last.parts[k] || null;
     components[k] = {
       key: k, name: definitions[k].name, desc: definitions[k].desc, unit: definitions[k].unit, dir: definitions[k].dir,
-      score: p ? round1(p.score) : null, label: p ? labelOf(p.score) : null, raw: p ? round1(p.raw) : null, asOf: p ? p.asOf : null,
+      score: p ? round1(p.score) : null, label: p ? scoreLabel(p.score) : null, raw: p ? round1(p.raw) : null, asOf: p ? p.asOf : null,
       symbols: c.symbols, names: c.names, note: c.note,
       stale: !!c.stale,                         // fallback series: Yahoo did not respond at the last fetch
       lag: !!(p && p.asOf !== last.date),       // older date than the index (other exchange closed) — not an error
@@ -465,11 +593,19 @@ function computeMarket(key, m, S, opt) {
     ? buildPublicExpandingSignal(
       key, idx, history, marketSources, sym,
       key === 'crypto' ? 365 : 252,
+      {
+        id: opt.modelId || DEFAULTS.modelId,
+        version: Number(opt.version || DEFAULTS.version),
+        percentileMode,
+        percentileScope: percentileMode === 'expanding'
+          ? PUBLIC_PERCENTILE_SCOPE
+          : `TRAILING_${Number(opt.window ?? strengthWindow)}_FINITE_COMPONENT_RAW_OBSERVATIONS`,
+      },
     )
     : null;
   return {
     key, name: m.name || key, currency: m.currency || idx.currency, indexSymbol: idx.symbol, indexName: idx.name,
-    asOf: last.date, score: round1(last.score), label: labelOf(last.score), n: last.n, total: Object.keys(COMPONENTS).length,
+    asOf: last.date, score: round1(last.score), label: scoreLabel(last.score), n: last.n, total: Object.keys(COMPONENTS).length,
     intraday: !!idx.intraday, stale: !!idx.stale || Object.values(comps).some(c => c.stale),
     previous: { close: prevClose ? round1(prevClose.score) : null, closeDate: prevClose ? prevClose.date : null,
       week: week ? round1(week.score) : null, weekDate: week ? week.date : null, month: month ? round1(month.score) : null, monthDate: month ? month.date : null,
@@ -484,7 +620,7 @@ function computeMarket(key, m, S, opt) {
       symbols: sym,
     },
     history: history.map(h => {
-      const row = { date: h.date, score: round1(h.score), label: labelOf(h.score), n: h.n };
+      const row = { date: h.date, score: round1(h.score), label: scoreLabel(h.score), n: h.n };
       // Research runs can request the causal component observations used for each
       // composite row. The public/server contract stays compact by default.
       if (opt.includeHistoryParts) {
@@ -502,17 +638,40 @@ function computeMarket(key, m, S, opt) {
 // ---------- all markets ----------
 async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
   expandingBinary.assertProtocolIdentity();
-  const opt = { ...DEFAULTS, ...(cfg || {}) };
-  if (includeExpandingSignal && opt.range !== 'max') {
+  const requested = cfg || {};
+  const opt = { ...DEFAULTS, ...requested };
+  // Configurations frozen before v3 had no mode field. Preserve their exact
+  // rolling scorer for private replay; only an explicit v3 mode can be public.
+  if (!Object.prototype.hasOwnProperty.call(requested, 'percentileMode')) {
+    opt.percentileMode = Number(requested.version) <= 2 ? 'trailing-window' : DEFAULTS.percentileMode;
+  }
+  if (includeExpandingSignal && requested.range !== 'max') {
     throw new Error('PUBLIC_FULL_HISTORY_RANGE_REQUIRED: market Fear & Greed requires exact range "max"');
+  }
+  if (includeExpandingSignal && (
+    requested.modelId !== DEFAULTS.modelId
+    || Number(requested.version) !== 3
+    || requested.percentileMode !== 'expanding'
+  )) {
+    throw new Error('PUBLIC_FULL_HISTORY_SCORING_REQUIRED: public Fear & Greed requires an explicit version 3 causal expanding model identity');
   }
   const markets = (cfg && cfg.markets) || {};
   const symbols = [...new Set(Object.values(markets).flatMap(m => Object.values(m.symbols || {}).flatMap(spec => collectSpecSymbols(spec))))];
   // one shared deadline for the whole fetch (not 20 s per symbol × several rounds) — a hanging Yahoo must never lock the page for minutes
   const ac = new AbortController();
-  const deadline = setTimeout(() => ac.abort(new Error(`Yahoo did not respond within ${Math.round(opt.timeoutMs / 1000)} s`)), opt.timeoutMs);
+  const deadlineError = new Error(`Yahoo did not respond within ${Math.round(opt.timeoutMs / 1000)} s`);
+  let deadline;
   let fetched;
-  try { fetched = await mapLimit(symbols, opt.concurrency, s => getSeries(s, opt.range, ac.signal).then(v => ({ ok: true, v }), e => ({ ok: false, e: String(e.message || e) }))); }
+  try {
+    const fetchWork = mapLimit(symbols, opt.concurrency, s => getSeries(s, opt.range, ac.signal).then(v => ({ ok: true, v }), e => ({ ok: false, e: String(e.message || e) })));
+    const hardDeadline = new Promise((_, reject) => {
+      deadline = setTimeout(() => {
+        ac.abort(deadlineError);
+        reject(deadlineError);
+      }, opt.timeoutMs);
+    });
+    fetched = await Promise.race([fetchWork, hardDeadline]);
+  }
   finally { clearTimeout(deadline); }
   const S = new Map(), errors = {};
   fetched.forEach((r, i) => {
@@ -532,15 +691,32 @@ async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
     model: {
       id: opt.modelId, version: Number(opt.version), owner: 'repository',
       name: 'Unified Fear & Greed — six-component market model',
-      method: 'equal-weight trailing-percentile six-component composite',
-      window: opt.window, minWindowPoints: opt.minWindowPoints, range: opt.range,
-      minComponents: opt.minComponents, fillDays: opt.fillDays, labels: LABELS, components: COMPONENTS,
+      method: opt.percentileMode === 'expanding'
+        ? 'equal-weight causal-expanding-percentile six-component composite'
+        : 'equal-weight trailing-percentile six-component composite',
+      percentileMode: opt.percentileMode,
+      percentileScope: opt.percentileMode === 'expanding'
+        ? PUBLIC_PERCENTILE_SCOPE
+        : `TRAILING_${Number(opt.window ?? opt.strengthWindow)}_FINITE_COMPONENT_RAW_OBSERVATIONS`,
+      percentileMinPoints: Number(opt.percentileMinPoints ?? opt.minWindowPoints),
+      percentileHistoryTruncated: false,
+      providerHistoryCompleteness: 'UNVERIFIED',
+      strengthWindow: Number(opt.strengthWindow ?? opt.window),
+      ...(opt.percentileMode === 'trailing-window' ? { percentileWindow: Number(opt.window ?? opt.strengthWindow) } : {}),
+      range: opt.range,
+      minComponents: opt.minComponents, fillDays: opt.fillDays,
+      labels: opt.percentileMode === 'expanding' ? LABELS : LEGACY_LABELS,
+      components: COMPONENTS,
       ...(includeExpandingSignal ? { expandingSignal: {
-        id: expandingBinary.MODEL_ID,
-        version: expandingBinary.SCHEMA_VERSION,
-        method: 'per-market expanding standardized ridge; next-close binary target state',
+        id: PUBLIC_SIGNAL_MODEL_ID,
+        version: PUBLIC_SIGNAL_MODEL_VERSION,
+        method: 'per-market expanding standardized ridge learner bound to unified Fear & Greed v3; next-close binary target state',
+        learnerId: expandingBinary.MODEL_ID,
+        learnerVersion: expandingBinary.SCHEMA_VERSION,
+        upstreamScoreModelId: opt.modelId,
+        upstreamScoreModelVersion: Number(opt.version),
         minimumMaturedRows: expandingBinary.MIN_MATURED_ROWS,
-        evidenceStatus: 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_NOT_VALIDATED',
+        evidenceStatus: 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_REQUIRES_REVALIDATION_FOR_UPSTREAM_SCORE_V3_NOT_VALIDATED',
       } } : {}),
     },
     markets: out, failed, symbolErrors: errors,
@@ -560,7 +736,8 @@ async function getMarketFearGreedResearchHistory(cfg) {
 
 module.exports = {
   getMarketFearGreed, getMarketFearGreedResearchHistory, clearCache,
-  LABELS, COMPONENTS, labelOf, pctScores, computeMarket,
+  LABELS, COMPONENTS, labelOf, pctScores, expandingPctScores, computeMarket, fetchSeries,
+  hashPublicDecision, hashPublishedScoreHistory, makeExchangeDateFormatter,
   collectSpecSymbols, equalWeightReturnSeries, resolveSeriesSpec, beforeUtcDate, beforeRetrievalLocalDate,
   buildPublicExpandingSignal,
 };

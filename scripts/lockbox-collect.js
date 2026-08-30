@@ -31,6 +31,16 @@ const INSTRUMENT_SYMBOL = 'XSX6.DE';
 const INSTRUMENT_NAME = 'Xtrackers Stoxx Europe 600 UCITS ETF 1C (accumulating; price series is total return)';
 const USER_AGENT = 'netic123-investments-lockbox/1.0';
 const RECENT_BARS = 15;
+// EUROPE-MONTHLY-CONTRARIAN-V1 was activated against production model v2.
+// Public v3 must never silently rewrite that prospective candidate's inputs.
+const FROZEN_MARKET_MODEL = Object.freeze({
+  version: 2,
+  percentileMode: 'trailing-window',
+  window: 252,
+  minWindowPoints: 126,
+  strengthWindow: 252,
+  percentileMinPoints: 126,
+});
 
 function sha256(buffer) { return crypto.createHash('sha256').update(buffer).digest('hex'); }
 
@@ -195,9 +205,12 @@ async function collect() {
     return { written: false };
   }
   const chain = previousEntrySha();
-  const { getMarketFearGreed } = require(path.join(ROOT, 'marketfg.js'));
+  const { getMarketFearGreedResearchHistory } = require(path.join(ROOT, 'marketfg.js'));
   const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'config.json'), 'utf8'));
-  const marketfgResult = await getMarketFearGreed(config.marketFearGreed);
+  const marketfgResult = await getMarketFearGreedResearchHistory({
+    ...config.marketFearGreed,
+    ...FROZEN_MARKET_MODEL,
+  });
   if (!marketfgResult.ok || marketfgResult.failed && marketfgResult.failed.europe) {
     throw new Error(`market model failed: ${JSON.stringify(marketfgResult.failed || {})}`);
   }
@@ -226,7 +239,7 @@ async function main() {
 }
 
 module.exports = {
-  ENTRY_SCHEMA, INSTRUMENT_SYMBOL, LOCKBOX_DIR, ENTRIES_DIR, GENESIS_PATH,
+  ENTRY_SCHEMA, INSTRUMENT_SYMBOL, LOCKBOX_DIR, ENTRIES_DIR, GENESIS_PATH, FROZEN_MARKET_MODEL,
   sha256, canonicalJson, writeWithSidecar, listEntryDates, previousEntrySha,
   buildEntry, writeEntryIfAbsent, writeGenesis, compactMarket, utcDate,
 };

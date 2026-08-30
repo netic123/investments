@@ -8,6 +8,17 @@ const path = require('node:path');
 const collect = require('../scripts/lockbox-collect.js');
 const verify = require('../scripts/lockbox-verify.js');
 
+test('legacy Europe prospective collector remains explicitly pinned to rolling model v2', () => {
+  assert.deepEqual(collect.FROZEN_MARKET_MODEL, {
+    version: 2,
+    percentileMode: 'trailing-window',
+    window: 252,
+    minWindowPoints: 126,
+    strengthWindow: 252,
+    percentileMinPoints: 126,
+  });
+});
+
 function temporaryLockbox(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lockbox-test-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));

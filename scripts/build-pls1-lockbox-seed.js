@@ -644,15 +644,15 @@ async function acquireAlignedData({ range = 'max', retrievalDateUtc = null,
   global.fetch = capture.capturedFetch;
   try {
     const config = JSON.parse(fs.readFileSync(path.join(common.ROOT, 'data', 'config.json'), 'utf8'));
+    const frozenScore = frozenV2ScoreConfig(config.marketFearGreed, range);
     const marketfg = require('../marketfg');
-    const componentSymbols = [...new Set(Object.values(config.marketFearGreed.markets)
+    const componentSymbols = [...new Set(Object.values(frozenScore.markets)
       .flatMap(market => Object.values(market.symbols || {})
         .flatMap(spec => marketfg.collectSpecSymbols(spec))))];
     capture.setPhase('COMPONENT');
     marketfg.clearCache();
     const result = await marketfg.getMarketFearGreedResearchHistory({
-      ...config.marketFearGreed,
-      range,
+      ...frozenScore,
       includeHistoryParts: true,
     });
     const returnedKeys = Object.keys(result.markets || {}).sort();
@@ -1022,8 +1022,7 @@ function replayAlignedDataFromReceipts({ receipts, sourceSelections, loadRaw, ra
   }
   const computedMarkets = {};
   const opt = {
-    ...config.marketFearGreed,
-    range,
+    ...frozenV2ScoreConfig(config.marketFearGreed, range),
     includeHistoryParts: true,
     includeExpandingSignal: false,
   };
@@ -1204,9 +1203,75 @@ function assertCleanCommittedFiles(relativePaths) {
   }
 }
 
+const FROZEN_UPSTREAM_MARKET_MAPPINGS = Object.freeze({
+  crypto: Object.freeze({
+    barPolicy: 'completed-utc-date',
+    symbols: Object.freeze({
+      index: Object.freeze({ id: 'CRYPTO-BROAD-EW', name: 'Broad crypto equal-weight basket', method: 'equalWeightReturns', currency: 'USD', timezone: 'UTC', symbols: Object.freeze(['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD']) }),
+      vol: null, bond: 'IEF', hy: 'HYG', ig: 'LQD',
+      small: Object.freeze({ id: 'CRYPTO-NONCORE-EW', name: 'Non-core crypto equal-weight basket', method: 'equalWeightReturns', currency: 'USD', timezone: 'UTC', symbols: Object.freeze(['SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD']) }),
+      large: Object.freeze({ id: 'CRYPTO-CORE-EW', name: 'BTC and ETH equal-weight core basket', method: 'equalWeightReturns', currency: 'USD', timezone: 'UTC', symbols: Object.freeze(['BTC-USD', 'ETH-USD']) }),
+    }),
+  }),
+  sweden: Object.freeze({ barPolicy: null, symbols: Object.freeze({ index: '^OMXSBGI', vol: null, bond: 'XACT-OBLIGATION.ST', hy: '0P0001C87Y.ST', ig: '0P00000KIW.ST', small: 'XACT-SMABOLAG.ST', large: 'XACT-SVERIGE.ST' }) }),
+  usa: Object.freeze({ barPolicy: null, symbols: Object.freeze({ index: 'SPY', vol: '^VIX', bond: 'IEF', hy: 'HYG', ig: 'LQD', small: 'IWM', large: null }) }),
+  ustech: Object.freeze({ barPolicy: null, symbols: Object.freeze({ index: 'XLK', vol: '^VXN', bond: 'IEF', hy: 'HYG', ig: 'LQD', small: 'RSPT', large: null }) }),
+  europe: Object.freeze({ barPolicy: null, symbols: Object.freeze({ index: '^STOXX', vol: null, bond: 'SXRQ.DE', hy: 'IHYG.L', ig: 'IEAC.L', small: 'EXSE.DE', large: 'EXSA.DE' }) }),
+  global: Object.freeze({ barPolicy: null, symbols: Object.freeze({ index: 'ACWI', vol: '^VIX', bond: 'IEF', hy: 'HYLD.L', ig: 'CORP.L', small: 'WSML.L', large: 'IWDA.L' }) }),
+});
+
+function upstreamMappingProjection(markets) {
+  return Object.fromEntries(common.MARKET_ORDER.map(key => [key, {
+    barPolicy: (markets && markets[key] && markets[key].barPolicy) || null,
+    symbols: markets && markets[key] && markets[key].symbols,
+  }]));
+}
+
+function frozenV2ScoreConfig(score, range = 'max') {
+  if (!score || !['max', '5y'].includes(range)
+      || model.hashCanonical(upstreamMappingProjection(score.markets))
+        !== model.hashCanonical(FROZEN_UPSTREAM_MARKET_MAPPINGS)) {
+    throw new Error('PLS1_UPSTREAM_SCORE_MODEL_V2_REQUIRED: frozen upstream market mapping drift');
+  }
+  return {
+    modelId: 'investments-unified-fear-greed',
+    version: 2,
+    range,
+    window: 252,
+    minWindowPoints: 126,
+    // computeMarket prefers these newer aliases when present in module defaults;
+    // pin both names so a future public default cannot alter frozen v2 replay.
+    strengthWindow: 252,
+    percentileMinPoints: 126,
+    minComponents: 6,
+    fillDays: 7,
+    markets: score.markets,
+  };
+}
+
+function assertFrozenUpstreamScoreModel(scoreOverride = null) {
+  const score = scoreOverride || (JSON.parse(fs.readFileSync(path.join(common.ROOT, 'data', 'config.json'), 'utf8')).marketFearGreed || {});
+  const hasNewAliases = ['percentileMode', 'strengthWindow', 'percentileMinPoints']
+    .some(key => Object.prototype.hasOwnProperty.call(score, key));
+  if (score.modelId !== 'investments-unified-fear-greed'
+      || Number(score.version) !== 2
+      || hasNewAliases
+      || score.range !== 'max'
+      || Number(score.window) !== 252
+      || Number(score.minWindowPoints) !== 126
+      || Number(score.minComponents) !== 6
+      || Number(score.fillDays) !== 7
+      || model.hashCanonical(upstreamMappingProjection(score.markets))
+        !== model.hashCanonical(FROZEN_UPSTREAM_MARKET_MAPPINGS)) {
+    throw new Error('PLS1_UPSTREAM_SCORE_MODEL_V2_REQUIRED: the frozen PLS1 protocol cannot ingest production Fear & Greed v3');
+  }
+  return true;
+}
+
 async function buildSeed({ lockboxRoot = common.LOCKBOX_ROOT, retrievalDateUtc = null } = {}) {
   const seedPath = path.join(lockboxRoot, 'freeze', 'seed.json');
   if (fs.existsSync(seedPath)) throw new Error('seed already exists; it is immutable');
+  assertFrozenUpstreamScoreModel();
   if (common.isProductionLockboxRoot(lockboxRoot)) {
     if (process.env.PLS1_RAW_ARCHIVE_RIGHTS_CONFIRMED !== 'YES') {
       throw new Error('raw-response archival is blocked until source storage/redistribution rights are confirmed');
@@ -1321,6 +1386,8 @@ module.exports = Object.freeze({
   replayAlignedDataFromReceipts,
   validatePartialAcquisitionReceipts,
   assertCleanCommittedFiles,
+  assertFrozenUpstreamScoreModel,
+  frozenV2ScoreConfig,
   buildSeed,
 });
 
