@@ -101,6 +101,52 @@ function isoFromSec(value, field = 'SEC date') {
   throw new Error(`${field} has unexpected format: ${raw}`);
 }
 
+function exactIsoDate(value, field) {
+  const raw = String(value || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) throw new Error(`${field} must be an exact ISO date`);
+  const parsed = new Date(`${raw}T00:00:00.000Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== raw) {
+    throw new Error(`${field} is not a valid calendar date`);
+  }
+  return raw;
+}
+
+function nextWeekdayDate(isoDate) {
+  const parsed = new Date(`${isoDate}T00:00:00.000Z`);
+  do parsed.setUTCDate(parsed.getUTCDate() + 1);
+  while (parsed.getUTCDay() === 0 || parsed.getUTCDay() === 6);
+  return parsed.toISOString().slice(0, 10);
+}
+
+function validateWagnHoldingsFreshness(fileDate, checkedAt = new Date().toISOString()) {
+  const exactFileDate = exactIsoDate(fileDate, 'holdings file date');
+  const exactCheckTime = String(checkedAt || '');
+  const checkTimestamp = Date.parse(exactCheckTime);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(exactCheckTime)
+      || !Number.isFinite(checkTimestamp)
+      || new Date(checkTimestamp).toISOString() !== exactCheckTime) {
+    throw new Error('holdings freshness check time is not an exact UTC timestamp');
+  }
+  const checkDate = exactCheckTime.slice(0, 10);
+
+  const fileDay = Date.parse(`${exactFileDate}T00:00:00.000Z`) / 864e5;
+  const checkDay = Date.parse(`${checkDate}T00:00:00.000Z`) / 864e5;
+  const ageDays = checkDay - fileDay;
+  const maximumFutureDate = nextWeekdayDate(checkDate);
+
+  // FilePoint normally timestamps a receipt just after midnight UTC for that
+  // UTC date. Before a weekend it can instead publish the next weekday's WAGN
+  // portfolio, as it did on Saturday 2026-08-29 for Monday 2026-08-31. Permit
+  // only that immediately next weekday; never accept an arbitrary +2/+3 date.
+  if (ageDays < 0 && exactFileDate !== maximumFutureDate) {
+    throw new Error(`official holdings source has an unsupported future date (${exactFileDate}; checked ${checkDate}; next allowed weekday ${maximumFutureDate})`);
+  }
+  if (ageDays > 5) {
+    throw new Error(`official holdings source is stale (${exactFileDate}, ${ageDays} calendar days old)`);
+  }
+  return { ageDays, checkDate, maximumFutureDate, futureDateAccepted: ageDays < 0 };
+}
+
 function selectWagnNavObservation(daily, history = []) {
   const rows = [...history]
     .filter(row => row && /^\d{4}-\d{2}-\d{2}$/.test(String(row.date || '')) && Number.isFinite(row.nav))
@@ -579,4 +625,5 @@ module.exports = {
   selectCurrentAndPrevious13f,
   sha256,
   strictNumber,
+  validateWagnHoldingsFreshness,
 };
