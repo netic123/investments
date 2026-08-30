@@ -9,8 +9,9 @@
     "quarterlyPerf": "https://wagonsetf.filepoint.live/assets/data/FilepointWagonsETF.40P8.P8_QuarterlyPerformance.csv"
   },
   "marketFearGreed": {
-    "modelId": "investments-unified-fear-greed", "version": 2,
-    "range": "max", "window": 252, "minWindowPoints": 126, "minComponents": 6, "fillDays": 7,
+    "modelId": "investments-unified-fear-greed", "version": 3,
+    "range": "max", "percentileMode": "expanding", "strengthWindow": 252,
+    "percentileMinPoints": 126, "minComponents": 6, "fillDays": 7,
     "markets": {
       "crypto": {
         "name": "Crypto — broad 7-asset index",

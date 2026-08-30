@@ -6,7 +6,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
-const marketfg = require('./marketfg'); // one six-component Fear & Greed model for Crypto/Sweden/USA/Europe/Global
+const marketfg = require('./marketfg'); // one six-component Fear & Greed model for Crypto/Sweden/USA/US Tech/Europe/Global
 const {
   fetchDalalStreet13f,
   fetchResource: fetchSourceResource,
@@ -342,7 +342,7 @@ const routes = {
   '/api/nav': () => cached('nav', getNav),
   '/api/perf': () => cached('perf', getPerf),
   '/api/quotes': () => cached('quotes', getQuotes, v => Object.values(v).some(q => !q.error)),
-  // All five market tabs come from this one model response. Yahoo series are cached for 15 minutes inside the module;
+  // All six market tabs come from this one model response. Yahoo series are cached for 15 minutes inside the module;
   // a plain /api/refresh recomputes, while /api/refresh?force=1 re-fetches every configured daily series.
   '/api/marketfg': () => cached('marketfg', () => marketfg.getMarketFearGreed(config.marketFearGreed), v => {
     const expected = Object.keys((config.marketFearGreed && config.marketFearGreed.markets) || {}).sort();
