@@ -11,6 +11,7 @@ const {
   parseSecPrimary,
   selectWagnNavObservation,
   selectCurrentAndPrevious13f,
+  validateWagnHoldingsFreshness,
 } = require('../pabrai');
 
 const WAGN_HEADER = 'Date,Account,StockTicker,CUSIP,SecurityName,Shares,Price,MarketValue,Weightings,NetAssets,SharesOutstanding,CreationUnits,MoneyMarketFlag';
@@ -71,6 +72,55 @@ test('WAGN parser validates schema and retains CUSIP, fund shares and provenance
   assert.equal(snap.source.fileDate, '2026-08-25');
   assert.equal(snap.source.lastModified, 'Tue, 25 Aug 2026 00:02:24 GMT');
   assert.match(snap.source.sha256, /^[0-9a-f]{64}$/);
+});
+
+test('WAGN freshness accepts only the immediately next weekday across a weekend', () => {
+  const friday = validateWagnHoldingsFreshness('2026-08-31', '2026-08-28T23:59:59.000Z');
+  const saturday = validateWagnHoldingsFreshness('2026-08-31', '2026-08-29T14:31:00.000Z');
+  const sunday = validateWagnHoldingsFreshness('2026-08-31', '2026-08-30T09:15:00.000Z');
+
+  assert.deepEqual(
+    [friday.ageDays, saturday.ageDays, sunday.ageDays],
+    [-3, -2, -1],
+    'the same next-weekday receipt has different but valid calendar offsets across the weekend',
+  );
+  assert.ok(friday.futureDateAccepted && saturday.futureDateAccepted && sunday.futureDateAccepted);
+  assert.equal(saturday.maximumFutureDate, '2026-08-31');
+});
+
+test('WAGN freshness rejects arbitrary future dates and preserves the stale boundary', () => {
+  assert.throws(
+    () => validateWagnHoldingsFreshness('2026-09-01', '2026-08-29T14:31:00.000Z'),
+    /unsupported future date/,
+  );
+  assert.throws(
+    () => validateWagnHoldingsFreshness('2026-08-28', '2026-08-26T09:15:00.000Z'),
+    /unsupported future date/,
+  );
+  assert.equal(
+    validateWagnHoldingsFreshness('2026-08-24', '2026-08-29T09:15:00.000Z').ageDays,
+    5,
+  );
+  assert.throws(
+    () => validateWagnHoldingsFreshness('2026-08-23', '2026-08-29T09:15:00.000Z'),
+    /6 calendar days old/,
+  );
+  assert.throws(
+    () => validateWagnHoldingsFreshness('2026-02-30', '2026-08-29T09:15:00.000Z'),
+    /not a valid calendar date/,
+  );
+  assert.throws(
+    () => validateWagnHoldingsFreshness('2026-08-31', 'not-a-timestamp'),
+    /check time is not an exact UTC timestamp/,
+  );
+  assert.throws(
+    () => validateWagnHoldingsFreshness('2026-08-31', '2026-08-29'),
+    /check time is not an exact UTC timestamp/,
+  );
+  assert.throws(
+    () => validateWagnHoldingsFreshness('2026-08-31', '2026-08-29T16:31:00.000+02:00'),
+    /check time is not an exact UTC timestamp/,
+  );
 });
 
 test('WAGN parser recognises a new CASH currency CUSIP without allowing negative securities', () => {
