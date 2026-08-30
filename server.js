@@ -13,6 +13,7 @@ const {
   diffWagnSnapshots,
   normalizeWagnHoldings,
   selectWagnNavObservation,
+  validateWagnHoldingsFreshness,
 } = require('./pabrai');
 
 const ROOT = __dirname;
@@ -150,7 +151,6 @@ function saveSnapshots(list) {
 }
 
 // ---------- holdings ----------
-const dayNumber = iso => Date.parse(`${iso}T00:00:00Z`) / 864e5;
 let holdingsInFlight = null;
 
 async function getHoldingsOnce() {
@@ -172,11 +172,10 @@ async function getHoldingsOnce() {
       etag: receipt.etag,
     });
     source = { status: 'verified', ...live.source, fileDate: live.date, retrievedAt };
-    const utcToday = new Date().toISOString().slice(0, 10);
-    const ageDays = Math.floor(dayNumber(utcToday) - dayNumber(live.date));
-    source.ageDays = ageDays;
-    if (ageDays < -1) throw new Error(`official holdings source has a future date (${live.date})`);
-    if (ageDays > 5) throw new Error(`official holdings source is stale (${live.date}, ${ageDays} calendar days old)`);
+    const freshness = validateWagnHoldingsFreshness(live.date, retrievedAt);
+    source.ageDays = freshness.ageDays;
+    source.maximumFutureDate = freshness.maximumFutureDate;
+    source.futureDateAccepted = freshness.futureDateAccepted;
     if (savedLatestBeforeFetch && live.date < savedLatestBeforeFetch.date) {
       throw new Error(`official holdings source regressed from saved ${savedLatestBeforeFetch.date} to ${live.date}`);
     }
