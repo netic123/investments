@@ -42,6 +42,49 @@ function streamingResponse(bytes, { url = 'https://example.test/', status = 200,
   };
 }
 
+test('frozen PLS1 seed refuses the production v3 upstream score model', () => {
+  assert.throws(
+    () => seedBuilder.assertFrozenUpstreamScoreModel(),
+    /PLS1_UPSTREAM_SCORE_MODEL_V2_REQUIRED/,
+  );
+});
+
+function syntheticFrozenV2ScoreConfig() {
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'config.json'), 'utf8'));
+  const score = JSON.parse(JSON.stringify(config.marketFearGreed));
+  score.version = 2;
+  score.window = 252;
+  score.minWindowPoints = 126;
+  delete score.percentileMode;
+  delete score.strengthWindow;
+  delete score.percentileMinPoints;
+  return score;
+}
+
+test('frozen PLS1 upstream guard rejects mixed v2/v3 aliases and mapping drift', () => {
+  const frozen = syntheticFrozenV2ScoreConfig();
+  assert.doesNotThrow(() => seedBuilder.assertFrozenUpstreamScoreModel(frozen));
+
+  for (const [field, value] of [
+    ['percentileMode', 'trailing-window'],
+    ['strengthWindow', 251],
+    ['percentileMinPoints', 125],
+  ]) {
+    assert.throws(
+      () => seedBuilder.assertFrozenUpstreamScoreModel({ ...frozen, [field]: value }),
+      /PLS1_UPSTREAM_SCORE_MODEL_V2_REQUIRED/,
+      `${field} bypassed the frozen upstream identity`,
+    );
+  }
+
+  const mappingDrift = JSON.parse(JSON.stringify(frozen));
+  mappingDrift.markets.usa.symbols.index = 'QQQ';
+  assert.throws(
+    () => seedBuilder.assertFrozenUpstreamScoreModel(mappingDrift),
+    /PLS1_UPSTREAM_SCORE_MODEL_V2_REQUIRED/,
+  );
+});
+
 test('date-only identities require real Gregorian ISO calendar dates', () => {
   assert.equal(common.isExactDate('2024-02-29'), true);
   for (const invalid of ['2023-02-29', '2026-02-30', '2026-13-01', '9999-99-99',

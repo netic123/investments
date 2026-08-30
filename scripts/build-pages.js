@@ -11,6 +11,7 @@ const path = require('path');
 const net = require('net');
 const { spawn, execFileSync } = require('child_process');
 const { validateWagnHoldingsFreshness } = require('../pabrai');
+const { collectSpecSymbols, hashPublicDecision, hashPublishedScoreHistory } = require('../marketfg');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, '_site');
@@ -19,15 +20,21 @@ const ENDPOINTS = ['config', 'holdings', 'dalal', 'nav', 'perf', 'quotes', 'mark
 const EXPECTED_FILES = ['.nojekyll', 'index.html', 'api/build.json', ...ENDPOINTS.map(name => `api/${name}.json`)].sort();
 const PUBLIC_POSITION_KEYS = ['currency', 'entry', 'fundTicker', 'nextReport', 'nextReportApprox', 'nextReportNote', 'secTicker', 'ticker', 'yahoo'];
 const PUBLIC_EXPANDING_SIGNAL_KEYS = [
-  'action', 'actionMeaning', 'availableAtUtc', 'cashModel', 'currentRiskyWeight',
+  'action', 'actionMeaning', 'availableAtUtc', 'cashModel',
   'decisionAsOfClose', 'decisionSha256', 'evidenceStatus', 'executeNoEarlierThanClose',
   'expectedTargetId',
   'historyEnd', 'historyObservations', 'historyScope', 'historyStart', 'historyTruncated',
   'inputsCompleted', 'inputsFresh', 'latestMaturedOutcomeThrough',
+  'learnerDecisionSha256', 'learnerInputHistorySha256', 'learnerModelId', 'learnerModelVersion',
   'learnerUsesAllSuppliedHistory', 'modelId', 'modelVersion', 'providerHistoryCompleteness',
-  'prospectiveRecorded', 'reason', 'targetId',
-  'targetRiskyWeight', 'targetSuitability', 'tradeRequired', 'trainingEnd',
+  'providerSymbolByRequestedSymbol',
+  'positionStateMeaning', 'prospectiveRecorded', 'publishedScoreHistorySha256', 'reason', 'simulatedFilledPosition',
+  'simulatedFilledRiskyWeight', 'simulatedTransitionRequired', 'targetId',
+  'targetPosition', 'targetRiskyWeight', 'targetSuitability', 'trainingEnd',
   'trainingRows', 'trainingStart', 'x2ClaimAllowed',
+  'sourceHostBySymbol', 'sourceHostFallbackUsed', 'sourceHosts',
+  'upstreamScoreModelId', 'upstreamScoreModelVersion',
+  'upstreamScorePercentileMode', 'upstreamScorePercentileScope',
 ].sort();
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
@@ -111,9 +118,15 @@ function validateSnapshot(data, publicPositions) {
   assert(config.myPositions.every(position => position.entry === null), 'public build exposed a non-null entry price');
   assert(!config.sources || !Object.prototype.hasOwnProperty.call(config.sources, 'fearGreed'), 'retired third-party crypto index source is still configured');
   assert(!Object.prototype.hasOwnProperty.call(config, 'cryptoFearGreed'), 'retired separate crypto model config is still present');
-  assert(config.marketFearGreed && config.marketFearGreed.modelId === 'investments-unified-fear-greed' && config.marketFearGreed.version === 2, 'unified model config is missing or has drifted');
+  assert(config.marketFearGreed && config.marketFearGreed.modelId === 'investments-unified-fear-greed' && config.marketFearGreed.version === 3, 'unified model config is missing or has drifted');
   assert(config.marketFearGreed.range === 'max', 'public Fear & Greed must request the provider maximum history');
-  assert(config.marketFearGreed.window === 252 && config.marketFearGreed.minWindowPoints === 126 && config.marketFearGreed.minComponents === 6 && config.marketFearGreed.fillDays === 7, 'unified model parameters have drifted');
+  assert(config.marketFearGreed.percentileMode === 'expanding'
+    && config.marketFearGreed.strengthWindow === 252
+    && config.marketFearGreed.percentileMinPoints === 126
+    && config.marketFearGreed.minComponents === 6
+    && config.marketFearGreed.fillDays === 7
+    && !Object.prototype.hasOwnProperty.call(config.marketFearGreed, 'window')
+    && !Object.prototype.hasOwnProperty.call(config.marketFearGreed, 'minWindowPoints'), 'unified model parameters have drifted');
   assert(JSON.stringify(Object.keys(config.marketFearGreed.markets || {}).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa', 'ustech']), 'unified config must contain exactly the six configured markets');
   assert(config.marketFearGreed.markets.crypto.barPolicy === 'completed-utc-date', 'Crypto completed-bar policy has drifted');
   for (const name of ['crypto', 'sweden', 'usa', 'ustech', 'europe', 'global']) assertMarketMapping(name, config.marketFearGreed.markets[name].symbols, 'config');
@@ -168,11 +181,24 @@ function validateSnapshot(data, publicPositions) {
   assert(perf && Array.isArray(perf.monthly) && perf.monthly.length > 0, 'performance data is incomplete');
   assert(quotes && typeof quotes === 'object' && Object.values(quotes).some(q => q && Number.isFinite(q.price)), 'all quotes are missing');
   assert(marketfg && marketfg.ok === true && marketfg.markets && typeof marketfg.markets === 'object', 'market Fear & Greed is invalid');
-  assert(marketfg.model && marketfg.model.id === 'investments-unified-fear-greed' && marketfg.model.version === 2 && marketfg.model.owner === 'repository', 'market result does not identify the unified repository model');
+  assert(marketfg.model && marketfg.model.id === 'investments-unified-fear-greed' && marketfg.model.version === 3 && marketfg.model.owner === 'repository', 'market result does not identify the unified repository model');
   assert(marketfg.model.range === 'max', 'public Fear & Greed result did not use the provider maximum history');
-  assert(marketfg.model.window === 252 && marketfg.model.minWindowPoints === 126 && marketfg.model.minComponents === 6 && marketfg.model.fillDays === 7, 'unified result parameters have drifted');
-  assert(marketfg.model.expandingSignal && marketfg.model.expandingSignal.id === 'FG-ONLINE-RIDGE-PREQ-V1' && marketfg.model.expandingSignal.version === 1, 'expanding binary learner identity is missing');
-  assert(marketfg.model.expandingSignal.minimumMaturedRows === 252 && marketfg.model.expandingSignal.evidenceStatus === 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_NOT_VALIDATED', 'expanding learner status/seed drifted');
+  assert(marketfg.model.method === 'equal-weight causal-expanding-percentile six-component composite'
+    && marketfg.model.percentileMode === 'expanding'
+    && marketfg.model.percentileScope === 'ALL_FINITE_COMPONENT_RAW_OBSERVATIONS_FROM_CURRENT_PROVIDER_MAX_RESPONSE_THROUGH_EACH_DATE'
+    && marketfg.model.percentileMinPoints === 126
+    && marketfg.model.percentileHistoryTruncated === false
+    && marketfg.model.providerHistoryCompleteness === 'UNVERIFIED'
+    && marketfg.model.strengthWindow === 252
+    && !Object.prototype.hasOwnProperty.call(marketfg.model, 'percentileWindow')
+    && marketfg.model.minComponents === 6 && marketfg.model.fillDays === 7, 'unified result parameters have drifted');
+  assert(marketfg.model.expandingSignal && marketfg.model.expandingSignal.id === 'FG-ONLINE-RIDGE-PREQ-FG3-V1' && marketfg.model.expandingSignal.version === 1, 'expanding binary pipeline identity is missing');
+  assert(marketfg.model.expandingSignal.learnerId === 'FG-ONLINE-RIDGE-PREQ-V1'
+    && marketfg.model.expandingSignal.learnerVersion === 1
+    && marketfg.model.expandingSignal.upstreamScoreModelId === marketfg.model.id
+    && marketfg.model.expandingSignal.upstreamScoreModelVersion === marketfg.model.version
+    && marketfg.model.expandingSignal.minimumMaturedRows === 252
+    && /REQUIRES_REVALIDATION.*NOT_VALIDATED/.test(marketfg.model.expandingSignal.evidenceStatus), 'expanding learner status or upstream binding drifted');
   assert(JSON.stringify(Object.keys(marketfg.markets).sort()) === JSON.stringify(['crypto', 'europe', 'global', 'sweden', 'usa', 'ustech']), 'unified model must return exactly the six configured markets');
   const componentKeys = ['breadth', 'credit', 'momentum', 'safeHaven', 'strength', 'volatility'];
   for (const name of ['crypto', 'sweden', 'usa', 'ustech', 'europe', 'global']) {
@@ -187,8 +213,23 @@ function validateSnapshot(data, publicPositions) {
     assert(market.mapping && market.mapping.barPolicy === 'completed-source-local-date' && market.intraday === false, `${name} does not prove source-local completed bars`);
     const signal = market.expandingSignal;
     assert(signal && JSON.stringify(Object.keys(signal).sort()) === JSON.stringify(PUBLIC_EXPANDING_SIGNAL_KEYS), `${name} expanding signal public allowlist drifted`);
-    assert(signal.modelId === 'FG-ONLINE-RIDGE-PREQ-V1' && signal.modelVersion === 1 && ['BUY', 'SELL'].includes(signal.action), `${name} expanding signal identity/action is invalid`);
-    assert(signal.actionMeaning === 'TARGET_POSITION' && [0, 1].includes(signal.targetRiskyWeight) && [0, 1].includes(signal.currentRiskyWeight) && typeof signal.tradeRequired === 'boolean', `${name} expanding signal is not an exact binary target state`);
+    assert(signal.modelId === 'FG-ONLINE-RIDGE-PREQ-FG3-V1'
+      && signal.modelVersion === 1
+      && signal.learnerModelId === 'FG-ONLINE-RIDGE-PREQ-V1'
+      && signal.learnerModelVersion === 1
+      && signal.upstreamScoreModelId === marketfg.model.id
+      && signal.upstreamScoreModelVersion === marketfg.model.version
+      && signal.upstreamScorePercentileMode === marketfg.model.percentileMode
+      && signal.upstreamScorePercentileScope === marketfg.model.percentileScope
+      && ['BUY', 'SELL'].includes(signal.action), `${name} expanding signal identity/action is invalid`);
+    assert(signal.actionMeaning === 'TARGET_POSITION'
+      && signal.targetPosition === (signal.action === 'BUY' ? 'LONG' : 'CASH')
+      && signal.positionStateMeaning === 'RETROSPECTIVE_SIMULATION_ONLY_NOT_ACTUAL_HOLDING_OR_EXECUTION'
+      && ['LONG', 'CASH'].includes(signal.simulatedFilledPosition)
+      && signal.targetRiskyWeight === (signal.targetPosition === 'LONG' ? 1 : 0)
+      && signal.simulatedFilledRiskyWeight === (signal.simulatedFilledPosition === 'LONG' ? 1 : 0)
+      && typeof signal.simulatedTransitionRequired === 'boolean'
+      && signal.simulatedTransitionRequired === (signal.targetPosition !== signal.simulatedFilledPosition), `${name} expanding signal is not an exact binary target state`);
     const expectedTargetId = typeof EXPECTED_MARKET_SYMBOLS[name].index === 'object'
       ? EXPECTED_MARKET_SYMBOLS[name].index.id
       : EXPECTED_MARKET_SYMBOLS[name].index;
@@ -199,11 +240,30 @@ function validateSnapshot(data, publicPositions) {
       && signal.learnerUsesAllSuppliedHistory === true
       && signal.providerHistoryCompleteness === 'UNVERIFIED',
     `${name} expanding signal overstates external provider-history completeness`);
+    assert(/^[0-9a-f]{64}$/.test(signal.publishedScoreHistorySha256 || '')
+      && signal.publishedScoreHistorySha256 === hashPublishedScoreHistory(market.history)
+      && /^[0-9a-f]{64}$/.test(signal.learnerInputHistorySha256 || ''), `${name} full-history input hashes are missing or invalid`);
+    const sourceHostBySymbol = signal.sourceHostBySymbol || {};
+    const providerSymbolByRequestedSymbol = signal.providerSymbolByRequestedSymbol || {};
+    const expectedSourceSymbols = [...new Set(Object.values(EXPECTED_MARKET_SYMBOLS[name])
+      .flatMap(spec => collectSpecSymbols(spec)))].sort();
+    const usedHosts = [...new Set(Object.values(sourceHostBySymbol))].sort();
+    assert(JSON.stringify(Object.keys(sourceHostBySymbol).sort()) === JSON.stringify(expectedSourceSymbols)
+      && JSON.stringify(Object.keys(providerSymbolByRequestedSymbol).sort()) === JSON.stringify(expectedSourceSymbols)
+      && expectedSourceSymbols.every(symbol => providerSymbolByRequestedSymbol[symbol] === symbol)
+      && Object.values(sourceHostBySymbol).every(host => ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'].includes(host))
+      && JSON.stringify(signal.sourceHosts) === JSON.stringify(usedHosts)
+      && signal.sourceHostFallbackUsed === usedHosts.includes('query2.finance.yahoo.com'), `${name} Yahoo host provenance is incomplete`);
     assert(Number.isInteger(signal.trainingRows) && signal.trainingRows >= 252 && signal.trainingStart && signal.trainingEnd && signal.latestMaturedOutcomeThrough, `${name} expanding training span is incomplete`);
     assert(signal.inputsCompleted === true && signal.inputsFresh === true, `${name} expanding signal was produced from incomplete or stale inputs`);
     assert(signal.targetSuitability === EXPECTED_TARGET_SUITABILITY[name], `${name} target suitability disclosure drifted`);
-    assert(signal.cashModel === 'ZERO_RETURN_DEVELOPMENT_ASSUMPTION' && signal.evidenceStatus === 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_NOT_VALIDATED' && signal.prospectiveRecorded === false && signal.x2ClaimAllowed === false, `${name} expanding signal overstates evidence or cash`);
-    assert(/^[0-9a-f]{64}$/.test(signal.decisionSha256 || ''), `${name} expanding decision hash is missing`);
+    assert(signal.cashModel === 'ZERO_RETURN_DEVELOPMENT_ASSUMPTION'
+      && signal.evidenceStatus === 'RETROSPECTIVE_PREQUENTIAL_RESEARCH_REQUIRES_REVALIDATION_FOR_UPSTREAM_SCORE_V3_NOT_VALIDATED'
+      && signal.prospectiveRecorded === false && signal.x2ClaimAllowed === false, `${name} expanding signal overstates evidence or cash`);
+    assert(/^[0-9a-f]{64}$/.test(signal.learnerDecisionSha256 || ''), `${name} learner decision hash is missing`);
+    assert(/^[0-9a-f]{64}$/.test(signal.decisionSha256 || '')
+      && signal.decisionSha256 !== signal.learnerDecisionSha256
+      && signal.decisionSha256 === hashPublicDecision(signal), `${name} upstream-bound public decision hash is missing or invalid`);
     assert(!Object.prototype.hasOwnProperty.call(signal, 'prices') && !Object.prototype.hasOwnProperty.call(signal, 'parts') && !Object.prototype.hasOwnProperty.call(signal, 'features') && !Object.prototype.hasOwnProperty.call(signal, 'coefficients'), `${name} expanding signal exposes internal histories or fit parameters`);
   }
   const crypto = marketfg.markets.crypto;

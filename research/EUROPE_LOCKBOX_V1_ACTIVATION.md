@@ -78,6 +78,11 @@ CI, and reports progress toward the candidate's ≥ 60 completed monthly decisio
   evolved 33 minutes later (the additive ustech market). Do not re-verify GENESIS pins
   against the live tree: model-identity drift is tracked per-entry instead, because every
   daily entry embeds the then-current marketfg.js and config.json hashes.
+- **The public dashboard moved to model v3 after activation.** This candidate remains explicitly
+  pinned to the original v2 trailing-percentile scorer through `FROZEN_MARKET_MODEL` in
+  `scripts/lockbox-collect.js`. Its entries must never be pooled with v3 evidence. The per-entry
+  source hashes disclose the implementation/configuration transition even though the candidate's
+  score definition remains v2.
 
 ## What this store can and cannot show
 
