@@ -10,6 +10,7 @@ const os = require('os');
 const path = require('path');
 const net = require('net');
 const { spawn, execFileSync } = require('child_process');
+const { validateWagnHoldingsFreshness } = require('../pabrai');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, '_site');
@@ -117,7 +118,7 @@ function validateSnapshot(data, publicPositions) {
   assert(config.marketFearGreed.markets.crypto.barPolicy === 'completed-utc-date', 'Crypto completed-bar policy has drifted');
   for (const name of ['crypto', 'sweden', 'usa', 'ustech', 'europe', 'global']) assertMarketMapping(name, config.marketFearGreed.markets[name].symbols, 'config');
 
-  assert(holdings && holdings.ok === true && !holdings.fetchError, 'official holdings source was not fetched and accepted');
+  assert(holdings && holdings.ok === true && !holdings.fetchError, `official holdings source was not fetched and accepted: ${holdings && holdings.fetchError || 'unknown source failure'}`);
   assert(holdings.source && holdings.source.status === 'verified' && holdings.source.url === config.sources.holdings, 'holdings source is not the configured official WAGN feed');
   assert(holdings.latest && typeof holdings.latest.date === 'string', 'holdings has no usable latest snapshot');
   assert(holdings.source.fileDate === holdings.latest.date, 'holdings source status and parsed latest file date differ');
@@ -129,8 +130,12 @@ function validateSnapshot(data, publicPositions) {
   // seven-character SEDOLs there. Require a complete source identifier without
   // pretending every market uses the nine-character US CUSIP format.
   assert(Object.values(holdings.latest.rows).every(row => row && /^[0-9A-Z]{6,12}$/.test(row.cusip || '') && Number.isFinite(row.shares) && Number.isFinite(row.mv)), 'holdings rows lack validated security-identifier/share/value fields');
-  const holdingsAgeDays = (Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`) - Date.parse(`${holdings.latest.date}T00:00:00Z`)) / 864e5;
-  assert(holdingsAgeDays >= -1 && holdingsAgeDays <= 5, `official holdings file is outside the freshness window (${holdings.latest.date})`);
+  validateWagnHoldingsFreshness(
+    holdings.latest.date,
+    // This is an independent publication-time gate. Never let a stored source
+    // timestamp freeze the freshness clock for a later Pages build.
+    new Date().toISOString(),
+  );
   assert(Array.isArray(holdings.snapshots) && holdings.snapshots.length >= 1 && holdings.snapshots.some(snapshot => snapshot.date === holdings.latest.date), 'durable holdings history is missing from the API contract');
   assert(nav && typeof nav.date === 'string' && Array.isArray(nav.history) && nav.history.length > 1, 'NAV data is incomplete');
   assert(Number.isFinite(nav.nav) && Number.isFinite(nav.sharesOut) && nav.sharesOut > 0, 'NAV reconciliation fields are missing');
