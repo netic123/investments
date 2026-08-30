@@ -411,7 +411,7 @@ async function load(mode){ // mode: 'manual' = Update button (re-fetch everythin
       }
     }
     setStatus(' · computing one shared six-component market model from daily series…');
-    // All five Fear & Greed tabs come from one marketfg response and one model identity.
+    // All six Fear & Greed tabs come from one marketfg response and one model identity.
     const [mf] = await Promise.allSettled([fgReq]);
     for(const t of FG_TABS){
       if(mf.status!=='fulfilled'){ setFg(t.id, {error:mf.reason.message}); continue; }
@@ -620,7 +620,7 @@ function renderDates(){
 }
 
 // ---- Fear & Greed: one shared six-component model, six market mappings, one renderer.
-const MARKET_BANDS=[[0,24,'Extreme Fear'],[25,44,'Fear'],[45,55,'Neutral'],[56,74,'Greed'],[75,100,'Extreme Greed']];
+const MARKET_BANDS=[[0,24.9,'Extreme Fear'],[25,44.9,'Fear'],[45,55.9,'Neutral'],[56,74.9,'Greed'],[75,100,'Extreme Greed']];
 const FG_TABS=[
   {id:'crypto',tab:'Crypto',forName:'the broad 7-asset crypto index',hash:'#crypto',kind:'market',market:'crypto',bands:MARKET_BANDS},
   {id:'sweden',tab:'Sweden',forName:'the Stockholm stock market',hash:'#sweden',kind:'market',market:'sweden',bands:MARKET_BANDS},
@@ -632,7 +632,7 @@ const FG_TABS=[
 const FGS={}; FG_TABS.forEach(t=>{ FGS[t.id]={tab:t,norm:null,days:0}; }); // lifetime history only — short-term windows deliberately removed
 const FG_LABEL={'extreme fear':'Extreme Fear',fear:'Fear',neutral:'Neutral',greed:'Greed','extreme greed':'Extreme Greed'};
 const FG_COL=['var(--neg)','var(--neg)','var(--warn)','var(--pos)','var(--pos)'], FG_OP=[.9,.45,.8,.45,.9];
-const fgBand=(v,bands)=>{ if(v==null||!isFinite(v)) return -1; const s=Math.round(v); const i=bands.findIndex(([lo,hi])=>s>=lo&&s<=hi); return i>=0?i:(s<0?0:bands.length-1); };
+const fgBand=(v,bands)=>{ if(v==null||!isFinite(v)) return -1; const s=Math.round(v*10)/10; const i=bands.findIndex(([lo,hi])=>s>=lo&&s<=hi); return i>=0?i:(s<0?0:bands.length-1); };
 const fgLabel=(label,v,bands)=> FG_LABEL[String(label||'').toLowerCase()] || label || (fgBand(v,bands)>=0?bands[fgBand(v,bands)][2]:'—');
 const todayIso=()=>{ const t=new Date(); return new Date(t.getTime()-t.getTimezoneOffset()*60000).toISOString().slice(0,10); }; // local calendar day, YYYY-MM-DD
 const addDays=(iso,n)=>{ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
@@ -776,12 +776,11 @@ function normMarket(M,model,fetchedAt){
   const realised=comps.some(c=>c.key==='volatility'&&/realised/.test(c.note||''));
   const seriesList=comps.map(c=>`<li><b>${esc(c.name)}</b>: ${c.names.map((n,i)=>esc(n)+' <span class="mono muted">('+esc(c.symbols[i])+')</span>').join(' / ')}${c.note?' — '+esc(c.note):''}</li>`).join('');
   const crypto=M.key==='crypto';
-  const observationText=crypto?'completed daily observations':'trading-day observations';
   const disclosure=crypto
-    ? `<p class="muted" style="font-size:.82rem;margin:10px 0 0"><b>Crypto mapping:</b> the benchmark is a fixed, daily-rebalanced equal-weight return index of BTC, ETH, SOL, XRP, ADA, DOGE and BNB; each contributes one seventh of each day’s return. It is broader than BTC alone, but it is <b>not literally every coin, not market-cap weighted and not investable</b>. IEF is the US Treasury safe-haven proxy; HYG/LQD measures external US corporate-credit appetite. Breadth compares a non-core basket (SOL/XRP/ADA/DOGE/BNB) with a BTC/ETH core basket, so those assets overlap the benchmark. Selecting today’s surviving assets in August 2026 and reconstructing them backward creates hindsight-selection and survivorship bias; history also starts only when all seven assets have common Yahoo daily closes. The current UTC candle is excluded. Because crypto trades seven days a week, 252 observations cover about 8.3 months, not a full calendar year; US bond components carry their latest score over weekends.</p>`
-    : `<p class="muted" style="font-size:.82rem;margin:10px 0 0">No published Fear &amp; Greed index with an open data source exists for ${esc(M.name)}${M.key==='usa'?' apart from CNN’s published US index':''}, hence the own computation. Scores are relative to the last 252 observations — after a calm period a moderate pullback can read as "extreme fear".${realised?' Volatility = realised 20-observation because this market is not configured with a matching implied-volatility series; it is backward-looking and behaves differently from a VIX-style measure.':''}${M.key==='usa'?' <b>One-off comparison (23 Aug 2026):</b> against CNN’s published index over 398 trading days this model had correlation 0.88, a mean gap of 8.9 points and read on average 6 points greedier; this is a non-reproducible reasonableness check, not proof of predictive value.':' The same construction applied to the US market had correlation 0.88 in that one-off check (see the USA tab).'}</p>`;
+    ? `<p class="muted" style="font-size:.82rem;margin:10px 0 0"><b>Crypto mapping:</b> the benchmark is a fixed, daily-rebalanced equal-weight return index of BTC, ETH, SOL, XRP, ADA, DOGE and BNB; each contributes one seventh of each day’s return. It is broader than BTC alone, but it is <b>not literally every coin, not market-cap weighted and not investable</b>. IEF is the US Treasury safe-haven proxy; HYG/LQD measures external US corporate-credit appetite. Breadth compares a non-core basket (SOL/XRP/ADA/DOGE/BNB) with a BTC/ETH core basket, so those assets overlap the benchmark. Selecting today’s surviving assets in August 2026 and reconstructing them backward creates hindsight-selection and survivorship bias; history also starts only when all seven assets have common Yahoo daily closes. The current UTC candle is excluded. US bond components carry their latest score over weekends.</p>`
+    : `<p class="muted" style="font-size:.82rem;margin:10px 0 0">No published Fear &amp; Greed index with an open data source exists for ${esc(M.name)}${M.key==='usa'?' apart from CNN’s published US index':''}, hence the own computation.${M.key==='ustech'?' <b>US Tech means the XLK US technology-sector benchmark, not QQQ or the whole Nasdaq-100.</b>':''}${realised?' Volatility = realised 20-observation because this market is not configured with a matching implied-volatility series; it is backward-looking and behaves differently from a VIX-style measure.':''}${M.key==='usa'?' A one-off 23 Aug 2026 comparison of the superseded rolling-window v2 model with CNN is historical context only and does not validate this v3 model.':''}</p>`;
   const explain=`<div class="kpi"><div class="l">One shared repository model · v${esc(model.version||1)}</div></div>
-    <p style="margin:8px 0 0;font-size:.9rem">All six configured markets — Crypto, Sweden, USA, US Tech, Europe and Global — use the <b>same six-component engine, ${model.window}-observation percentile scoring, equal weights, directions and labels</b>. Raw market proxies differ: volatility uses an implied-volatility level where configured and benchmark realised volatility otherwise. Each raw indicator gets a causal 0–100 percentile rank within the last ${model.window} ${observationText}; volatility is inverted and the six ranks are averaged. All ${model.minComponents} components are required. There are no fitted score weights and no third-party sentiment score. The BUY/SELL learner below is separate and refits on every matured row from the full available history.</p>
+    <p style="margin:8px 0 0;font-size:.9rem">All six configured markets — Crypto, Sweden, USA, US Tech, Europe and Global — use the <b>same six-component engine, causal expanding full-history percentile scoring, equal weights, directions and labels</b>. At every date, each raw indicator is ranked against every finite value that component has produced from the start of the current provider maximum-history response through that date. There is no rolling percentile window and no internal history truncation. Scoring starts after ${fmt(model.percentileMinPoints)} valid raw values; the strength raw feature itself still measures distance from a trailing ${fmt(model.strengthWindow)}-observation high. Volatility is inverted and all ${model.minComponents} component ranks are averaged. Provider history completeness is ${model.providerHistoryCompleteness==='UNVERIFIED'?'<b>not independently verified</b>':esc(model.providerHistoryCompleteness)}. The BUY/SELL learner below is separate and refits on every matured row from the entire supplied score history.</p>
     <ul class="fg-comp" style="list-style:disc">${seriesList}</ul>
     ${disclosure}
     <p class="muted" style="font-size:.82rem;margin:8px 0 0">This is a descriptive relative price/risk regime, not a survey of emotion or a probability of future gains. Not investment advice.</p>`;
@@ -802,19 +801,20 @@ function renderRuleCard(id,N,$i){
     $i('rulenote').textContent='—';
     return;
   }
-  const buy=D.action==='BUY', current=D.currentRiskyWeight===1?'LONG':'CASH';
+  const buy=D.action==='BUY', target=D.targetPosition||(buy?'LONG':'CASH'), simulatedFilled=D.simulatedFilledPosition||'UNKNOWN';
   const reason=D.reason==='WARMUP_BUY_BASELINE'?'warm-up baseline':D.reason==='FAIL_CLOSED_DATA_INVALID'?'invalid/stale input — fail-closed':D.reason==='EXPANDING_RIDGE_PATTERN'?'expanding ridge forecast':String(D.reason||'model decision').replaceAll('_',' ').toLowerCase();
-  const trade=D.tradeRequired?'position change targets the first eligible future close':`already ${current.toLowerCase()} — no new trade or cost`;
+  const transition=D.simulatedTransitionRequired?'the retrospective simulation changes state at its next eligible close':`the retrospective simulation already models ${simulatedFilled.toLowerCase()} and does not change state`;
   const suitability=String(D.targetSuitability||'unreviewed target').replaceAll('_',' ').toLowerCase();
+  const sourceHosts=Array.isArray(D.sourceHosts)&&D.sourceHosts.length?D.sourceHosts.join(', '):'unavailable';
   $i('rulenote').textContent=`${D.modelId} · ${fmt(D.historyObservations)} all-supplied-history score rows`;
   el.innerHTML=`<div class="kpi"><div class="l">RESEARCH SIGNAL — RETROSPECTIVE, NOT VALIDATED</div></div>
     <div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-top:6px">
-      <span class="fg-label" style="font-size:1.16rem;color:${buy?'var(--pos)':'var(--neg)'}"><b>${D.action} · ${buy?'LONG':'CASH'}</b></span>
-      <span class="muted" style="font-size:.85rem">target state · ${esc(trade)}</span>
+      <span class="fg-label" style="font-size:1.16rem;color:${buy?'var(--pos)':'var(--neg)'}"><b>${D.action} · ${esc(target)}</b></span>
+      <span class="muted" style="font-size:.85rem">model target state · ${esc(transition)}</span>
     </div>
-    <div class="muted" style="font-size:.85rem;margin-top:7px">Decision close <b>${fmtDate(D.decisionAsOfClose)}</b> · inputs available ${stampStr(D.availableAtUtc)} · first target close strictly after both is the earliest execution · current filled state ${current} · ${esc(reason)}.</div>
-    <div class="muted" style="font-size:.85rem;margin-top:5px">Uses <b>all ${fmt(D.trainingRows)} matured training rows supplied to the learner</b> from ${fmtDate(D.trainingStart)} through ${fmtDate(D.trainingEnd)}; latest matured outcome ${fmtDate(D.latestMaturedOutcomeThrough)}. Usable score history ${fmtDate(D.historyStart)}–${fmtDate(D.historyEnd)} (${fmt(D.historyObservations)} observations; internally ${D.historyTruncated?'truncated':'not truncated'}). The provider's claim to globally complete history is <b>not independently verified</b>.</div>
-    <div class="muted" style="font-size:.82rem;margin-top:8px"><b>Not a trusted 2× model.</b> Historical forecasts were replayed on already-inspected, current-vintage data; cash is a zero-return development assumption and no prospective decision ledger has passed. Target limitation: ${esc(suitability)}. BUY/SELL is the model's mandatory 0%/100% target state, not proof of predictive value or investment advice.</div>`;
+    <div class="muted" style="font-size:.85rem;margin-top:7px">Decision close <b>${fmtDate(D.decisionAsOfClose)}</b> · inputs available ${stampStr(D.availableAtUtc)} · first target close strictly after both is the model's earliest hypothetical execution · simulated replay state ${esc(simulatedFilled)} · ${esc(reason)}.</div>
+    <div class="muted" style="font-size:.85rem;margin-top:5px">Uses <b>all ${fmt(D.trainingRows)} matured training rows supplied to the learner</b> from ${fmtDate(D.trainingStart)} through ${fmtDate(D.trainingEnd)}; latest matured outcome ${fmtDate(D.latestMaturedOutcomeThrough)}. Usable score history ${fmtDate(D.historyStart)}–${fmtDate(D.historyEnd)} (${fmt(D.historyObservations)} observations; internally ${D.historyTruncated?'truncated':'not truncated'}). Selected Yahoo chart host${D.sourceHosts&&D.sourceHosts.length===1?'':'s'}: ${esc(sourceHosts)}${D.sourceHostFallbackUsed?' (fallback host used)':''}. The provider's claim to globally complete or immutable history is <b>not independently verified</b>.</div>
+    <div class="muted" style="font-size:.82rem;margin-top:8px"><b>Not a trusted 2× model.</b> The learner pipeline is newly bound to the v3 full-history score and requires revalidation; historical forecasts used already-inspected, current-vintage data, cash is a zero-return development assumption and no qualifying prospective decision ledger has passed. The simulated replay state is not your holding, a broker fill or an execution record. Target limitation: ${esc(suitability)}. BUY/LONG or SELL/CASH is the model's mandatory 0%/100% target state, not proof of predictive value or investment advice.</div>`;
 }
 function setFg(id,norm){ FGS[id].norm=norm; renderFg(id); if(document.body.dataset.tab===id) updateFgHeader(id); }
 
