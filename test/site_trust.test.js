@@ -103,7 +103,7 @@ test('the browser copy of the pricing-date rule agrees with pabrai.js', () => {
 test('the owner live update only ever talks to api.github.com and keeps the token in local storage', () => {
   assert.match(html, /const LIVE_REPO='netic123\/investments', LIVE_WORKFLOW='pages\.yml', LIVE_TOKEN_KEY='investments\.liveUpdateToken';/);
   assert.match(html, /\/actions\/workflows\/'\+LIVE_WORKFLOW\+'\/dispatches'/);
-  assert.match(html, /inputs:\{skip_tests:'true',reason:'live update requested from the page'\}/);
+  assert.match(html, /inputs:\{skip_tests:'true',reason:opts\.auto\?'automatic live update from the page \(snapshot older than '\+liveAutoMinutes\(\)\+' min\)':'live update requested from the page'\}/);
   assert.match(html, /fetch\('https:\/\/api\.github\.com\/repos\/'\+LIVE_REPO\+path/);
   // the token is never rendered or logged, only its last four characters are shown
   assert.doesNotMatch(html, /console\.(log|warn|error)\([^)]*token/i);
@@ -113,7 +113,6 @@ test('the owner live update only ever talks to api.github.com and keeps the toke
   assert.match(html, /only if you have stored a GitHub token for the owner’s live update, api\.github\.com/);
   const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pages.yml'), 'utf8');
   assert.match(workflow, /skip_tests:\n\s+#[^\n]*\n(\s+#[^\n]*\n)*\s+description:/);
-  assert.match(workflow, /if: \$\{\{ !\(github\.event_name == 'workflow_dispatch' && \(inputs\.skip_tests == true \|\| inputs\.skip_tests == 'true'\)\) \}\}/);
   assert.match(workflow, /INVESTMENTS_BUILD_TRIGGER: \$\{\{ github\.event_name \}\}/);
 });
 
@@ -123,9 +122,19 @@ test('config names every current holding and cash currency', () => {
   assert.ok(config.cashTickers.includes('NOK'));
 });
 
-test('the Pages workflow builds twice a day and passes only a validated SEC contact', () => {
+test('the Pages workflow refreshes hourly on weekdays, tests once a day, and passes only a validated SEC contact', () => {
   const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pages.yml'), 'utf8');
-  assert.match(workflow, /- cron: '15 9 \* \* \*'/);
-  assert.match(workflow, /- cron: '35 21 \* \* 1-5'/);
+  assert.match(workflow, /- cron: '20 9 \* \* \*'/);
+  assert.match(workflow, /- cron: '20 5-8,10-22 \* \* 1-5'/);
+  assert.match(workflow, /if: \$\{\{ github\.event_name == 'push' \|\| \(github\.event_name == 'schedule' && github\.event\.schedule == '20 9 \* \* \*'\) \|\| \(github\.event_name == 'workflow_dispatch' && !\(inputs\.skip_tests == true \|\| inputs\.skip_tests == 'true'\)\) \}\}/);
+  assert.match(workflow, /INVESTMENTS_BUILD_SCHEDULE: \$\{\{ github\.event\.schedule \}\}/);
   assert.match(workflow, /SEC_USER_AGENT: \$\{\{ vars\.SEC_USER_AGENT \}\}/);
+});
+
+test('the owner auto mode is opt-in, rate-limited, and follows an existing build instead of starting another', () => {
+  assert.match(html, /LIVE_AUTO_KEY='investments\.liveUpdateAutoMinutes'/);
+  assert.match(html, /document\.visibilityState!=='visible'/);
+  assert.match(html, /Date\.now\(\)-LIVE_LAST_AUTO<15\*60\*1000/);
+  assert.match(html, /\['queued','in_progress','waiting','pending','requested'\]\.includes\(x\.status\)/);
+  assert.match(html, /if\(mode!=='manual'\) maybeAutoLiveUpdate\(\);/);
 });
