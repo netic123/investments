@@ -5,6 +5,18 @@ name: Deploy GitHub Pages
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        # The page's owner-only "Update (rebuild)" button dispatches this
+        # workflow with skip_tests=true: the suite already ran on the push that
+        # deployed the code, and a live update should finish in minutes.
+        description: 'Skip the test suite (live update from the page; the tests ran on push)'
+        type: boolean
+        default: false
+      reason:
+        description: 'Why this build was requested (recorded in api/build.json)'
+        type: string
+        default: ''
   schedule:
     # WAGN's holdings file is normally published just after 00:00 UTC (dated the
     # next weekday) and the matching NAV file around 08:40 UTC. GitHub starts
@@ -60,6 +72,7 @@ jobs:
           fi
 
       - name: Test repository-owned market models
+        if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.skip_tests == true || inputs.skip_tests == 'true')) }}
         # Three research suites are machine-anchored by their frozen chains and
         # cannot pass on a fresh runner: the proxy-v2 suites byte-verify frozen
         # inputs under gitignored research/local-artifacts/, and the
@@ -77,6 +90,10 @@ jobs:
       - name: Build and validate public snapshot
         env:
           INVESTMENTS_PREVIOUS_PUBLIC_HOLDINGS_URL: https://netic123.github.io/investments/api/holdings.json
+          # Recorded in api/build.json so the page can say what triggered a build.
+          INVESTMENTS_BUILD_TRIGGER: ${{ github.event_name }}
+          INVESTMENTS_BUILD_REASON: ${{ inputs.reason }}
+          INVESTMENTS_BUILD_TESTS_SKIPPED: ${{ github.event_name == 'workflow_dispatch' && (inputs.skip_tests == true || inputs.skip_tests == 'true') }}
           # Optional repository variable: a declared User-Agent with a real
           # e-mail contact for SEC EDGAR, e.g. "netic123-investments/1.0 (you@example.com)".
           # It must not mention github.com or github.io, which SEC's edge

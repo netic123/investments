@@ -55,6 +55,23 @@ fails the build loudly instead of silently degrading every build to the fallback
 The generated _site directory is ignored by Git and is an explicit allowlist; research files, backend code,
 configuration files and repository metadata are not included in the deployed artifact.
 
+LIVE UPDATE ON THE PUBLIC SITE (owner only)
+GitHub Pages has no server, and the fund's FilePoint files and Yahoo send no CORS headers, so a browser cannot
+fetch them directly; "live" on the public site therefore means a fresh build. The page's "Live update…" button
+sets that up: paste a fine-grained GitHub token once, and the button becomes "Update (rebuild)". Pressing it
+sends a workflow_dispatch to pages.yml with skip_tests=true (the suite already ran on the push that deployed the
+code), follows the run through api.github.com, and reloads the page when the deployment is live — about 2 to
+4 minutes, longer if GitHub queues the run behind a scheduled build. Create the token under GitHub → Settings →
+Developer settings → Personal access tokens → Fine-grained tokens: resource owner netic123, repository access
+"Only select repositories" → investments, repository permission Actions: Read and write (Metadata: Read is
+added automatically), nothing else, with an expiry you are comfortable with. The token is stored only in that
+browser's local storage (key investments.liveUpdateToken), is sent only to api.github.com, and can be removed
+with ⚙ → "Forget token". Anyone who can use that browser profile can start builds with it, nothing more; the
+page's Content-Security-Policy allows scripts only from the one hashed inline block, so a script from anywhere
+else cannot read it. Visitors without a token see the same page as before; the button only opens the
+explanation. api/build.json records the trigger ("workflow_dispatch", "schedule" or "push"), the reason and
+whether the tests were skipped, and the About line in the footer shows it.
+
 YOUR FOCUSED WATCHLIST
 Copy data/positions.example.json to data/positions.local.json and enter display ticker, exact WAGN ticker
 (fundTicker, when different), Yahoo symbol, entry price and currency. That file is gitignored and is never
