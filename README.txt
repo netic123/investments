@@ -10,13 +10,14 @@ GITHUB PAGES
 Public site: https://netic123.github.io/investments/
 
 Every push to main — including a merged pull request, but not commits marked [skip ci] such as the lockbox
-records — plus a manual dispatch and two schedules, 09:15 UTC daily and 21:35 UTC Monday–Friday, run
-.github/workflows/pages.yml. There are two slots because in August 2026 GitHub
-started the single scheduled run 5–11 hours after its cron time and two of the five scheduled builds between
-28 Aug and 1 Sep failed, leaving the site a day stale. The morning slot follows the NAV file and scores the
-previous day's completed bars in every market; the evening slot, after the US close, refreshes closing quotes
-and retries the day if the morning run was late or failed (that day's Fear & Greed bars enter the next morning's
-build, because only completed source-local dates are scored). The workflow first
+records — plus a manual dispatch and the schedules run .github/workflows/pages.yml. The schedules keep the
+public snapshot fresh on their own: 09:20 UTC every day (after the NAV file; this slot also runs the test
+suite) and hourly at :20 from 05:20 to 22:20 UTC Monday–Friday (without the suite, which already ran on the
+push that deployed the code). In August 2026 GitHub started the single daily run 5–11 hours after its cron
+time and two of the five scheduled builds between 28 Aug and 1 Sep failed, leaving the site a day stale; with
+an hourly slot a late start still lands within the hour and a transient failure costs an hour. Fear & Greed
+bars for a trading day enter the first build after that exchange's local midnight, because only completed
+source-local dates are scored. api/build.json records which schedule fired. The workflow first
 compiles the page's inline script without running it (a syntax error would leave the public page at "loading…"
 forever, so the build fails before any network work), then starts the local server temporarily on the GitHub
 runner, fetches and validates the seven public API responses, and publishes only _site/index.html,
@@ -71,6 +72,11 @@ page's Content-Security-Policy allows scripts only from the one hashed inline bl
 else cannot read it. Visitors without a token see the same page as before; the button only opens the
 explanation. api/build.json records the trigger ("workflow_dispatch", "schedule" or "push"), the reason and
 whether the tests were skipped, and the About line in the footer shows it.
+Auto mode: with a token stored, ⚙ offers "Automatically rebuild while this page is open and the snapshot is
+older than N minutes" (default 30). While the tab is visible, the page then starts a build by itself whenever
+the snapshot is older than that (checked on load and on the 10-minute refresh), at most once per 15 minutes,
+and follows an already queued or running build instead of starting another. The setting is stored in the same
+browser (key investments.liveUpdateAutoMinutes).
 
 YOUR FOCUSED WATCHLIST
 Copy data/positions.example.json to data/positions.local.json and enter display ticker, exact WAGN ticker
