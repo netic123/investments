@@ -573,11 +573,12 @@ async function main() {
       // A local build may run on uncommitted changes; the commit alone would then overstate provenance.
       dirty: process.env.GITHUB_SHA ? false : gitValue(['status', '--porcelain'], '') !== '',
       trigger: process.env.INVESTMENTS_BUILD_TRIGGER || (process.env.GITHUB_SHA ? 'unknown' : 'local'),
+      schedule: process.env.INVESTMENTS_BUILD_SCHEDULE || null,
       reason: process.env.INVESTMENTS_BUILD_REASON || null,
       testsSkipped: process.env.INVESTMENTS_BUILD_TESTS_SKIPPED === 'true',
       dataMode: 'build-time snapshot',
       watchlist: 'public-no-entry-prices',
-      refreshTrigger: 'push to main, manual dispatch, or the scheduled builds (09:15 UTC daily and 21:35 UTC Mon-Fri; GitHub may start them hours late)',
+      refreshTrigger: 'push to main, a dispatch (manual or the page\'s live update), or the schedules: 09:20 UTC daily with the test suite and hourly 05:20-22:20 UTC Mon-Fri without it (GitHub may start scheduled runs late)',
       snapshotStaleAfterHours: SNAPSHOT_STALE_AFTER_HOURS,
       carriedSnapshotCount: carriedSnapshots.length,
       holdingsSource: data.holdingsSource,
