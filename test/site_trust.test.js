@@ -131,6 +131,18 @@ test('the page shows its provenance and reads the build history from GitHub only
   assert.match(workflow, /subject-path: \|\n\s+_site\/index\.html\n\s+_site\/api\/\*\.json/);
 });
 
+test('the external dispatch script sends the same request as the page and refuses to run without a token', () => {
+  const script = fs.readFileSync(path.join(ROOT, 'scripts', 'dispatch-build.js'), 'utf8');
+  assert.match(script, /\/actions\/workflows\/pages\.yml\/dispatches/);
+  assert.match(script, /inputs: \{ skip_tests: 'true', reason \}/);
+  assert.match(script, /process\.env\.GITHUB_DISPATCH_TOKEN/);
+  assert.doesNotMatch(script, /github_pat_[A-Za-z0-9_]{10,}/, 'no real token in the repository');
+  const { spawnSync } = require('node:child_process');
+  const run = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'dispatch-build.js')], { env: { ...process.env, GITHUB_DISPATCH_TOKEN: '' }, encoding: 'utf8' });
+  assert.equal(run.status, 2);
+  assert.match(run.stderr, /GITHUB_DISPATCH_TOKEN is not set/);
+});
+
 test('config names every current holding and cash currency', () => {
   const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'config.json'), 'utf8'));
   assert.ok(config.names['ODL NO'] && config.names['ODL NO'].flag === '🇳🇴');
