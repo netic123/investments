@@ -161,6 +161,10 @@ TABS (top of the page)
             bonds over 20 common observations), credit appetite (high yield vs investment grade relative to
             SMA125), and breadth (configured non-core/smaller series vs core/larger series relative to SMA63).
             Yahoo supplies raw histories only; no third-party sentiment score or fitted weight enters the model.
+            The expanding-history BUY/SELL research signal is still computed and published in api/marketfg.json, but
+            the public page does not show it (the card appears only in the local app or with #owner in the address):
+            it has passed no prospective validation, the retrospective searches in research/ found no reliable
+            timing edge in the score, and a coloured BUY/SELL reads as a recommendation. The public tab says so.
             Open directly: /#crypto /#sweden /#usa /#ustech /#europe /#global
 - Crypto uses CRYPTO-BROAD-EW, a transparent daily-rebalanced equal-weight return index of BTC, ETH, SOL,
             XRP, ADA, DOGE and BNB. It is broader than BTC alone but is not literally every coin, market-cap
