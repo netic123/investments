@@ -5,6 +5,7 @@ Thumbs.db
 gf_*
 data/positions.local.json
 data/portfolio.local.json
+data/*.local*
 _site/
 .env
 .env.*

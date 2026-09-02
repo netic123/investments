@@ -6,10 +6,18 @@ name: Deploy GitHub Pages
       - main
   workflow_dispatch:
   schedule:
-    # WAGN's holdings file is normally published overnight and the matching
-    # NAV file later in the morning UTC. A daily build also detects a newly
-    # filed Dalal Street 13F without requiring a code commit.
+    # WAGN's holdings file is normally published just after 00:00 UTC (dated the
+    # next weekday) and the matching NAV file around 08:40 UTC. GitHub starts
+    # scheduled runs late (5 to 11 hours after the cron time was observed in
+    # August 2026), so two daily slots limit how stale the public snapshot can
+    # get: the morning slot follows the NAV file and scores the previous day's
+    # completed bars in every market; the evening slot, after the US close,
+    # refreshes closing quotes and retries the day if the morning run was late
+    # or failed (that day's Fear & Greed bars only enter the next morning's
+    # build, because only completed source-local dates are scored). A build
+    # also detects a newly filed Dalal Street 13F without a code commit.
     - cron: '15 9 * * *'
+    - cron: '35 21 * * 1-5'
 
 permissions: {}
 
@@ -46,6 +54,10 @@ jobs:
               exit 1
             fi
           done
+          if git ls-files 'data/*.local*' | grep -q .; then
+            echo "::error::a data/*.local* file is tracked; private variants and backups must never be committed"
+            exit 1
+          fi
 
       - name: Test repository-owned market models
         # Three research suites are machine-anchored by their frozen chains and
@@ -65,6 +77,13 @@ jobs:
       - name: Build and validate public snapshot
         env:
           INVESTMENTS_PREVIOUS_PUBLIC_HOLDINGS_URL: https://netic123.github.io/investments/api/holdings.json
+          # Optional repository variable: a declared User-Agent with a real
+          # e-mail contact for SEC EDGAR, e.g. "netic123-investments/1.0 (you@example.com)".
+          # It must not mention github.com or github.io, which SEC's edge
+          # rejects. Without it the built-in default is accepted by data.sec.gov
+          # but not reliably by www.sec.gov, so the 13F usually falls back to
+          # the labelled manual copy.
+          SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
         run: node scripts/build-pages.js
 
       - name: Upload Pages artifact

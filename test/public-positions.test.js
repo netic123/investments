@@ -31,4 +31,5 @@ test('private position files stay ignored', () => {
   const ignored = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8').split(/\r?\n/);
   assert.ok(ignored.includes('data/positions.local.json'));
   assert.ok(ignored.includes('data/portfolio.local.json'));
+  assert.ok(ignored.includes('data/*.local*'), 'backups and variants of the private files must be ignored too');
 });
