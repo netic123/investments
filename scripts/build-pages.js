@@ -573,6 +573,13 @@ async function main() {
       // A local build may run on uncommitted changes; the commit alone would then overstate provenance.
       dirty: process.env.GITHUB_SHA ? false : gitValue(['status', '--porcelain'], '') !== '',
       trigger: process.env.INVESTMENTS_BUILD_TRIGGER || (process.env.GITHUB_SHA ? 'unknown' : 'local'),
+      // The Actions run that produced this snapshot (its log is public), and
+      // how to verify GitHub's signed provenance statement for each file.
+      runId: process.env.GITHUB_RUN_ID || null,
+      runUrl: process.env.GITHUB_RUN_ID && process.env.GITHUB_REPOSITORY
+        ? `${process.env.GITHUB_SERVER_URL || 'https://github.com'}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
+        : null,
+      attestation: process.env.GITHUB_RUN_ID ? 'GitHub artifact attestation; verify a downloaded file with: gh attestation verify <file> --owner netic123' : null,
       schedule: process.env.INVESTMENTS_BUILD_SCHEDULE || null,
       reason: process.env.INVESTMENTS_BUILD_REASON || null,
       testsSkipped: process.env.INVESTMENTS_BUILD_TESTS_SKIPPED === 'true',
@@ -601,11 +608,17 @@ async function main() {
     fs.writeFileSync(path.join(OUT, 'index.html'), staticPageHtml(sourceHtml), 'utf8');
     fs.writeFileSync(path.join(OUT, '.nojekyll'), '', 'utf8');
     for (const name of ENDPOINTS) writeJson(path.join(API_OUT, `${name}.json`), data[name]);
+    // Digests of every published file except build.json itself, so a reader can
+    // check that what the CDN serves is what this run produced; the workflow's
+    // attestation step signs the same files.
+    build.files = Object.fromEntries(['index.html', ...ENDPOINTS.map(name => `api/${name}.json`)].map(relative => [
+      relative, crypto.createHash('sha256').update(fs.readFileSync(path.join(OUT, relative))).digest('hex'),
+    ]));
     writeJson(path.join(API_OUT, 'build.json'), build);
     verifyArtifact(forbiddenSecrets);
 
     const totalBytes = artifactFiles(OUT).reduce((sum, file) => sum + fs.statSync(path.join(OUT, file)).size, 0);
-    process.stdout.write(`${JSON.stringify({ ok: true, output: '_site', files: EXPECTED_FILES.length, bytes: totalBytes, ...build })}\n`);
+    process.stdout.write(`${JSON.stringify({ ok: true, output: '_site', fileCount: EXPECTED_FILES.length, bytes: totalBytes, ...build })}\n`);
   } catch (error) {
     if (logs.text) process.stderr.write(`Snapshot server log:\n${logs.text}\n`);
     throw error;
