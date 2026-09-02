@@ -143,6 +143,13 @@ test('the external dispatch script sends the same request as the page and refuse
   assert.match(run.stderr, /GITHUB_DISPATCH_TOKEN is not set/);
 });
 
+test('the research BUY/SELL card is hidden from visitors and the tab says why', () => {
+  assert.match(html, /const SHOW_RESEARCH_SIGNAL = !STATIC_BUILD \|\| OWNER_MODE;/);
+  assert.match(html, /<section class="fg-data"\$\{SHOW_RESEARCH_SIGNAL\?'':' hidden'\}>/);
+  assert.match(html, /no buy\/sell signal is shown here/);
+  assert.ok(html.indexOf('const OWNER_MODE=') < html.indexOf('const SHOW_RESEARCH_SIGNAL'), 'OWNER_MODE must be defined before the panels are built');
+});
+
 test('config names every current holding and cash currency', () => {
   const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'config.json'), 'utf8'));
   assert.ok(config.names['ODL NO'] && config.names['ODL NO'].flag === '🇳🇴');

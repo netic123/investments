@@ -993,7 +993,7 @@ function fgPanelHtml(t){
     <div class="card"><div class="kpi"><div class="l">Compared with earlier</div></div><div class="fg-stats" id="${id}-stats"></div></div>
   </div>
 </section>
-<section class="fg-data">
+<section class="fg-data"${SHOW_RESEARCH_SIGNAL?'':' hidden'}>
   <div class="sec-head"><h2>Expanding-history BUY/SELL research signal</h2><span class="note" id="${id}-rulenote">—</span></div>
   <div class="card" id="${id}-rule"><div class="empty">—</div></div>
 </section>
@@ -1019,6 +1019,9 @@ ${t.kind==='market'?`<section class="fg-data">
 <footer id="${id}-footer" class="fg-data"></footer>
 </div>`;
 }
+// The expanding-history BUY/SELL research signal is computed and published (api/marketfg.json) but shown only in the
+// local app and to the owner: it has passed no prospective validation, and a coloured BUY/SELL reads as a recommendation.
+const SHOW_RESEARCH_SIGNAL = !STATIC_BUILD || OWNER_MODE;
 $('#fgPanels').innerHTML = FG_TABS.map(fgPanelHtml).join('');
 
 // One market from the shared /api/marketfg response → common renderer shape
@@ -1057,7 +1060,7 @@ function normMarket(M,model,fetchedAt){
     stats:[['Now',now],['Previous observation',row(P.close,P.closeDate)],['1 week ago',row(P.week,P.weekDate)],['1 month ago',row(P.month,P.monthDate)],['1 year ago',row(P.year,P.yearDate)],['Yearly high',hi],['Yearly low',lo]],
     history:H, total:M.total, livePoint:false, callouts, components:comps, expandingSignal:M.expandingSignal||null, compnote:`${M.n} of ${M.total} indicators · as of ${fmtDate(M.asOf)}`,
     explain, explnote:`${esc(model.id||'repository model')} · 0–100`,
-    footer:`<p><b>One model, separate raw mappings:</b> this repository calculates every market score in <span class="mono">marketfg.js</span>; Yahoo Finance supplies raw daily histories, not an index score. No CoinMarketCap or Alternative.me score enters the calculation. Yahoo’s chart feed has no contractual public API SLA.</p><p><b>Descriptive indicator only — predictive value must be tested separately.</b></p>` };
+    footer:`<p><b>One model, separate raw mappings:</b> this repository calculates every market score in <span class="mono">marketfg.js</span>; Yahoo Finance supplies raw daily histories, not an index score. No CoinMarketCap or Alternative.me score enters the calculation. Yahoo’s chart feed has no contractual public API SLA.</p><p><b>Descriptive indicator only — predictive value must be tested separately.</b>${SHOW_RESEARCH_SIGNAL?'':' The repository’s retrospective rule searches found no reliable timing edge in this score (seven rule families falsified; the one residual Europe candidate failed replication and is under prospective test), so no buy/sell signal is shown here; the research learner’s output is published in api/marketfg.json for auditing only.'}</p>` };
 }
 
 function renderRuleCard(id,N,$i){
