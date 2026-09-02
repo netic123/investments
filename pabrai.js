@@ -11,7 +11,35 @@ const WAGN_REQUIRED_HEADERS = [
   'MoneyMarketFlag',
 ];
 
-const DEFAULT_SEC_USER_AGENT = 'netic123-investments/1.0 (netic123@users.noreply.github.com)';
+// SEC asks automated clients to declare who they are. Its edge answers HTTP
+// 403 to any User-Agent that mentions github.com or github.io (verified
+// 2026-09-02 against data.sec.gov and www.sec.gov), which is why the earlier
+// noreply.github.com contact never worked from anywhere. This default is
+// accepted by data.sec.gov (the submissions index); the archive host
+// www.sec.gov, which serves the filing XML, expects an e-mail-style contact
+// and answered 403 to this default in most (not all) attempts on 2026-09-02.
+// Set SEC_USER_AGENT to "<app> (<your e-mail>)" to make the automatic 13F
+// path reliable; anything mentioning github.com/github.io is rejected here.
+const DEFAULT_SEC_USER_AGENT = 'netic123-investments/1.0 (public dashboard; contact via the netic123/investments repository)';
+const REJECTED_SEC_USER_AGENT = /github\.(com|io)/i;
+
+function secUserAgent(candidate) {
+  const value = String(candidate || '').trim();
+  if (!value) return DEFAULT_SEC_USER_AGENT;
+  if (REJECTED_SEC_USER_AGENT.test(value)) throw new Error('SEC rejects User-Agent strings that mention github.com or github.io');
+  // A header value: one line of printable ASCII, or the request itself is malformed.
+  if (/[^\x20-\x7e]/.test(value)) throw new Error('SEC User-Agent must be a single line of printable ASCII');
+  return value;
+}
+
+// The vendor occasionally re-serves an older copy of a file date it has
+// already revised. Both receipts carry the HTTP Last-Modified header; a copy
+// modified before the saved one must not overwrite it.
+function isOlderSameDateRevision(savedSource, liveSource) {
+  if (!savedSource || !liveSource || !savedSource.sha256 || savedSource.sha256 === liveSource.sha256) return false;
+  const saved = Date.parse(savedSource.lastModified || ''), served = Date.parse(liveSource.lastModified || '');
+  return Number.isFinite(saved) && Number.isFinite(served) && served < saved;
+}
 
 function sha256(value) {
   return crypto.createHash('sha256').update(Buffer.isBuffer(value) ? value : Buffer.from(String(value), 'utf8')).digest('hex');
@@ -285,6 +313,30 @@ function normalizeWagnHoldings(text, options = {}) {
   return snap;
 }
 
+// WAGN units outstanding between two receipts. Creations/redemptions change
+// the denominator of every weight and, when settled in cash, leave untraded
+// share counts unchanged, so the reader needs the unit flow separately.
+function summarizeWagnUnitFlow(before, after) {
+  const unitsFrom = before && before.sharesOutstanding, unitsTo = after && after.sharesOutstanding;
+  if (!(unitsFrom > 0) || !(unitsTo > 0)) return null;
+  const delta = unitsTo - unitsFrom;
+  return {
+    from: before.date, to: after.date, unitsFrom, unitsTo, delta,
+    pct: delta / unitsFrom * 100,
+    kind: delta > 0 ? 'creation' : delta < 0 ? 'redemption' : 'none',
+    // an untraded holding's share of one WAGN unit moves by this much
+    perUnitPct: unitsFrom / unitsTo * 100 - 100,
+  };
+}
+
+// A change row is a change in the number of shares the fund actually holds:
+// a new holding, a full exit, or a different share count. Dilution of an
+// untraded holding by a cash creation is not a trade and never produces a row.
+// A raw change that is proportional to the change in units outstanding (an
+// in-kind creation/redemption basket) is not a manager decision either and is
+// skipped. Where both receipts carry SharesOutstanding and units changed, the
+// flow-adjusted figures describe the same trade relative to a pro-rata
+// deployment of the flow; they are context, not the headline.
 function diffWagnSnapshots(before, after, options = {}) {
   const cashLike = new Set(options.cashLike || []);
   const oldEntries = Object.entries(before.rows || {}).map(([ticker, row]) => ({ ticker, row }));
@@ -306,6 +358,7 @@ function diffWagnSnapshots(before, after, options = {}) {
   }
   for (const prior of oldEntries) if (!usedOld.has(prior)) pairs.push({ prior, current: null });
 
+  const unitFlow = summarizeWagnUnitFlow(before, after);
   const out = [];
   for (const pair of pairs) {
     const { prior, current } = pair;
@@ -313,33 +366,79 @@ function diffWagnSnapshots(before, after, options = {}) {
     const oldRow = prior && prior.row, newRow = current && current.row;
     const sharesFrom = (oldRow && oldRow.shares) || 0, sharesTo = (newRow && newRow.shares) || 0;
     const delta = sharesTo - sharesFrom;
-    const flowAdjusted = !!(oldRow && newRow && before.sharesOutstanding > 0 && after.sharesOutstanding > 0);
-    const expectedSharesTo = flowAdjusted ? sharesFrom * after.sharesOutstanding / before.sharesOutstanding : null;
+    // Same share count in both files: nothing was bought or sold.
+    if (Math.abs(delta) < 0.5) continue;
+    const flowAdjusted = !!(oldRow && newRow && unitFlow && unitFlow.delta !== 0);
+    const expectedSharesTo = flowAdjusted ? sharesFrom * unitFlow.unitsTo / unitFlow.unitsFrom : null;
     const flowAdjustedDelta = flowAdjusted ? sharesTo - expectedSharesTo : null;
-    const signalDelta = flowAdjusted ? flowAdjustedDelta : delta;
-    // If inventory moved only in proportion to WAGN units outstanding, that is
-    // an ETF flow—not evidence that the manager changed the position.
-    if (Math.abs(signalDelta) < 0.5) continue;
+    // Inventory that moved only in proportion to WAGN units outstanding is an
+    // in-kind ETF flow, not evidence that the manager changed the position.
+    // Tolerate basket rounding of up to half a share or 0.5 % of the move.
+    if (flowAdjusted && Math.abs(flowAdjustedDelta) <= Math.max(0.5, Math.abs(delta) * 0.005)) continue;
     const price = (newRow && newRow.price) || (oldRow && oldRow.price) || 0;
     const usdPerShare = newRow && newRow.mv && newRow.shares ? newRow.mv / newRow.shares : (oldRow && oldRow.mv && oldRow.shares ? oldRow.mv / oldRow.shares : 0);
     const cusip = (newRow && newRow.cusip) || (oldRow && oldRow.cusip) || null;
+    const pct = sharesFrom ? delta / sharesFrom * 100 : null;
     out.push({
       ticker, tickerFrom: prior && prior.ticker, tickerTo: current && current.ticker,
       securityKey: cusip ? `CUSIP:${cusip}` : `TICKER:${ticker}`,
       cusip,
-      from: before.date, to: after.date, sharesFrom, sharesTo, delta,
-      pct: sharesFrom ? delta / sharesFrom * 100 : null,
-      sharesOutstandingFrom: before.sharesOutstanding || null, sharesOutstandingTo: after.sharesOutstanding || null,
+      from: before.date, to: after.date, sharesFrom, sharesTo, delta, pct,
+      sharesOutstandingFrom: unitFlow ? unitFlow.unitsFrom : before.sharesOutstanding || null,
+      sharesOutstandingTo: unitFlow ? unitFlow.unitsTo : after.sharesOutstanding || null,
+      unitFlow,
       flowAdjusted, expectedSharesTo, flowAdjustedDelta,
       flowAdjustedPct: flowAdjusted && expectedSharesTo ? flowAdjustedDelta / expectedSharesTo * 100 : null,
-      signalDelta,
-      signalPct: flowAdjusted && expectedSharesTo ? flowAdjustedDelta / expectedSharesTo * 100 : (sharesFrom ? delta / sharesFrom * 100 : null),
-      kind: !oldRow ? 'NEW' : !newRow ? 'SOLD OUT' : signalDelta > 0 ? 'INCREASE' : 'DECREASE',
-      localPrice: price, approxUsd: Math.abs(signalDelta) * usdPerShare, absValue: Math.abs(signalDelta) * usdPerShare,
+      // The headline is the raw inventory change; kept under the old names so
+      // every consumer of this contract reads the same number.
+      signalDelta: delta,
+      signalPct: pct,
+      kind: !oldRow ? 'NEW' : !newRow ? 'SOLD OUT' : delta > 0 ? 'INCREASE' : 'DECREASE',
+      localPrice: price, approxUsd: Math.abs(delta) * usdPerShare, absValue: Math.abs(delta) * usdPerShare,
       cashLike: cashLike.has(ticker),
     });
   }
   return out.sort((left, right) => right.absValue - left.absValue);
+}
+
+// The holdings receipt is dated the next weekday and carries NetAssets equal to
+// the official NAV of the previous rate date multiplied by the receipt's own
+// SharesOutstanding, to the cent. Two proofs of the pricing date are accepted:
+//   exact      the NAV file reports the same SharesOutstanding and NetAssets
+//              equals rounded NAV x shares within one hundred-thousandth;
+//   per-share  NetAssets / SharesOutstanding rounds to the NAV although the
+//              unit count differs, because a creation or redemption settled
+//              between the two files (the NAV file still shows the old count).
+// Either way the NAV rate date must be on or up to four calendar days before
+// the holdings file date. Anything else leaves the pricing date unasserted and
+// says why.
+function reconcileWagnHoldingsToNav(latest, nav) {
+  const L = latest, N = nav;
+  const isoDate = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+  if (!L || !N || !Number.isFinite(L.netAssets) || !Number.isFinite(L.sharesOutstanding) || L.sharesOutstanding <= 0
+      || !Number.isFinite(N.nav) || !isoDate(N.date) || !isoDate(L.date)) {
+    return { matched: false, mode: null, reason: 'required NAV reconciliation fields are missing' };
+  }
+  const dateGap = (Date.parse(`${L.date}T00:00:00Z`) - Date.parse(`${N.date}T00:00:00Z`)) / 864e5;
+  const roundedNav = Math.round(N.nav * 100) / 100;
+  const perShare = L.netAssets / L.sharesOutstanding;
+  const perShareGap = Math.abs(perShare - roundedNav);
+  const expected = roundedNav * L.sharesOutstanding;
+  const gap = Math.abs(L.netAssets - expected);
+  const tolerance = Math.max(1, Math.abs(L.netAssets) * 0.00001);
+  const navFileShares = Number.isFinite(N.sharesOut) && N.sharesOut > 0 ? N.sharesOut : null;
+  const unitChange = navFileShares == null ? null : L.sharesOutstanding - navFileShares;
+  const base = { navDate: N.date, nav: roundedNav, fundShares: L.sharesOutstanding, navFileShares, unitChange, dateGap, perShare, perShareGap, gap, tolerance };
+  if (!(dateGap >= 0 && dateGap <= 4)) {
+    return { ...base, matched: false, mode: null, reason: `the newest NAV is dated ${N.date}, which is not within the four days before the holdings file date ${L.date}` };
+  }
+  if (gap <= tolerance && (navFileShares == null || Math.abs(unitChange) < 0.5)) {
+    return { ...base, matched: true, mode: 'exact', reason: null };
+  }
+  if (perShareGap <= 0.005) {
+    return { ...base, matched: true, mode: 'per-share', reason: null };
+  }
+  return { ...base, matched: false, mode: null, reason: `NetAssets / SharesOutstanding = ${perShare.toFixed(4)} per share does not equal the ${N.date} NAV of ${roundedNav.toFixed(2)}` };
 }
 
 function decodeXml(value) {
@@ -461,7 +560,7 @@ function selectCurrentAndPrevious13f(filings) {
 
 async function fetchResource(url, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
-  const headers = { Accept: options.accept || '*/*', 'User-Agent': options.userAgent || DEFAULT_SEC_USER_AGENT, ...(options.headers || {}) };
+  const headers = { Accept: options.accept || '*/*', 'User-Agent': secUserAgent(options.userAgent), ...(options.headers || {}) };
   let response;
   try {
     response = await fetchImpl(url, { headers, signal: options.signal || AbortSignal.timeout(options.timeoutMs || 30000) });
@@ -485,7 +584,10 @@ async function fetchSecFiling(filing, cik, options = {}) {
   const compactCik = String(Number(normalizeCik(cik)));
   const compactAccession = filing.accession.replace(/-/g, '');
   const base = `https://www.sec.gov/Archives/edgar/data/${compactCik}/${compactAccession}`;
-  const primaryName = filing.primaryDocument || 'primary_doc.xml';
+  // EDGAR's submissions feed names the primary document through its XSL viewer
+  // path (for example xslForm13F_X02/primary_doc.xml), which returns HTML. The
+  // raw XML that parseSecPrimary needs sits at the archive root.
+  const primaryName = String(filing.primaryDocument || 'primary_doc.xml').split('/').pop() || 'primary_doc.xml';
   const primaryReceipt = await fetchResource(`${base}/${primaryName}`, { ...options, accept: 'application/xml,text/xml,*/*' });
   const infoReceipt = await fetchResource(`${base}/infotable.xml`, { ...options, accept: 'application/xml,text/xml,*/*' });
   const primary = parseSecPrimary(primaryReceipt.text);
@@ -520,22 +622,27 @@ function compareManualDalal(live, manual) {
   const mismatches = [];
   if (manual.asOf !== live.asOf) mismatches.push(`report date ${manual.asOf || 'missing'} != ${live.asOf}`);
   if (manual.filed !== live.filed) mismatches.push(`filing date ${manual.filed || 'missing'} != ${live.filed}`);
+  if (manual.accession && manual.accession !== live.accession) mismatches.push(`accession ${manual.accession} != ${live.accession}`);
+  if (manual.previous && manual.previous.accession && live.previous && manual.previous.accession !== live.previous.accession) mismatches.push(`previous accession ${manual.previous.accession} != ${live.previous.accession}`);
   if (manual.portfolioValueUsd !== live.portfolioValueUsd) mismatches.push(`portfolio value ${manual.portfolioValueUsd} != ${live.portfolioValueUsd}`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(manual.manualVerifiedAt || ''))) mismatches.push('manual fallback has no verification date');
   const manualByCusip = new Map(manual.holdings.filter(row => row.cusip).map(row => [String(row.cusip).toUpperCase(), row]));
-  for (const row of live.holdings) {
+  const current = live.holdings.filter(row => !row.exited);
+  for (const row of current) {
     const expected = manualByCusip.get(row.cusip);
     if (!expected) { mismatches.push(`${row.cusip} is absent from manual fallback`); continue; }
     if (expected.shares !== row.shares) mismatches.push(`${row.cusip} shares ${expected.shares} != ${row.shares}`);
     if (expected.valueUsd !== row.valueUsd) mismatches.push(`${row.cusip} value ${expected.valueUsd} != ${row.valueUsd}`);
+    if (expected.prevShares !== undefined && expected.prevShares !== row.prevShares) mismatches.push(`${row.cusip} prior-quarter shares ${expected.prevShares} != ${row.prevShares}`);
   }
-  if (manualByCusip.size !== live.holdings.length) mismatches.push(`manual fallback has ${manualByCusip.size} mapped holdings; SEC has ${live.holdings.length}`);
+  if (manualByCusip.size !== current.length) mismatches.push(`manual fallback has ${manualByCusip.size} mapped holdings; SEC has ${current.length}`);
   return { matches: mismatches.length === 0, mismatches };
 }
 
 async function fetchDalalStreet13f(config = {}, options = {}) {
   const cik = normalizeCik(config.cik || '0001549575');
   const expectedManager = config.managerName || 'Dalal Street, LLC';
-  const userAgent = options.userAgent || process.env.SEC_USER_AGENT || DEFAULT_SEC_USER_AGENT;
+  const userAgent = secUserAgent(options.userAgent || process.env.SEC_USER_AGENT);
   const common = { fetchImpl: options.fetchImpl, timeoutMs: options.timeoutMs || 30000, userAgent };
   const submissionsUrl = `https://data.sec.gov/submissions/CIK${cik}.json`;
   const submissionsReceipt = await fetchResource(submissionsUrl, { ...common, accept: 'application/json' });
@@ -551,9 +658,8 @@ async function fetchDalalStreet13f(config = {}, options = {}) {
 
   const previousByKey = new Map(aggregateSecRows(previous.rows).map(row => [row.key, row]));
   const configuredByCusip = new Map((config.holdings || []).filter(row => row.cusip).map(row => [String(row.cusip).toUpperCase(), row]));
-  const holdings = aggregateSecRows(current.rows).map(row => {
+  const describe = row => {
     const known = configuredByCusip.get(row.cusip) || {};
-    const prior = previousByKey.get(row.key);
     return {
       ticker: known.ticker || `CUSIP ${row.cusip}`,
       name: known.name || row.issuer,
@@ -562,11 +668,21 @@ async function fetchDalalStreet13f(config = {}, options = {}) {
       cusip: row.cusip,
       putCall: row.putCall,
       shareType: row.shareType,
-      shares: row.shares,
-      prevShares: prior ? prior.shares : null,
-      valueUsd: row.valueUsd,
     };
+  };
+  const currentRows = aggregateSecRows(current.rows);
+  const currentKeys = new Set(currentRows.map(row => row.key));
+  const holdings = currentRows.map(row => {
+    const prior = previousByKey.get(row.key);
+    return { ...describe(row), shares: row.shares, prevShares: prior ? prior.shares : null, valueUsd: row.valueUsd };
   }).sort((a, b) => b.valueUsd - a.valueUsd || a.cusip.localeCompare(b.cusip));
+  // A security reported last quarter but absent now was sold out (or fell
+  // below the reporting threshold); list it with zero shares so the quarterly
+  // change can show the exit instead of dropping it silently.
+  const exits = [...previousByKey.values()].filter(row => !currentKeys.has(row.key))
+    .map(row => ({ ...describe(row), shares: 0, prevShares: row.shares, valueUsd: 0, exited: true }))
+    .sort((a, b) => b.prevShares - a.prevShares || a.cusip.localeCompare(b.cusip));
+  holdings.push(...exits);
 
   const fetchedAt = new Date().toISOString();
   const result = {
@@ -605,6 +721,10 @@ async function fetchDalalStreet13f(config = {}, options = {}) {
 }
 
 module.exports = {
+  isOlderSameDateRevision,
+  reconcileWagnHoldingsToNav,
+  secUserAgent,
+  summarizeWagnUnitFlow,
   DEFAULT_SEC_USER_AGENT,
   WAGN_REQUIRED_HEADERS,
   aggregateSecRows,

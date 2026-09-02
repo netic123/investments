@@ -3,14 +3,20 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  DEFAULT_SEC_USER_AGENT,
+  compareManualDalal,
   diffWagnSnapshots,
+  isOlderSameDateRevision,
   fetchDalalStreet13f,
   normalizeWagnHoldings,
   parseCsv,
   parseSecInformationTable,
   parseSecPrimary,
+  reconcileWagnHoldingsToNav,
+  secUserAgent,
   selectWagnNavObservation,
   selectCurrentAndPrevious13f,
+  summarizeWagnUnitFlow,
   validateWagnHoldingsFreshness,
 } = require('../pabrai');
 
@@ -188,11 +194,124 @@ test('CUSIP identity survives a ticker rename and flow adjustment separates ETF 
   assert.equal(change.tickerFrom, 'OLD');
   assert.equal(change.tickerTo, 'NEW');
   assert.equal(change.delta, 20);
+  assert.equal(change.kind, 'INCREASE');
   assert.equal(change.expectedSharesTo, 110);
-  assert.equal(change.signalDelta, 10);
+  assert.equal(change.flowAdjustedDelta, 10);
+  assert.equal(change.signalDelta, 20, 'the headline is the raw inventory change');
+  assert.equal(change.approxUsd, 200, 'value at the latest price is the raw change');
   assert.equal(change.flowAdjusted, true);
+  assert.deepEqual(change.unitFlow, { from: '2026-08-24', to: '2026-08-25', unitsFrom: 1000, unitsTo: 1100, delta: 100, pct: 10, kind: 'creation', perUnitPct: 1000 / 1100 * 100 - 100 });
   after.rows.NEW.shares = 110;
-  assert.deepEqual(diffWagnSnapshots(before, after), [], 'a purely proportional creation flow is not a manager-change signal');
+  assert.deepEqual(diffWagnSnapshots(before, after), [], 'a purely proportional in-kind creation flow is not a manager-change signal');
+});
+
+test('a cash creation never turns untraded holdings into changes', () => {
+  // WAGN 2026-08-31 -> 2026-09-01: 150,000 units created for cash; HCC, RIG and
+  // CSU CN were not traded, RYGYO TI was bought, AMR was trimmed.
+  const before = { date: '2026-08-31', sharesOutstanding: 18170814, rows: {
+    HCC: { cusip: '93627C101', shares: 254389, price: 108.24, mv: 27535065.36 },
+    RIG: { cusip: 'H8817H100', shares: 4128872, price: 5.81, mv: 23988746.32 },
+    'CSU CN': { cusip: 'B15C4L6', shares: 5735, price: 3138.72, mv: 12987884.99 },
+    'RYGYO TI': { cusip: 'B3VKHD1', shares: 37081196, price: 50.80, mv: 39032000 },
+    AMR: { cusip: '020764106', shares: 62041, price: 235.70, mv: 14623063.7 },
+  } };
+  const after = { date: '2026-09-01', sharesOutstanding: 18320814, rows: {
+    HCC: { cusip: '93627C101', shares: 254389, price: 108.24, mv: 27535065.36 },
+    RIG: { cusip: 'H8817H100', shares: 4128872, price: 5.81, mv: 23988746.32 },
+    'CSU CN': { cusip: 'B15C4L6', shares: 5735, price: 3138.72, mv: 12987884.99 },
+    'RYGYO TI': { cusip: 'B3VKHD1', shares: 38693581, price: 50.80, mv: 40730085.26 },
+    AMR: { cusip: '020764106', shares: 61541, price: 235.70, mv: 14505213.7 },
+  } };
+  const changes = diffWagnSnapshots(before, after);
+  assert.deepEqual(changes.map(c => [c.ticker, c.kind, c.delta]), [['RYGYO TI', 'INCREASE', 1612385], ['AMR', 'DECREASE', -500]]);
+  const [rygyo, amr] = changes;
+  assert.equal(rygyo.flowAdjusted, true);
+  assert.ok(Math.abs(rygyo.flowAdjustedDelta - 1306280) < 1, 'pro-rata context stays available');
+  assert.equal(amr.signalDelta, -500);
+  assert.ok(amr.flowAdjustedDelta < -500, 'the trim is larger relative to a pro-rata deployment');
+  const flow = summarizeWagnUnitFlow(before, after);
+  assert.equal(flow.delta, 150000);
+  assert.equal(flow.kind, 'creation');
+  assert.ok(Math.abs(flow.perUnitPct + 0.8188) < 0.001);
+  assert.equal(summarizeWagnUnitFlow({ date: '2026-08-20', rows: {} }, after), null, 'legacy receipts without units have no flow');
+  // no units changed: nothing is flow-adjusted, and identical files produce no rows
+  const same = { ...after, date: '2026-09-02' };
+  assert.deepEqual(diffWagnSnapshots(after, same), []);
+  same.rows = { ...after.rows, HCC: { ...after.rows.HCC, shares: 254000 } };
+  const [hcc] = diffWagnSnapshots(after, same);
+  assert.equal(hcc.flowAdjusted, false);
+  assert.equal(hcc.delta, -389);
+});
+
+test('pricing date reconciles exactly or per share, and says why when it cannot', () => {
+  const receipt = { date: '2026-09-01', netAssets: 296613978.66, sharesOutstanding: 18320814 };
+  // a creation settled after the NAV file: the unit count differs but NetAssets / units is the NAV to the cent
+  const perShare = reconcileWagnHoldingsToNav(receipt, { date: '2026-08-31', nav: 16.19, sharesOut: 18170814 });
+  assert.equal(perShare.matched, true);
+  assert.equal(perShare.mode, 'per-share');
+  assert.equal(perShare.unitChange, 150000);
+  assert.equal(perShare.navDate, '2026-08-31');
+  // same unit count in both files
+  const exact = reconcileWagnHoldingsToNav({ date: '2026-08-28', netAssets: 289824483.3, sharesOutstanding: 18170814 }, { date: '2026-08-27', nav: 15.95, sharesOut: 18170814 });
+  assert.equal(exact.mode, 'exact');
+  assert.equal(exact.unitChange, 0);
+  // a NAV that lags the historical file has no unit count; the per-share proof still works
+  assert.equal(reconcileWagnHoldingsToNav(receipt, { date: '2026-08-31', nav: 16.19, sharesOut: null }).mode, 'exact');
+  // the wrong day
+  const wrong = reconcileWagnHoldingsToNav(receipt, { date: '2026-08-28', nav: 16.06, sharesOut: 18170814 });
+  assert.equal(wrong.matched, false);
+  assert.match(wrong.reason, /16\.1900 per share does not equal the 2026-08-28 NAV of 16\.06/);
+  // NAV newer than the receipt or too old
+  assert.match(reconcileWagnHoldingsToNav(receipt, { date: '2026-09-02', nav: 16.19, sharesOut: 18320814 }).reason, /not within the four days/);
+  assert.match(reconcileWagnHoldingsToNav(receipt, { date: '2026-08-25', nav: 16.19, sharesOut: 18320814 }).reason, /not within the four days/);
+  assert.equal(reconcileWagnHoldingsToNav(receipt, null).reason, 'required NAV reconciliation fields are missing');
+});
+
+test('the in-kind flow tolerance is pinned at its boundary', () => {
+  const before = { date: '2026-08-24', sharesOutstanding: 1000, rows: { A: { cusip: '000000001', shares: 10000, price: 1, mv: 10000 } } };
+  const after = shares => ({ date: '2026-08-25', sharesOutstanding: 1100, rows: { A: { cusip: '000000001', shares, price: 1, mv: shares } } });
+  // pro-rata would be 11,000; 0.5 % of the 1,000-share move is 5 shares
+  assert.deepEqual(diffWagnSnapshots(before, after(11005)), [], 'inside the tolerance the move is an in-kind flow');
+  assert.deepEqual(diffWagnSnapshots(before, after(10996)), [], 'the tolerance scales with the size of the move');
+  assert.equal(diffWagnSnapshots(before, after(11006)).length, 1, 'outside the tolerance the move is a trade');
+  assert.equal(diffWagnSnapshots(before, after(10994))[0].kind, 'INCREASE', 'the raw direction is the headline even below pro-rata');
+});
+
+test('a re-served older revision of a saved file date is recognised', () => {
+  const saved = { sha256: 'a'.repeat(64), lastModified: 'Tue, 01 Sep 2026 03:00:00 GMT' };
+  assert.equal(isOlderSameDateRevision(saved, { sha256: 'b'.repeat(64), lastModified: 'Tue, 01 Sep 2026 00:02:17 GMT' }), true);
+  assert.equal(isOlderSameDateRevision(saved, { sha256: 'b'.repeat(64), lastModified: 'Tue, 01 Sep 2026 04:00:00 GMT' }), false, 'a newer revision replaces the saved one');
+  assert.equal(isOlderSameDateRevision(saved, { sha256: 'a'.repeat(64), lastModified: 'Mon, 31 Aug 2026 00:00:00 GMT' }), false, 'identical bytes are not a revision');
+  assert.equal(isOlderSameDateRevision(saved, { sha256: 'b'.repeat(64), lastModified: null }), false, 'without both timestamps nothing can be concluded');
+  assert.equal(isOlderSameDateRevision(null, { sha256: 'b'.repeat(64), lastModified: 'Tue, 01 Sep 2026 00:02:17 GMT' }), false);
+});
+
+test('the manual 13F copy is compared on identity and prior-quarter fields too', () => {
+  const live = {
+    asOf: '2026-06-30', filed: '2026-08-13', accession: '0001549575-26-000015', portfolioValueUsd: 100,
+    previous: { accession: '0001549575-26-000009' },
+    holdings: [
+      { cusip: '020764106', shares: 10, prevShares: 5, valueUsd: 100 },
+      { cusip: '674599105', shares: 0, prevShares: 7, valueUsd: 0, exited: true },
+    ],
+  };
+  const manual = { asOf: '2026-06-30', filed: '2026-08-13', accession: '0001549575-26-000015', manualVerifiedAt: '2026-08-26', portfolioValueUsd: 100,
+    previous: { accession: '0001549575-26-000009' }, holdings: [{ cusip: '020764106', shares: 10, prevShares: 5, valueUsd: 100 }] };
+  assert.deepEqual(compareManualDalal(live, manual), { matches: true, mismatches: [] }, 'exited rows do not count against the manual copy');
+  assert.match(compareManualDalal(live, { ...manual, manualVerifiedAt: undefined }).mismatches.join(';'), /no verification date/);
+  assert.match(compareManualDalal(live, { ...manual, previous: { accession: '0001549575-26-000002' } }).mismatches.join(';'), /previous accession/);
+  assert.match(compareManualDalal(live, { ...manual, holdings: [{ ...manual.holdings[0], prevShares: 4 }] }).mismatches.join(';'), /prior-quarter shares 4 != 5/);
+});
+
+test('SEC requests use a declared User-Agent that SEC accepts', () => {
+  // SEC's edge answers 403 to anything that mentions github.com or github.io.
+  assert.doesNotMatch(DEFAULT_SEC_USER_AGENT, /github\.(com|io)/i);
+  assert.equal(secUserAgent(''), DEFAULT_SEC_USER_AGENT);
+  assert.equal(secUserAgent('Example Fund research (contact@example.com)'), 'Example Fund research (contact@example.com)');
+  assert.throws(() => secUserAgent('bot (me@users.noreply.github.com)'), /SEC rejects/);
+  assert.throws(() => secUserAgent('bot (+https://user.github.io/site)'), /SEC rejects/);
+  assert.throws(() => secUserAgent('bot (me@example.com)\r\nX-Injected: 1'), /printable ASCII/);
+  assert.throws(() => secUserAgent('bot (mé@example.com)'), /printable ASCII/);
 });
 
 test('SEC XML parsers preserve leading-zero and letter-leading CUSIPs', () => {
@@ -216,7 +335,7 @@ test('automatic SEC ingestion selects the latest two quarters and validates tota
       filingDate: ['2026-08-13', '2026-05-14'],
       acceptanceDateTime: ['2026-08-13T11:50:17.000Z', '2026-05-14T15:00:59.000Z'],
       reportDate: ['2026-06-30', '2026-03-31'],
-      primaryDocument: ['primary_doc.xml', 'primary_doc.xml'],
+      primaryDocument: ['xslForm13F_X02/primary_doc.xml', 'xslForm13F_X02/primary_doc.xml'],
     } },
   };
   const bodies = new Map([
@@ -226,19 +345,23 @@ test('automatic SEC ingestion selects the latest two quarters and validates tota
     ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000009/primary_doc.xml', primaryXml({ date: '03-31-2026', entries: 1, total: 50 })],
     ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000009/infotable.xml', infoXml([{ issuer: 'ALPHA METALLURGICAL RESOUR I', cusip: '020764106', shares: 5, value: 50 }])],
   ]);
-  const fetchImpl = async url => {
+  const seenUserAgents = new Set();
+  const fetchImpl = async (url, init) => {
     assert.ok(bodies.has(url), `unexpected URL ${url}`);
+    seenUserAgents.add(init.headers['User-Agent']);
     return response(bodies.get(url), 200, { etag: 'fixture' });
   };
   const result = await fetchDalalStreet13f({
     cik: '0001549575',
     managerName: 'Dalal Street, LLC',
+    manualVerifiedAt: '2026-08-26',
+    userAgentNote: 'the explicit userAgent below keeps this test independent of SEC_USER_AGENT in the environment',
     nextFilingWindow: 'by 16 Nov 2026',
     asOf: '2026-06-30',
     filed: '2026-08-13',
     portfolioValueUsd: 100,
     holdings: [{ ticker: 'AMR', name: 'Alpha Metallurgical', cusip: '020764106', shares: 10, prevShares: 5, valueUsd: 100 }],
-  }, { fetchImpl });
+  }, { fetchImpl, userAgent: DEFAULT_SEC_USER_AGENT });
   assert.equal(result.ok, true);
   assert.equal(result.accession, '0001549575-26-000015');
   assert.equal(result.previous.accession, '0001549575-26-000009');
@@ -246,6 +369,50 @@ test('automatic SEC ingestion selects the latest two quarters and validates tota
   assert.equal(result.holdings[0].shares, 10);
   assert.equal(result.holdings[0].prevShares, 5);
   assert.equal(result.manualFallbackCheck.matches, true);
+  assert.deepEqual([...seenUserAgents], [DEFAULT_SEC_USER_AGENT]);
+});
+
+test('a position reported only in the prior quarter is shown as an exit, not dropped', async () => {
+  const submissions = {
+    cik: '0001549575',
+    filings: { recent: {
+      form: ['13F-HR', '13F-HR'],
+      accessionNumber: ['0001549575-26-000015', '0001549575-26-000009'],
+      filingDate: ['2026-08-13', '2026-05-14'],
+      acceptanceDateTime: ['2026-08-13T11:50:17.000Z', '2026-05-14T15:00:59.000Z'],
+      reportDate: ['2026-06-30', '2026-03-31'],
+      primaryDocument: ['xslForm13F_X02/primary_doc.xml', 'xslForm13F_X02/primary_doc.xml'],
+    } },
+  };
+  const bodies = new Map([
+    ['https://data.sec.gov/submissions/CIK0001549575.json', JSON.stringify(submissions)],
+    ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/primary_doc.xml', primaryXml({ date: '06-30-2026', entries: 1, total: 100 })],
+    ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/infotable.xml', infoXml([{ issuer: 'ALPHA METALLURGICAL RESOUR I', cusip: '020764106', shares: 10, value: 100 }])],
+    ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000009/primary_doc.xml', primaryXml({ date: '03-31-2026', entries: 2, total: 80 })],
+    ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000009/infotable.xml', infoXml([
+      { issuer: 'ALPHA METALLURGICAL RESOUR I', cusip: '020764106', shares: 5, value: 50 },
+      { issuer: 'OCCIDENTAL PETE CORP', cusip: '674599105', shares: 7, value: 30 },
+    ])],
+  ]);
+  const fetchImpl = async url => response(bodies.get(url), 200);
+  const manual = {
+    cik: '0001549575', managerName: 'Dalal Street, LLC', manualVerifiedAt: '2026-08-26',
+    asOf: '2026-06-30', filed: '2026-08-13', accession: '0001549575-26-000015', portfolioValueUsd: 100,
+    previous: { accession: '0001549575-26-000009' },
+    holdings: [{ ticker: 'AMR', name: 'Alpha Metallurgical', cusip: '020764106', shares: 10, prevShares: 5, valueUsd: 100 }],
+  };
+  const result = await fetchDalalStreet13f(manual, { fetchImpl });
+  assert.deepEqual(result.holdings.map(row => [row.cusip, row.shares, row.prevShares, row.valueUsd, !!row.exited]), [
+    ['020764106', 10, 5, 100, false],
+    ['674599105', 0, 7, 0, true],
+  ]);
+  assert.equal(result.holdings.reduce((sum, row) => sum + row.valueUsd, 0), result.portfolioValueUsd);
+  assert.equal(result.manualFallbackCheck.matches, true, JSON.stringify(result.manualFallbackCheck));
+  // the manual copy is also checked against the prior quarter and the accession identity
+  const wrongPrior = await fetchDalalStreet13f({ ...manual, holdings: [{ ...manual.holdings[0], prevShares: 6 }] }, { fetchImpl });
+  assert.match(wrongPrior.manualFallbackCheck.mismatches.join('; '), /prior-quarter shares 6 != 5/);
+  const wrongAccession = await fetchDalalStreet13f({ ...manual, accession: '0001549575-26-000001' }, { fetchImpl });
+  assert.match(wrongAccession.manualFallbackCheck.mismatches.join('; '), /accession 0001549575-26-000001 != 0001549575-26-000015/);
 });
 
 test('an SEC amendment stops automatic publication for explicit review', () => {

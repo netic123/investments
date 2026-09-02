@@ -9,8 +9,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const net = require('net');
+const vm = require('vm');
+const crypto = require('crypto');
 const { spawn, execFileSync } = require('child_process');
-const { validateWagnHoldingsFreshness } = require('../pabrai');
+const { reconcileWagnHoldingsToNav, secUserAgent, validateWagnHoldingsFreshness } = require('../pabrai');
 const { collectSpecSymbols, hashPublicDecision, hashPublishedScoreHistory } = require('../marketfg');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -38,6 +40,66 @@ const PUBLIC_EXPANDING_SIGNAL_KEYS = [
 ].sort();
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
+// The published page may be older than a visitor expects when a scheduled build
+// fails; index.html warns once the snapshot is older than this (a daily build
+// was missed).
+const SNAPSHOT_STALE_AFTER_HOURS = 30;
+const LOCAL_MODE_MARKER = '<meta name="investments-mode" content="local">';
+const STATIC_MODE_MARKER = '<meta name="investments-mode" content="static">';
+// Everything the public page is allowed to load or contact. Scripts are
+// limited to the one inline block by hash; styles include inline style
+// attributes; connections are the same-origin JSON snapshot plus SEC's
+// EDGAR submissions index, which the page asks (from the visitor's browser)
+// whether a newer 13F exists.
+const STATIC_CSP_DIRECTIVES = [
+  "default-src 'none'",
+  "script-src 'sha256-__SCRIPT_HASH__'",
+  "style-src 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src https://fonts.gstatic.com",
+  "connect-src 'self' https://data.sec.gov",
+  "img-src 'self' data:",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "object-src 'none'",
+];
+
+function inlineScript(html) {
+  const blocks = html.split('<script>');
+  assert(blocks.length === 2, 'index.html must contain exactly one inline <script> block');
+  const end = blocks[1].indexOf('</script>');
+  assert(end > 0, 'index.html inline script is not terminated');
+  return blocks[1].slice(0, end);
+}
+
+// A syntax error in the inline script leaves the public page at "loading…"
+// forever; compile it (without running it) before anything is deployed.
+function checkInlineScript(html) {
+  const source = inlineScript(html);
+  try { new vm.Script(source, { filename: 'index.html (inline script)' }); }
+  catch (error) { throw new Error(`index.html inline script does not compile: ${error.message}`); }
+  return source;
+}
+
+function staticCsp(html) {
+  const hash = crypto.createHash('sha256').update(inlineScript(html), 'utf8').digest('base64');
+  return STATIC_CSP_DIRECTIVES.join('; ').replace('__SCRIPT_HASH__', hash);
+}
+
+function staticPageHtml(sourceHtml) {
+  assert(sourceHtml.split(LOCAL_MODE_MARKER).length === 2, 'index.html must contain exactly one local-mode marker');
+  assert(!sourceHtml.includes('http-equiv="Content-Security-Policy"'), 'index.html must not carry its own Content-Security-Policy; the build adds one');
+  checkInlineScript(sourceHtml);
+  return sourceHtml.replace(LOCAL_MODE_MARKER, `${STATIC_MODE_MARKER}\n<meta http-equiv="Content-Security-Policy" content="${staticCsp(sourceHtml)}">`);
+}
+
+function verifyStaticPage(html) {
+  assert(html.includes(STATIC_MODE_MARKER) && !html.includes(LOCAL_MODE_MARKER), 'published page is not in static mode');
+  const match = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html);
+  assert(match, 'published page has no Content-Security-Policy');
+  assert(match[1] === staticCsp(html), 'published Content-Security-Policy does not match the inline script');
+  assert(!/script-src[^;]*'unsafe-inline'/.test(match[1]), 'published Content-Security-Policy must not allow unsafe inline scripts');
+  checkInlineScript(html);
+}
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const EXPECTED_MARKET_SYMBOLS = {
   crypto: {
@@ -131,10 +193,23 @@ function validateSnapshot(data, publicPositions) {
   assert(config.marketFearGreed.markets.crypto.barPolicy === 'completed-utc-date', 'Crypto completed-bar policy has drifted');
   for (const name of ['crypto', 'sweden', 'usa', 'ustech', 'europe', 'global']) assertMarketMapping(name, config.marketFearGreed.markets[name].symbols, 'config');
 
-  assert(holdings && holdings.ok === true && !holdings.fetchError, `official holdings source was not fetched and accepted: ${holdings && holdings.fetchError || 'unknown source failure'}`);
-  assert(holdings.source && holdings.source.status === 'verified' && holdings.source.url === config.sources.holdings, 'holdings source is not the configured official WAGN feed');
-  assert(holdings.latest && typeof holdings.latest.date === 'string', 'holdings has no usable latest snapshot');
-  assert(holdings.source.fileDate === holdings.latest.date, 'holdings source status and parsed latest file date differ');
+  assert(holdings && typeof holdings === 'object' && holdings.latest && typeof holdings.latest.date === 'string', `official holdings source was not fetched and no accepted receipt is available: ${holdings && holdings.fetchError || 'unknown source failure'}`);
+  const holdingsLive = holdings.ok === true && !holdings.fetchError;
+  if (holdingsLive) {
+    assert(holdings.source && holdings.source.status === 'verified' && holdings.source.url === config.sources.holdings, 'holdings source is not the configured official WAGN feed');
+    assert(holdings.source.fileDate === holdings.latest.date, 'holdings source status and parsed latest file date differ');
+  } else {
+    // The official feed did not respond, or served a file that failed
+    // validation (stale, future-dated, regressed to an older day). The last
+    // accepted receipt is still true as of its own date, so it is published
+    // with that label instead of freezing NAV, quotes and every Fear & Greed
+    // tab for the day; the freshness gate below still applies to it.
+    assert(['unavailable', 'rejected'].includes(holdings.source && holdings.source.status), `unexpected holdings source state: ${holdings.source && holdings.source.status}`);
+    process.stderr.write(`WARNING: official holdings source not accepted (${holdings.fetchError}); publishing the last accepted receipt dated ${holdings.latest.date}, labelled as such.\n`);
+  }
+  data.holdingsSource = holdingsLive
+    ? 'official feed fetched and accepted'
+    : `last accepted receipt dated ${holdings.latest.date}; official feed ${holdings.source.status} (${holdings.fetchError})`;
   assert(holdings.latest.rows && typeof holdings.latest.rows === 'object', 'holdings rows are missing');
   assert(holdings.latest.source && holdings.latest.source.url === config.sources.holdings && /^[0-9a-f]{64}$/.test(holdings.latest.source.sha256 || ''), 'latest holdings receipt lacks official provenance or SHA-256');
   assert(holdings.latest.source.fileDate === holdings.latest.date, 'holdings receipt provenance conflicts with parsed file date');
@@ -151,18 +226,19 @@ function validateSnapshot(data, publicPositions) {
   );
   assert(Array.isArray(holdings.snapshots) && holdings.snapshots.length >= 1 && holdings.snapshots.some(snapshot => snapshot.date === holdings.latest.date), 'durable holdings history is missing from the API contract');
   assert(nav && typeof nav.date === 'string' && Array.isArray(nav.history) && nav.history.length > 1, 'NAV data is incomplete');
-  assert(Number.isFinite(nav.nav) && Number.isFinite(nav.sharesOut) && nav.sharesOut > 0, 'NAV reconciliation fields are missing');
-  // Holdings and NAV files can legitimately disagree for a few hours after a
-  // creation/redemption, because the fund updates them at different times. The
-  // build publishes anyway; index.html computes the same check client-side and
-  // then labels the pricing date as "not asserted" (the unverified state the
-  // local app shows). The state is also recorded in api/build.json.
-  const expectedHoldingsNetAssets = Math.round(nav.nav * 100) / 100 * nav.sharesOut;
-  data.navReconciled =
-    Math.abs(holdings.latest.sharesOutstanding - nav.sharesOut) < 0.5 &&
-    Math.abs(holdings.latest.netAssets - expectedHoldingsNetAssets) <= Math.max(1, Math.abs(holdings.latest.netAssets) * 0.00001);
+  assert(Number.isFinite(nav.nav) && nav.nav > 0, 'NAV is missing');
+  // DailyNAV normally carries the unit count; when it lags DailyNAVHistorical
+  // the newer historical rate has none, which only limits the reconciliation
+  // proof below, so it must not fail the whole snapshot.
+  assert(nav.sharesOut == null || (Number.isFinite(nav.sharesOut) && nav.sharesOut > 0), 'NAV SharesOutstanding is invalid');
+  // The holdings file (dated the next weekday) is priced at the previous NAV
+  // date and carries NetAssets = NAV x its own units to the cent, also when a
+  // creation or redemption settled after the NAV file. index.html applies the
+  // same rule client-side; the outcome is recorded in api/build.json.
+  data.navReconciliation = reconcileWagnHoldingsToNav(holdings.latest, nav);
+  data.navReconciled = data.navReconciliation.matched;
   if (!data.navReconciled) {
-    process.stderr.write('WARNING: holdings and NAV do not reconcile yet; publishing with the unverified pricing-date label.\n');
+    process.stderr.write(`WARNING: pricing date not asserted (${data.navReconciliation.reason}); publishing with the unverified pricing-date label.\n`);
   }
   const officialDalal = !!(dalal && dalal.ok === true && dalal.sourceStatus === 'official SEC verified' && !dalal.fetchError);
   const labelledFallback = !!(dalal && dalal.ok === false && dalal.fallback === true && dalal.sourceStatus === 'manual fallback — SEC verification unavailable' && dalal.fetchError);
@@ -176,7 +252,16 @@ function validateSnapshot(data, publicPositions) {
   } else {
     assert(dalal.manualVerifiedAt === config.dalalStreet.manualVerifiedAt && dalal.accession === config.dalalStreet.accession, 'Dalal fallback identity differs from the manually verified configuration');
     assert(JSON.stringify(dalal.holdings) === JSON.stringify(config.dalalStreet.holdings), 'Dalal fallback holdings differ from the manually verified configuration');
-    assert(/^\d{4}-\d{2}-\d{2}$/.test(dalal.nextFilingDeadline || '') && new Date().toISOString().slice(0, 10) <= dalal.nextFilingDeadline, 'Dalal fallback is past its next filing deadline and cannot be republished');
+    assert(/^\d{4}-\d{2}-\d{2}$/.test(dalal.nextFilingDeadline || ''), 'Dalal fallback has no next filing deadline');
+    // After the deadline a newer 13F may exist that the build could not see.
+    // Failing the whole snapshot would freeze WAGN holdings, NAV, quotes and
+    // every Fear & Greed tab as well; instead the fallback is published with an
+    // explicit flag that index.html turns into a warning, and the visitor's
+    // browser still checks SEC's submissions index for a newer accession.
+    dalal.pastFilingDeadline = new Date().toISOString().slice(0, 10) > dalal.nextFilingDeadline;
+    if (dalal.pastFilingDeadline) {
+      process.stderr.write('WARNING: the manually verified 13F fallback is past its next filing deadline and SEC could not be checked; publishing it flagged as possibly superseded.\n');
+    }
   }
   assert(perf && Array.isArray(perf.monthly) && perf.monthly.length > 0, 'performance data is incomplete');
   assert(quotes && typeof quotes === 'object' && Object.values(quotes).some(q => q && Number.isFinite(q.price)), 'all quotes are missing');
@@ -276,12 +361,39 @@ function validateSnapshot(data, publicPositions) {
   assert(crypto.asOf < new Date().toISOString().slice(0, 10), 'Crypto result includes the still-forming current UTC bar');
 }
 
+function carriedForwardComponents(marketfg) {
+  const out = [];
+  for (const [market, value] of Object.entries((marketfg && marketfg.markets) || {})) {
+    for (const [key, component] of Object.entries((value && value.components) || {})) {
+      if (component && component.lag && component.asOf) out.push(`${market}.${key}@${component.asOf}`);
+    }
+  }
+  return out.sort();
+}
+
 async function captureSnapshot(base, publicPositions) {
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const pairs = await Promise.all(ENDPOINTS.map(async name => [name, await fetchJson(`${base}/api/${name}`)]));
       const data = Object.fromEntries(pairs);
+      // Prefer a live official holdings file: retry a failed fetch before
+      // settling for the labelled last accepted receipt on the final attempt.
+      if (attempt < 3 && !(data.holdings && data.holdings.ok === true)) {
+        throw new Error(`official holdings source was not accepted: ${data.holdings && data.holdings.fetchError || 'unknown source failure'}`);
+      }
+      // Yahoo's full-history responses sometimes lag a source's newest completed
+      // bars by a day or two, in which case the model carries the affected
+      // component forward (up to fillDays) and the page labels it. A forced
+      // re-fetch sometimes returns the missing bars, so try that once; an
+      // exchange holiday produces the same lag legitimately, which is why this
+      // is a single retry and never a failure.
+      const carried = carriedForwardComponents(data.marketfg);
+      if (attempt === 1 && carried.length) {
+        throw new Error(`Fear & Greed components carried forward from earlier bars: ${carried.join(', ')}`);
+      }
+      data.carriedForwardComponents = carried;
+      if (carried.length) process.stderr.write(`WARNING: publishing with carried-forward Fear & Greed components: ${carried.join(', ')}\n`);
       validateSnapshot(data, publicPositions);
       return data;
     } catch (error) {
@@ -289,21 +401,32 @@ async function captureSnapshot(base, publicPositions) {
       if (attempt === 3) break;
       process.stderr.write(`Snapshot attempt ${attempt} failed: ${error.message}. Retrying…\n`);
       try { await fetchJson(`${base}/api/refresh?force=1`, { method: 'POST' }); } catch {}
-      await delay(attempt === 1 ? 12000 : 25000);
+      await delay(attempt === 1 ? 20000 : 40000);
     }
   }
   throw lastError;
 }
 
-function usableSnapshots(value) {
+function usableSnapshots(value, { requireProvenance = false } = {}) {
   if (!value || typeof value !== 'object') return [];
   const candidates = Array.isArray(value.snapshots) ? value.snapshots : [value.first, value.previous, value.latest];
-  return candidates.filter(snapshot => snapshot && /^\d{4}-\d{2}-\d{2}$/.test(snapshot.date || '') && snapshot.rows && typeof snapshot.rows === 'object');
+  return candidates.filter(snapshot => {
+    if (!snapshot || !/^\d{4}-\d{2}-\d{2}$/.test(snapshot.date || '') || !snapshot.rows || typeof snapshot.rows !== 'object') return false;
+    const source = snapshot.source;
+    if (source && (source.fileDate !== snapshot.date || !/^[0-9a-f]{64}$/.test(source.sha256 || ''))) return false;
+    // Only the committed repository copy may carry legacy receipts without provenance.
+    return requireProvenance ? !!source : true;
+  });
 }
+
+const capturedAtMs = snapshot => Date.parse((snapshot.source && snapshot.source.capturedAt) || '') || 0;
 
 function mergeSnapshots(...lists) {
   const byDate = new Map();
-  for (const list of lists) for (const snapshot of list || []) byDate.set(snapshot.date, snapshot);
+  for (const list of lists) for (const snapshot of list || []) {
+    const existing = byDate.get(snapshot.date);
+    if (!existing || capturedAtMs(snapshot) >= capturedAtMs(existing)) byDate.set(snapshot.date, snapshot);
+  }
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -313,7 +436,7 @@ async function loadPreviousPublishedSnapshots() {
   const parsed = new URL(url);
   assert(parsed.protocol === 'https:' && parsed.hostname === 'netic123.github.io' && parsed.pathname === '/investments/api/holdings.json', 'previous public holdings URL is not the approved GitHub Pages endpoint');
   const value = await fetchJson(url);
-  const snapshots = usableSnapshots(value);
+  const snapshots = usableSnapshots(value, { requireProvenance: true });
   assert(snapshots.length > 0, 'previous public holdings endpoint contains no reusable snapshots');
   return snapshots;
 }
@@ -346,6 +469,7 @@ function verifyArtifact(forbiddenSecrets) {
   for (const relative of actual.filter(name => name.endsWith('.json'))) {
     JSON.parse(fs.readFileSync(path.join(OUT, relative), 'utf8'));
   }
+  verifyStaticPage(fs.readFileSync(path.join(OUT, 'index.html'), 'utf8'));
   for (const secret of forbiddenSecrets) {
     for (const relative of actual) {
       const bytes = fs.readFileSync(path.join(OUT, relative));
@@ -391,6 +515,9 @@ async function main() {
   const forbiddenSecrets = ['GH_TOKEN', 'GITHUB_TOKEN']
     .map(name => process.env[name]).filter(value => typeof value === 'string' && value.length >= 8);
 
+  // Fail before any network work if the page itself cannot run.
+  checkInlineScript(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
+
   const committedSnapshots = fs.existsSync(path.join(ROOT, 'data', 'snapshots.json'))
     ? usableSnapshots({ snapshots: JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'snapshots.json'), 'utf8')) })
     : [];
@@ -413,6 +540,11 @@ async function main() {
     for (const name of ['PATH', 'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL', 'TZ', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'NODE_EXTRA_CA_CERTS']) {
       if (process.env[name]) childEnv[name] = process.env[name];
     }
+    // SEC asks automated clients to identify themselves; an optional repository
+    // variable supplies a real contact. It is validated here so a rejected
+    // value (anything mentioning github.com/github.io) fails loudly instead of
+    // silently degrading every build to the manual 13F fallback.
+    if (process.env.SEC_USER_AGENT && process.env.SEC_USER_AGENT.trim()) childEnv.SEC_USER_AGENT = secUserAgent(process.env.SEC_USER_AGENT);
     child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
       cwd: ROOT,
       windowsHide: true,
@@ -436,21 +568,31 @@ async function main() {
       generatedAt,
       commit: process.env.GITHUB_SHA || gitValue(['rev-parse', 'HEAD']),
       ref: process.env.GITHUB_REF_NAME || gitValue(['branch', '--show-current']),
+      // A local build may run on uncommitted changes; the commit alone would then overstate provenance.
+      dirty: process.env.GITHUB_SHA ? false : gitValue(['status', '--porcelain'], '') !== '',
       dataMode: 'build-time snapshot',
       watchlist: 'public-no-entry-prices',
-      refreshTrigger: 'push to main, manual dispatch, or daily scheduled build',
+      refreshTrigger: 'push to main, manual dispatch, or the scheduled builds (09:15 UTC daily and 21:35 UTC Mon-Fri; GitHub may start them hours late)',
+      snapshotStaleAfterHours: SNAPSHOT_STALE_AFTER_HOURS,
       carriedSnapshotCount: carriedSnapshots.length,
-      dalalVerification: data.dalal.ok ? 'official SEC fetched and validated' : `labelled manual fallback verified ${data.dalal.manualVerifiedAt}; live SEC check failed`,
+      holdingsSource: data.holdingsSource,
+      carriedForwardComponents: data.carriedForwardComponents,
+      dalalVerification: data.dalal.ok
+        ? 'official SEC fetched and validated'
+        : `labelled manual fallback verified ${data.dalal.manualVerifiedAt}; live SEC check failed (${data.dalal.fetchError})${data.dalal.pastFilingDeadline ? '; past the next filing deadline, a newer filing may exist' : ''}`,
       navReconciliation: data.navReconciled
-        ? 'holdings NetAssets and SharesOutstanding reconcile to the official NAV receipt'
-        : 'holdings and NAV do not reconcile yet; the page labels the pricing date as not asserted',
+        ? (data.navReconciliation.mode === 'exact'
+          ? `holdings NetAssets and SharesOutstanding reconcile to the official NAV receipt dated ${data.navReconciliation.navDate}`
+          : data.navReconciliation.unitChange
+            ? `holdings NetAssets per unit reconcile to the official NAV dated ${data.navReconciliation.navDate}; ${data.navReconciliation.unitChange} units were created/redeemed after that NAV file`
+            : `holdings NetAssets per unit reconcile to the official NAV dated ${data.navReconciliation.navDate}${data.navReconciliation.navFileShares == null ? ' (the NAV file carried no unit count)' : ''}`)
+        : `pricing date not asserted: ${data.navReconciliation.reason}`,
+      navReconciliationMode: data.navReconciliation.mode,
     };
 
     prepareOutput();
     const sourceHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-    const marker = '<meta name="investments-mode" content="local">';
-    assert(sourceHtml.split(marker).length === 2, 'index.html must contain exactly one local-mode marker');
-    fs.writeFileSync(path.join(OUT, 'index.html'), sourceHtml.replace(marker, '<meta name="investments-mode" content="static">'), 'utf8');
+    fs.writeFileSync(path.join(OUT, 'index.html'), staticPageHtml(sourceHtml), 'utf8');
     fs.writeFileSync(path.join(OUT, '.nojekyll'), '', 'utf8');
     for (const name of ENDPOINTS) writeJson(path.join(API_OUT, `${name}.json`), data[name]);
     writeJson(path.join(API_OUT, 'build.json'), build);
@@ -467,7 +609,9 @@ async function main() {
   }
 }
 
-main().catch(error => {
+module.exports = { STATIC_CSP_DIRECTIVES, SNAPSHOT_STALE_AFTER_HOURS, checkInlineScript, inlineScript, mergeSnapshots, staticCsp, staticPageHtml, usableSnapshots, verifyStaticPage };
+
+if (require.main === module) main().catch(error => {
   process.stderr.write(`Pages build failed: ${error.stack || error.message || error}\n`);
   process.exitCode = 1;
 });

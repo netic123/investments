@@ -11,6 +11,7 @@ const {
   fetchDalalStreet13f,
   fetchResource: fetchSourceResource,
   diffWagnSnapshots,
+  isOlderSameDateRevision,
   normalizeWagnHoldings,
   selectWagnNavObservation,
   validateWagnHoldingsFreshness,
@@ -176,8 +177,19 @@ async function getHoldingsOnce() {
     source.ageDays = freshness.ageDays;
     source.maximumFutureDate = freshness.maximumFutureDate;
     source.futureDateAccepted = freshness.futureDateAccepted;
+    // Persist the fact that the fund published this file ahead of its own
+    // date (Saturday for Monday) so the page can say so after the fact.
+    live.source.futureDateAccepted = freshness.futureDateAccepted;
+    live.source.ageDaysAtCapture = freshness.ageDays;
     if (savedLatestBeforeFetch && live.date < savedLatestBeforeFetch.date) {
       throw new Error(`official holdings source regressed from saved ${savedLatestBeforeFetch.date} to ${live.date}`);
+    }
+    // The same file date served again with different bytes is a revision only
+    // if it is at least as new as the receipt already saved; an older copy
+    // re-served by the vendor must not overwrite the newer one.
+    const savedSameDay = snaps.find(s => s.date === live.date);
+    if (savedSameDay && isOlderSameDateRevision(savedSameDay.source, live.source)) {
+      throw new Error(`official holdings source served an older revision of ${live.date} (Last-Modified ${live.source.lastModified} is before the saved ${savedSameDay.source.lastModified})`);
     }
   } catch (e) {
     fetchError = String(e.message || e);
