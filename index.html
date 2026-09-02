@@ -392,11 +392,15 @@ const LIVE_AUTO_KEY='investments.liveUpdateAutoMinutes';
 const liveAutoMinutes=()=>{ try{ const v=Number(localStorage.getItem(LIVE_AUTO_KEY)); return Number.isFinite(v)&&v>=5?Math.min(720,Math.round(v)):0; }catch{ return 0; } };
 const setLiveAutoMinutes=v=>{ try{ if(v>0) localStorage.setItem(LIVE_AUTO_KEY,String(v)); else localStorage.removeItem(LIVE_AUTO_KEY); return true; }catch{ return false; } };
 let LIVE_RUNNING=false, LIVE_LAST_AUTO=0;
+// The button is only shown to the owner: open the page once with #owner in the address (remembered for this
+// browser session) or have a token stored. Visitors see the plain "Reload snapshot" button. The hash is read
+// here, before the tab router replaces it.
+const OWNER_MODE=(()=>{ let on=/(^|[#&,])owner\b/.test(location.hash); try{ if(on) sessionStorage.setItem('investments.owner','1'); else on=sessionStorage.getItem('investments.owner')==='1'; }catch{} return on; })();
 const sleep=ms=>new Promise(res=>setTimeout(res,ms));
 function renderLivePanel(message,isError){
   if(!STATIC_BUILD) return;
   const panel=$('#livePanel'), btn=$('#btnLive'), gear=$('#btnLiveSettings'), token=liveToken();
-  btn.hidden=false; btn.textContent = token ? 'Update (rebuild)' : 'Live update…';
+  btn.hidden=!(token||OWNER_MODE); btn.textContent = token ? 'Update (rebuild)' : 'Live update…';
   btn.title = token ? 'Start a fresh build on GitHub (about 2–4 minutes) and reload this page when it is deployed' : 'Owner: set up a token to rebuild the snapshot on demand';
   gear.hidden=!token;
   if(!panel.dataset.open){ panel.hidden=true; return; }
