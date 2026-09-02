@@ -103,7 +103,7 @@
     { "date": "2026-10-22", "label": "TCMB rate decision (Turkey is {TR} of the fund)" },
     { "date": "2026-10-28", "label": "Kaspi Q3 report (Avanza estimate — company date not announced)", "approx": true },
     { "date": "2026-10-30", "label": "Warrior Met Q3 report (Avanza estimate — company date not announced)", "approx": true },
-    { "date": "2026-10-31", "label": "DOJ certification RIG/VAL must happen ~now for a 2026 close (back-calculated from the 60-day wait after certification; none announced as of the 20 Aug 8-K)", "approx": true },
+    { "date": "2026-10-20", "label": "Earliest RIG/VAL closing under the DOJ commitment: 60 days after both certified substantial compliance with the second request (Valaris earlier in Aug; Transocean after the close on 21 Aug per a CTFN report of 24 Aug, not yet confirmed from a primary filing). DOJ may end the wait earlier; other regulatory approvals and shareholder votes are still needed", "approx": true },
     { "date": "2026-11-06", "label": "Constellation Q3 report (Avanza estimate — company date not announced)", "approx": true },
     { "date": "2026-11-16", "label": "SEC deadline for Dalal Street Q3 13F (may be filed earlier)" }
   ],
@@ -127,8 +127,9 @@
     "EDEL IN":   { "name": "Edelweiss Financial",         "flag": "🇮🇳", "avanza": "nej" },
     "NUVAMA IN": { "name": "Nuvama Wealth",               "flag": "🇮🇳", "avanza": "nej" },
     "SGN PW":    { "name": "Sygnity",                     "flag": "🇵🇱", "avanza": "telefon" },
+    "ODL NO":    { "name": "Odfjell Drilling",           "flag": "🇳🇴", "avanza": "online" },
     "FXFXX":     { "name": "Money market fund (cash)", "flag": "💵", "avanza": "—" }
   },
-  "cashTickers": ["CAD", "PLN", "TRY", "USD", "EUR", "INR", "Cash&Other"],
+  "cashTickers": ["CAD", "PLN", "TRY", "USD", "EUR", "INR", "NOK", "Cash&Other"],
   "cashLike": ["FXFXX"]
 }
