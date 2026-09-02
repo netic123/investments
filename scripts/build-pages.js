@@ -395,10 +395,20 @@ function carriedForwardComponents(marketfg) {
   const out = [];
   for (const [market, value] of Object.entries((marketfg && marketfg.markets) || {})) {
     for (const [key, component] of Object.entries((value && value.components) || {})) {
-      if (component && component.lag && component.asOf) out.push(`${market}.${key}@${component.asOf}`);
+      if (component && component.lag && component.asOf) out.push(`${market}.${key}@${component.asOf}${component.lagDetail ? ` (${component.lagDetail})` : ''}`);
     }
   }
   return out.sort();
+}
+
+function recentBarTopUps(marketfg) {
+  const out = new Map();
+  for (const value of Object.values((marketfg && marketfg.markets) || {})) {
+    for (const [symbol, topUp] of Object.entries((value && value.recentBarTopUps) || {})) {
+      if (topUp && topUp.appended > 0) out.set(symbol, `${symbol} +${topUp.appended} (${topUp.from}..${topUp.to})`);
+    }
+  }
+  return [...out.values()].sort();
 }
 
 async function captureSnapshot(base, publicPositions) {
@@ -423,6 +433,8 @@ async function captureSnapshot(base, publicPositions) {
         throw new Error(`Fear & Greed components carried forward from earlier bars: ${carried.join(', ')}`);
       }
       data.carriedForwardComponents = carried;
+      data.recentBarTopUps = recentBarTopUps(data.marketfg);
+      if (data.recentBarTopUps.length) process.stderr.write(`NOTE: recent bars appended from short-range requests: ${data.recentBarTopUps.join(', ')}\n`);
       if (carried.length) process.stderr.write(`WARNING: publishing with carried-forward Fear & Greed components: ${carried.join(', ')}\n`);
       validateSnapshot(data, publicPositions);
       return data;
@@ -601,6 +613,13 @@ async function main() {
       // A local build may run on uncommitted changes; the commit alone would then overstate provenance.
       dirty: process.env.GITHUB_SHA ? false : gitValue(['status', '--porcelain'], '') !== '',
       trigger: process.env.INVESTMENTS_BUILD_TRIGGER || (process.env.GITHUB_SHA ? 'unknown' : 'local'),
+      // The Actions run that produced this snapshot (its log is public), and
+      // how to verify GitHub's signed provenance statement for each file.
+      runId: process.env.GITHUB_RUN_ID || null,
+      runUrl: process.env.GITHUB_RUN_ID && process.env.GITHUB_REPOSITORY
+        ? `${process.env.GITHUB_SERVER_URL || 'https://github.com'}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
+        : null,
+      attestation: process.env.GITHUB_RUN_ID ? 'GitHub artifact attestation; verify a downloaded file with: gh attestation verify <file> --owner netic123' : null,
       schedule: process.env.INVESTMENTS_BUILD_SCHEDULE || null,
       reason: process.env.INVESTMENTS_BUILD_REASON || null,
       testsSkipped: process.env.INVESTMENTS_BUILD_TESTS_SKIPPED === 'true',
@@ -611,6 +630,7 @@ async function main() {
       carriedSnapshotCount: carriedSnapshots.length,
       holdingsSource: data.holdingsSource,
       carriedForwardComponents: data.carriedForwardComponents,
+      recentBarTopUps: data.recentBarTopUps,
       dalalVerification: data.dalal.ok
         ? 'official SEC fetched and validated'
         : `labelled manual fallback verified ${data.dalal.manualVerifiedAt}; live SEC check failed (${data.dalal.fetchError})${data.dalal.pastFilingDeadline ? '; past the next filing deadline, a newer filing may exist' : ''}`,
@@ -630,11 +650,17 @@ async function main() {
     fs.writeFileSync(path.join(OUT, 'index.html'), staticPageHtml(sourceHtml), 'utf8');
     fs.writeFileSync(path.join(OUT, '.nojekyll'), '', 'utf8');
     for (const name of ENDPOINTS) writeJson(path.join(API_OUT, `${name}.json`), data[name]);
+    // Digests of every published file except build.json itself, so a reader can
+    // check that what the CDN serves is what this run produced; the workflow's
+    // attestation step signs the same files.
+    build.files = Object.fromEntries(['index.html', ...ENDPOINTS.map(name => `api/${name}.json`)].map(relative => [
+      relative, crypto.createHash('sha256').update(fs.readFileSync(path.join(OUT, relative))).digest('hex'),
+    ]));
     writeJson(path.join(API_OUT, 'build.json'), build);
     verifyArtifact(forbiddenSecrets);
 
     const totalBytes = artifactFiles(OUT).reduce((sum, file) => sum + fs.statSync(path.join(OUT, file)).size, 0);
-    process.stdout.write(`${JSON.stringify({ ok: true, output: '_site', files: EXPECTED_FILES.length, bytes: totalBytes, ...build })}\n`);
+    process.stdout.write(`${JSON.stringify({ ok: true, output: '_site', fileCount: EXPECTED_FILES.length, bytes: totalBytes, ...build })}\n`);
   } catch (error) {
     if (logs.text) process.stderr.write(`Snapshot server log:\n${logs.text}\n`);
     throw error;

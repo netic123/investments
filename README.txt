@@ -58,6 +58,17 @@ fails the build loudly instead of silently degrading every build to the fallback
 The generated _site directory is ignored by Git and is an explicit allowlist; research files, backend code,
 configuration files and repository metadata are not included in the deployed artifact.
 
+PROVENANCE AND BUILD HISTORY
+api/build.json names the commit, the trigger and the Actions run that produced the snapshot (runId, runUrl),
+and lists the SHA-256 of index.html and every api/*.json it published (files). The workflow also runs
+actions/attest-build-provenance on those files, so GitHub signs a provenance statement binding each digest to
+that run and commit; anyone can check a downloaded file with "gh attestation verify <file> --owner netic123".
+The page's About line links the run and explains this. A "Build history" section on the Pabrai tab reads the
+last 20 workflow runs live from GitHub's public Actions API (unauthenticated, CORS-enabled, 60 requests per
+hour per address, nothing is sent) and shows started time, trigger, result and duration with a link to each
+log, including runs that failed and therefore published nothing; that is the reliability record behind the
+status line's age warning.
+
 LIVE UPDATE ON THE PUBLIC SITE (owner only)
 GitHub Pages has no server, and the fund's FilePoint files and Yahoo send no CORS headers, so a browser cannot
 fetch them directly; "live" on the public site therefore means a fresh build. Visitors never see this: the
@@ -179,7 +190,17 @@ HOW IT WORKS
   never moves during a trading session, and Crypto uses completed UTC dates. When a component's source has no
   bar for the benchmark's date (a different exchange, or a lagging Yahoo history), its latest score is carried
   forward for at most fillDays (seven calendar days) and the page says which components are carried.
-  The primary Yahoo chart host is retried against Yahoo's second chart host when needed; the selected hostname
+  Yahoo's feed can lack a day for some ETFs: on 2 Sep 2026 it listed 1 Sep for the Xetra and Stockholm ETFs
+  with no close and listed no 1 Sep bar at all for the London ones, on both of its chart endpoints, and back-
+  filled some of them later in the day. Such a component is carried forward (fillDays) and the page and
+  api/build.json (carriedForwardComponents) say which series and which date, and whether Yahoo returned no
+  close or no bar; the half-hourly builds pick the bars up once Yahoo publishes them. As a further safeguard,
+  after each full-history fetch a short-range request (3mo) is made and bars strictly after the full history's
+  last date are appended, only when both responses agree on their last shared close (so differently adjusted
+  series are never mixed); this only helps when the full-history endpoint alone trails, and api/build.json
+  lists any such top-up (recentBarTopUps). Research replays and the lockbox collectors do not use the top-up:
+  they keep the exact single full-history request their frozen capture contracts expect. The primary Yahoo chart host is retried against Yahoo's
+  second chart host when needed; the selected hostname
   for every symbol and full-history input digests are included in the public signal record. Yahoo's hosts are
   not assumed byte-identical or immutable, and its chart feed has no contractual public API/SLA, so availability
   and historical revision remain real limitations. The NAV chart covers the fund's whole life (since 29 Sep 2023;

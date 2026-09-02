@@ -140,28 +140,63 @@ async function fetchSeries(symbol, range, signal) {
     quoteClose.every((c, i) => !(Number.isFinite(c) && c > 0) || (Number.isFinite(adjClose[i]) && adjClose[i] > 0));
   const closes = adjusted ? adjClose : quoteClose;
   const byDate = new Map();
+  const missingClose = new Set(); // bars Yahoo lists without a usable close (a data gap, not a closed exchange)
   for (let i = 0; i < ts.length; i++) {
     const c = closes[i];
-    if (c == null || !Number.isFinite(c) || c <= 0) continue;
-    byDate.set(dateFormatter.format(new Date(ts[i] * 1000)), c); // exchange-local date as YYYY-MM-DD (sv-SE gives ISO order); same day twice → latest wins
+    const date = dateFormatter.format(new Date(ts[i] * 1000)); // exchange-local date as YYYY-MM-DD (sv-SE gives ISO order)
+    if (c == null || !Number.isFinite(c) || c <= 0) { missingClose.add(date); continue; }
+    byDate.set(date, c); // same day twice → latest wins
   }
+  for (const date of byDate.keys()) missingClose.delete(date);
+  const missingCloseDates = [...missingClose].sort().slice(-40);
   const rows = [...byDate.entries()].map(([date, close]) => ({ date, close })).sort((a, b) => a.date.localeCompare(b.date));
   if (rows.length < 30) throw new Error(`too little history from Yahoo (${symbol}: ${rows.length} days)`);
   const reg = (meta.currentTradingPeriod || {}).regular || null;
   const now = Date.now() / 1000;
   return {
     symbol, name: String(meta.longName || meta.shortName || symbol).replace(/\s+/g, ' ').trim(), currency: meta.currency || null, tz, rows, adjusted,
+    missingCloseDates,
     lastDate: rows[rows.length - 1].date,
     intraday: !!(reg && Number.isFinite(reg.start) && now >= reg.start && now <= reg.end),
     fetchedAt: new Date().toISOString(), sourceHost: acquired.host, providerSymbol: meta.symbol,
   };
 }
 
-function getSeries(symbol, range, signal) {
-  const cacheKey = `${symbol}\u0000${range}`;
+// Yahoo's full-history endpoint (period1=0) sometimes trails a symbol's newest
+// completed bars by a day or two, London- and Stockholm-listed ETFs above all,
+// while a short-range request already has them. Append only bars strictly
+// after the full history's last date, and only when the short response agrees
+// with the full history on their last shared bar, so differently adjusted
+// series are never mixed. The full-history request itself is unchanged; the
+// top-up is recorded on the series so the page and build.json can say so.
+const TOP_UP_RANGE = '3mo'; // fetchSeries wants at least 30 rows; one month of trading days is fewer
+async function topUpRecentBars(series, signal) {
+  if (!series || !Array.isArray(series.rows) || !series.rows.length) return series;
+  let recent;
+  try { recent = await fetchSeries(series.symbol, TOP_UP_RANGE, signal); }
+  catch (error) { return { ...series, topUp: { appended: 0, reason: `short-range request failed: ${String(error && error.message || error)}` } }; }
+  if (recent.adjusted !== series.adjusted) return { ...series, topUp: { appended: 0, reason: 'adjustment basis differs' } };
+  const last = series.rows[series.rows.length - 1];
+  const shared = recent.rows.find(row => row.date === last.date);
+  if (!shared || Math.abs(shared.close / last.close - 1) > 1e-6) return { ...series, topUp: { appended: 0, reason: 'no agreeing overlap' } };
+  const extra = recent.rows.filter(row => row.date > last.date);
+  if (!extra.length) return { ...series, topUp: { appended: 0 } };
+  const rows = [...series.rows, ...extra];
+  return { ...series, rows, lastDate: rows[rows.length - 1].date, topUp: { appended: extra.length, from: extra[0].date, to: extra[extra.length - 1].date, host: recent.sourceHost, range: TOP_UP_RANGE } };
+}
+
+// topUp is opt-in: the public site asks for it; research replays and the
+// lockbox collectors keep the exact single full-history request their frozen
+// capture contracts expect.
+function getSeries(symbol, range, signal, topUp = false) {
+  const withTopUp = range === 'max' && topUp;
+  const cacheKey = `${symbol}\u0000${range}${withTopUp ? '\u0000topup' : ''}`;
   const hit = seriesCache.get(cacheKey);
   if (hit && Date.now() - hit.t < SERIES_TTL_MS) return hit.p;
-  const p = fetchSeries(symbol, range, signal).then(s => { lastGood.set(cacheKey, s); return s; }, e => {
+  const acquire = withTopUp
+    ? fetchSeries(symbol, range, signal).then(s => topUpRecentBars(s, signal))
+    : fetchSeries(symbol, range, signal);
+  const p = acquire.then(s => { lastGood.set(cacheKey, s); return s; }, e => {
     seriesCache.delete(cacheKey);
     const g = lastGood.get(cacheKey);
     if (g) return { ...g, stale: true, fetchError: String(e.message || e) };
@@ -490,6 +525,25 @@ function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, a
   });
 }
 
+// Explains a carried-forward component: for each benchmark date the component
+// missed, which of its source series lacked that date and how — Yahoo listed
+// the bar without a close (a feed gap) or listed no bar at all (exchange
+// closed, or not yet published).
+function lagDetailFor(gapDates, symbols, sources) {
+  const parts = [];
+  for (const symbol of symbols) {
+    const series = sources.get(symbol);
+    if (!series || !Array.isArray(series.rows)) continue;
+    const have = new Set(series.rows.map(row => row.date));
+    const missing = new Set(series.missingCloseDates || []);
+    const noClose = gapDates.filter(date => !have.has(date) && missing.has(date));
+    const noBar = gapDates.filter(date => !have.has(date) && !missing.has(date));
+    if (noClose.length) parts.push(`${symbol}: Yahoo returned no close for ${noClose.join(', ')}`);
+    if (noBar.length) parts.push(`${symbol}: Yahoo has no bar for ${noBar.join(', ')}`);
+  }
+  return parts.length ? parts.join('; ') : null;
+}
+
 // ---------- one market ----------
 function computeMarket(key, m, S, opt) {
   const percentileMode = opt.percentileMode || 'trailing-window';
@@ -586,7 +640,10 @@ function computeMarket(key, m, S, opt) {
       score: p ? round1(p.score) : null, label: p ? scoreLabel(p.score) : null, raw: p ? round1(p.raw) : null, asOf: p ? p.asOf : null,
       symbols: c.symbols, names: c.names, note: c.note,
       stale: !!c.stale,                         // fallback series: Yahoo did not respond at the last fetch
-      lag: !!(p && p.asOf !== last.date),       // older date than the index (other exchange closed) — not an error
+      lag: !!(p && p.asOf !== last.date),       // older date than the index (other exchange closed, or a feed gap) — not an error
+      lagDetail: p && p.asOf !== last.date
+        ? lagDetailFor(idx.rows.filter(row => row.date > p.asOf && row.date <= last.date).map(row => row.date), c.symbols, marketSources)
+        : null,
     };
   }
   const expandingSignal = opt.includeExpandingSignal
@@ -611,6 +668,11 @@ function computeMarket(key, m, S, opt) {
       week: week ? round1(week.score) : null, weekDate: week ? week.date : null, month: month ? round1(month.score) : null, monthDate: month ? month.date : null,
       year: year ? round1(year.score) : null, yearDate: year ? year.date : null },
     components, warnings,
+    // Which of this market's raw series had newer bars appended from a short-range request (see topUpRecentBars).
+    recentBarTopUps: Object.fromEntries([...new Set(Object.values(sym).flatMap(spec => collectSpecSymbols(spec)))]
+      .map(symbol => [symbol, marketSources.get(symbol)])
+      .filter(([, series]) => series && series.topUp && series.topUp.appended > 0)
+      .map(([symbol, series]) => [symbol, { appended: series.topUp.appended, from: series.topUp.from, to: series.topUp.to }])),
     ...(expandingSignal ? { expandingSignal } : {}),
     mapping: {
       barPolicy: opt.includeExpandingSignal && [...marketSources.values()].some(series => series && series.completedBeforeLocalDate)
@@ -663,7 +725,9 @@ async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
   let deadline;
   let fetched;
   try {
-    const fetchWork = mapLimit(symbols, opt.concurrency, s => getSeries(s, opt.range, ac.signal).then(v => ({ ok: true, v }), e => ({ ok: false, e: String(e.message || e) })));
+    // Only the public snapshot tops up trailing full histories (see topUpRecentBars).
+    const topUp = !!includeExpandingSignal && opt.topUpRecentBars !== false;
+    const fetchWork = mapLimit(symbols, opt.concurrency, s => getSeries(s, opt.range, ac.signal, topUp).then(v => ({ ok: true, v }), e => ({ ok: false, e: String(e.message || e) })));
     const hardDeadline = new Promise((_, reject) => {
       deadline = setTimeout(() => {
         ac.abort(deadlineError);
@@ -736,7 +800,7 @@ async function getMarketFearGreedResearchHistory(cfg) {
 
 module.exports = {
   getMarketFearGreed, getMarketFearGreedResearchHistory, clearCache,
-  LABELS, COMPONENTS, labelOf, pctScores, expandingPctScores, computeMarket, fetchSeries,
+  LABELS, COMPONENTS, labelOf, pctScores, expandingPctScores, computeMarket, fetchSeries, topUpRecentBars, lagDetailFor,
   hashPublicDecision, hashPublishedScoreHistory, makeExchangeDateFormatter,
   collectSpecSymbols, equalWeightReturnSeries, resolveSeriesSpec, beforeUtcDate, beforeRetrievalLocalDate,
   buildPublicExpandingSignal,

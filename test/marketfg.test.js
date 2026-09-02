@@ -289,6 +289,95 @@ test('Yahoo acquisition retries the independent chart host without changing the 
   }
 });
 
+test('newer bars from a short-range request top up a trailing full history only when the overlap agrees', async () => {
+  const { topUpRecentBars } = require('../marketfg');
+  const originalFetch = global.fetch;
+  const day = 86400, first = Date.parse('2020-01-01T00:00:00Z') / 1000;
+  const full = Array.from({ length: 40 }, (_, i) => first + i * day);
+  const closes = full.map((_, i) => 100 + i);
+  const short = Array.from({ length: 35 }, (_, i) => first + (7 + i) * day); // overlaps the last 33, adds 2
+  let shortCloses = short.map((_, i) => 107 + i);
+  const chart = (timestamps, values) => ({ ok: true, status: 200, json: async () => ({ chart: { result: [{
+    meta: { symbol: 'TOPUP-TEST', longName: 'Top-up fixture', currency: 'USD', exchangeTimezoneName: 'UTC' },
+    timestamp: timestamps, indicators: { quote: [{ close: values }], adjclose: [{ adjclose: values }] },
+  }], error: null } }) });
+  const calls = [];
+  global.fetch = async url => { calls.push(String(url)); return /[?&]range=3mo/.test(String(url)) ? chart(short, shortCloses) : chart(full, closes); };
+  try {
+    const base = await fetchSeries('TOPUP-TEST', 'max');
+    const topped = await topUpRecentBars(base);
+    assert.equal(topped.rows.length, 42);
+    assert.deepEqual(topped.topUp, { appended: 2, from: '2020-02-10', to: '2020-02-11', host: 'query1.finance.yahoo.com', range: '3mo' });
+    assert.equal(topped.lastDate, '2020-02-11');
+    assert.match(calls[calls.length - 1], /[?&]range=3mo(?:&|$)/);
+    assert.match(calls[calls.length - 1], /[?&]interval=1d(?:&|$)/);
+    assert.equal(base.rows.length, 40, 'the full-history series itself is not mutated');
+    // a short response that disagrees on the shared bar must not be trusted
+    shortCloses = short.map((_, i) => 108 + i);
+    const disagreeing = await topUpRecentBars(base);
+    assert.equal(disagreeing.rows.length, 40);
+    assert.deepEqual(disagreeing.topUp, { appended: 0, reason: 'no agreeing overlap' });
+    // nothing newer: nothing appended, no error
+    shortCloses = short.map((_, i) => 107 + i);
+    const nothingNew = await topUpRecentBars({ ...base, rows: topped.rows });
+    assert.deepEqual(nothingNew.topUp, { appended: 0 });
+    // a failing short-range request leaves the full history untouched
+    global.fetch = async url => { if (/[?&]range=3mo/.test(String(url))) throw new Error('boom'); return chart(full, closes); };
+    const failed = await topUpRecentBars(base);
+    assert.equal(failed.rows.length, 40);
+    assert.match(failed.topUp.reason, /short-range request failed/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('research acquisition never adds the short-range top-up request', async () => {
+  const originalFetch = global.fetch;
+  const urls = [];
+  const first = Date.parse('2020-01-01T00:00:00Z') / 1000;
+  const timestamps = Array.from({ length: 40 }, (_, i) => first + i * 86400);
+  const closes = timestamps.map((_, i) => 100 + i);
+  global.fetch = async url => { urls.push(String(url)); return { ok: true, status: 200, json: async () => ({ chart: { result: [{
+    meta: { symbol: 'TOPUP-OFF-TEST', longName: 'No top-up fixture', currency: 'USD', exchangeTimezoneName: 'UTC' },
+    timestamp: timestamps, indicators: { quote: [{ close: closes }], adjclose: [{ adjclose: closes }] },
+  }], error: null } }) }; };
+  clearCache();
+  try {
+    await getMarketFearGreedResearchHistory({ range: 'max', timeoutMs: 2000, concurrency: 1, markets: { usa: { name: 'USA', symbols: { index: 'TOPUP-OFF-TEST' } } } });
+    assert.equal(urls.length, 1, 'exactly one full-history request');
+    assert.match(urls[0], /[?&]period1=0(?:&|$)/);
+    assert.doesNotMatch(urls[0], /[?&]range=/);
+  } finally {
+    clearCache();
+    global.fetch = originalFetch;
+  }
+});
+
+test('a carried-forward component says whether Yahoo returned no close or no bar for the missed dates', async () => {
+  const { lagDetailFor } = require('../marketfg');
+  const originalFetch = global.fetch;
+  const day = 86400, first = Date.parse('2020-01-01T00:00:00Z') / 1000;
+  const timestamps = Array.from({ length: 40 }, (_, i) => first + i * day);
+  const closes = timestamps.map((_, i) => (i === 38 ? null : 100 + i)); // Yahoo lists 2020-02-08 without a close
+  global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ chart: { result: [{
+    meta: { symbol: 'GAP-TEST', longName: 'Gap fixture', currency: 'USD', exchangeTimezoneName: 'UTC' },
+    timestamp: timestamps, indicators: { quote: [{ close: closes }], adjclose: [{ adjclose: closes }] },
+  }], error: null } }) });
+  try {
+    const series = await fetchSeries('GAP-TEST', 'max');
+    assert.equal(series.rows.length, 39);
+    assert.deepEqual(series.missingCloseDates, ['2020-02-08']);
+    const sources = new Map([['GAP-TEST', series]]);
+    assert.equal(lagDetailFor(['2020-02-08'], ['GAP-TEST'], sources), 'GAP-TEST: Yahoo returned no close for 2020-02-08');
+    assert.equal(lagDetailFor(['2020-02-10', '2020-02-11'], ['GAP-TEST'], sources), 'GAP-TEST: Yahoo has no bar for 2020-02-10, 2020-02-11');
+    assert.equal(lagDetailFor(['2020-02-08', '2020-02-10'], ['GAP-TEST'], sources), 'GAP-TEST: Yahoo returned no close for 2020-02-08; GAP-TEST: Yahoo has no bar for 2020-02-10');
+    assert.equal(lagDetailFor(['2020-02-09'], ['GAP-TEST'], sources), null, 'a date the series has is not the cause');
+    assert.equal(lagDetailFor(['2020-02-10'], ['SYNTHETIC-ID'], sources), null, 'unknown sources are skipped');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test('Yahoo acquisition rejects a response bound to the wrong provider symbol on both hosts', async () => {
   const originalFetch = global.fetch;
   let calls = 0;
