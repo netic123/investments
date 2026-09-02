@@ -93,6 +93,32 @@ the snapshot is older than that (checked on load and on the 10-minute refresh), 
 and follows an already queued or running build instead of starting another. The setting is stored in the same
 browser (key investments.liveUpdateAutoMinutes).
 
+EXTERNAL CRON (a schedule GitHub cannot delay)
+GitHub starts this repository's scheduled runs hours late (2 to 8 hours for both workflows in late August and
+early September 2026; on 2 Sep 2026 no scheduled Pages run had started by 12:00 UTC despite half-hourly
+slots), so the reliable way to keep the public snapshot fresh on a clock is an external cron that sends the
+same workflow_dispatch the page's "Update (rebuild)" button sends. scripts/dispatch-build.js does exactly that:
+
+  GITHUB_DISPATCH_TOKEN=github_pat_... node scripts/dispatch-build.js "external cron"
+
+For a hosted cron (for example cron-job.org, free) configure a job with:
+  URL:      https://api.github.com/repos/netic123/investments/actions/workflows/pages.yml/dispatches
+  Method:   POST
+  Headers:  Accept: application/vnd.github+json
+            Authorization: Bearer <fine-grained token>
+            X-GitHub-Api-Version: 2022-11-28
+            Content-Type: application/json
+  Body:     {"ref":"main","inputs":{"skip_tests":"true","reason":"external cron"}}
+  Schedule: every 30 minutes, 05:20-22:50 UTC Monday-Friday (or whatever you prefer); expected answer 204.
+The token: GitHub -> Settings -> Developer settings -> Personal access tokens -> Fine-grained tokens; resource
+owner netic123; repository access "Only select repositories" -> investments; repository permission Actions:
+Read and write (Metadata: Read is added automatically); nothing else; an expiry you are comfortable with. It
+lives only in the cron service's job settings and can start builds of this repository, nothing more; revoke it
+there and on GitHub to stop. Each dispatch queues one build (about two minutes without the test suite; the
+workflow's concurrency group serialises overlapping builds), and api/build.json records trigger
+"workflow_dispatch" with the reason, which the page's About line shows. GitHub's own schedule stays in place
+as a fallback; when both fire, the later one simply queues behind the earlier.
+
 YOUR FOCUSED WATCHLIST
 Copy data/positions.example.json to data/positions.local.json and enter display ticker, exact WAGN ticker
 (fundTicker, when different), Yahoo symbol, entry price and currency. That file is gitignored and is never
