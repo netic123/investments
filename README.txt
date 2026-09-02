@@ -12,10 +12,12 @@ Public site: https://netic123.github.io/investments/
 Every push to main — including a merged pull request, but not commits marked [skip ci] such as the lockbox
 records — plus a manual dispatch and the schedules run .github/workflows/pages.yml. The schedules keep the
 public snapshot fresh on their own: 09:20 UTC every day (after the NAV file; this slot also runs the test
-suite) and hourly at :20 from 05:20 to 22:20 UTC Monday–Friday (without the suite, which already ran on the
-push that deployed the code). In August 2026 GitHub started the single daily run 5–11 hours after its cron
-time and two of the five scheduled builds between 28 Aug and 1 Sep failed, leaving the site a day stale; with
-an hourly slot a late start still lands within the hour and a transient failure costs an hour. Fear & Greed
+suite) and every 30 minutes, at :20 and :50, from 05:20 to 22:50 UTC Monday–Friday (without the suite, which
+already ran on the push that deployed the code). In August 2026 GitHub started the single daily run 5–11 hours
+after its cron time and two of the five scheduled builds between 28 Aug and 1 Sep failed, leaving the site a
+day stale; with a half-hourly slot a late start still lands within the half hour and a transient failure
+costs half an hour. A build without the suite takes about two minutes of runner time, which is free for a
+public repository; each one fetches the fund files, the 33 Yahoo series and the SEC filing once. Fear & Greed
 bars for a trading day enter the first build after that exchange's local midnight, because only completed
 source-local dates are scored. api/build.json records which schedule fired. The workflow first
 compiles the page's inline script without running it (a syntax error would leave the public page at "loading…"

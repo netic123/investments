@@ -578,7 +578,7 @@ async function main() {
       testsSkipped: process.env.INVESTMENTS_BUILD_TESTS_SKIPPED === 'true',
       dataMode: 'build-time snapshot',
       watchlist: 'public-no-entry-prices',
-      refreshTrigger: 'push to main, a dispatch (manual or the page\'s live update), or the schedules: 09:20 UTC daily with the test suite and hourly 05:20-22:20 UTC Mon-Fri without it (GitHub may start scheduled runs late)',
+      refreshTrigger: 'push to main, a dispatch (manual or the page\'s live update), or the schedules: 09:20 UTC daily with the test suite and every 30 minutes 05:20-22:50 UTC Mon-Fri without it (GitHub may start scheduled runs late)',
       snapshotStaleAfterHours: SNAPSHOT_STALE_AFTER_HOURS,
       carriedSnapshotCount: carriedSnapshots.length,
       holdingsSource: data.holdingsSource,
