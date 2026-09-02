@@ -122,10 +122,11 @@ test('config names every current holding and cash currency', () => {
   assert.ok(config.cashTickers.includes('NOK'));
 });
 
-test('the Pages workflow refreshes hourly on weekdays, tests once a day, and passes only a validated SEC contact', () => {
+test('the Pages workflow refreshes every 30 minutes on weekdays, tests once a day, and passes only a validated SEC contact', () => {
   const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pages.yml'), 'utf8');
   assert.match(workflow, /- cron: '20 9 \* \* \*'/);
-  assert.match(workflow, /- cron: '20 5-8,10-22 \* \* 1-5'/);
+  assert.match(workflow, /- cron: '20,50 5-8,10-22 \* \* 1-5'/);
+  assert.match(workflow, /- cron: '50 9 \* \* 1-5'/);
   assert.match(workflow, /if: \$\{\{ github\.event_name == 'push' \|\| \(github\.event_name == 'schedule' && github\.event\.schedule == '20 9 \* \* \*'\) \|\| \(github\.event_name == 'workflow_dispatch' && !\(inputs\.skip_tests == true \|\| inputs\.skip_tests == 'true'\)\) \}\}/);
   assert.match(workflow, /INVESTMENTS_BUILD_SCHEDULE: \$\{\{ github\.event\.schedule \}\}/);
   assert.match(workflow, /SEC_USER_AGENT: \$\{\{ vars\.SEC_USER_AGENT \}\}/);
