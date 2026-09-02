@@ -367,10 +367,20 @@ function carriedForwardComponents(marketfg) {
   const out = [];
   for (const [market, value] of Object.entries((marketfg && marketfg.markets) || {})) {
     for (const [key, component] of Object.entries((value && value.components) || {})) {
-      if (component && component.lag && component.asOf) out.push(`${market}.${key}@${component.asOf}`);
+      if (component && component.lag && component.asOf) out.push(`${market}.${key}@${component.asOf}${component.lagDetail ? ` (${component.lagDetail})` : ''}`);
     }
   }
   return out.sort();
+}
+
+function recentBarTopUps(marketfg) {
+  const out = new Map();
+  for (const value of Object.values((marketfg && marketfg.markets) || {})) {
+    for (const [symbol, topUp] of Object.entries((value && value.recentBarTopUps) || {})) {
+      if (topUp && topUp.appended > 0) out.set(symbol, `${symbol} +${topUp.appended} (${topUp.from}..${topUp.to})`);
+    }
+  }
+  return [...out.values()].sort();
 }
 
 async function captureSnapshot(base, publicPositions) {
@@ -395,6 +405,8 @@ async function captureSnapshot(base, publicPositions) {
         throw new Error(`Fear & Greed components carried forward from earlier bars: ${carried.join(', ')}`);
       }
       data.carriedForwardComponents = carried;
+      data.recentBarTopUps = recentBarTopUps(data.marketfg);
+      if (data.recentBarTopUps.length) process.stderr.write(`NOTE: recent bars appended from short-range requests: ${data.recentBarTopUps.join(', ')}\n`);
       if (carried.length) process.stderr.write(`WARNING: publishing with carried-forward Fear & Greed components: ${carried.join(', ')}\n`);
       validateSnapshot(data, publicPositions);
       return data;
@@ -590,6 +602,7 @@ async function main() {
       carriedSnapshotCount: carriedSnapshots.length,
       holdingsSource: data.holdingsSource,
       carriedForwardComponents: data.carriedForwardComponents,
+      recentBarTopUps: data.recentBarTopUps,
       dalalVerification: data.dalal.ok
         ? 'official SEC fetched and validated'
         : `labelled manual fallback verified ${data.dalal.manualVerifiedAt}; live SEC check failed (${data.dalal.fetchError})${data.dalal.pastFilingDeadline ? '; past the next filing deadline, a newer filing may exist' : ''}`,
