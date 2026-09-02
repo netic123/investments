@@ -109,6 +109,10 @@ test('the owner live update only ever talks to api.github.com and keeps the toke
   assert.doesNotMatch(html, /console\.(log|warn|error)\([^)]*token/i);
   assert.match(html, /esc\(token\.slice\(-4\)\)/);
   assert.match(html, /type="password" id="liveTokenInput"/);
+  // visitors never see the button: it needs #owner (remembered per session) or a stored token
+  assert.match(html, /const OWNER_MODE=/);
+  assert.match(html, /btn\.hidden=!\(token\|\|OWNER_MODE\);/);
+  assert.match(html, /sessionStorage\.setItem\('investments\.owner','1'\)/);
   // and the disclosure names it
   assert.match(html, /only if you have stored a GitHub token for the owner’s live update, api\.github\.com/);
   const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pages.yml'), 'utf8');
