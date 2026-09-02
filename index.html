@@ -308,11 +308,17 @@ footer p{margin:0 0 .5em}
   <ul class="dates" id="dates"></ul>
 </section>
 
+<section id="buildsSection" hidden>
+  <div class="sec-head"><h2>Build history</h2><span class="note" id="buildsNote">—</span></div>
+  <div class="callout" id="buildsCall"></div>
+  <div class="tablewrap"><table id="tblBuilds"><thead><tr><th>Started</th><th>Trigger</th><th>Result</th><th class="num">Duration</th><th>Run</th></tr></thead><tbody></tbody></table></div>
+</section>
+
 <footer>
   <p>Primary sources: <a href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">WAGN’s official fund page and daily FilePoint files</a> · Yahoo Finance for quotes · SEC EDGAR for Dalal Street LLC’s manager-aggregated 13F and for WAGN’s own quarterly Form N-PORT, which is used only as a lagged cross-check of the daily file (its section says what was compared, as of when, and what could not be). Source status is shown in the page; a 13F is delayed and incomplete, and an N-PORT becomes public about 60 days after its quarter end. Times are shown in your local time zone (the zone is printed); on the public site every figure is as of the snapshot build time in the status line, and the page warns when that snapshot is more than 30 hours old.</p>
   <p><b>Changes</b> are differences in the number of shares held between two official files. A holding whose share count did not change is not listed, even when a cash creation diluted its share per WAGN unit; a change that is merely proportional to a change in units outstanding (an in-kind basket) is not listed either. Where units changed, “vs pro-rata” restates the trade relative to deploying the flow in proportion to the previous portfolio. Neither number is proof of Pabrai’s exact trade time, execution price or motive.</p>
   <p>The holdings file is dated the next weekday and priced at the previous NAV date. Its pricing date is asserted only when NetAssets divided by the file’s own unit count equals the official NAV (within half a cent per unit); if units were created or redeemed after the NAV file, the page says so. Snapshots are saved whenever a new official file day is detected; if a file day is missed, only the net change over the displayed interval is knowable.</p>
-  <p id="about"><b>About this page.</b> An independent, unofficial dashboard published by the repository owner; it is not affiliated with Pabrai Wagons ETF, Dalal Street LLC, Yahoo or the SEC. Source code and every build: <a href="https://github.com/netic123/investments" target="_blank" rel="noopener">github.com/netic123/investments</a>. <span id="aboutBuild">—</span> Raw inputs: <a id="srcHoldings" href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">fund holdings CSV</a> · <a id="srcNav" href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">daily NAV CSV</a> · <a id="srcJson" href="./api/holdings.json" target="_blank" rel="noopener">this page’s holdings JSON</a>.</p>
+  <p id="about"><b>About this page.</b> An independent, unofficial dashboard published by the repository owner; it is not affiliated with Pabrai Wagons ETF, Dalal Street LLC, Yahoo or the SEC. Source code and every build: <a href="https://github.com/netic123/investments" target="_blank" rel="noopener">github.com/netic123/investments</a>. <span id="aboutBuild">—</span> <span id="aboutVerify"></span> Raw inputs: <a id="srcHoldings" href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">fund holdings CSV</a> · <a id="srcNav" href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">daily NAV CSV</a> · <a id="srcJson" href="./api/holdings.json" target="_blank" rel="noopener">this page’s holdings JSON</a>.</p>
   <p><b>Not investment advice.</b> What your browser contacts: this site’s own JSON files, Google Fonts for the typefaces and — only when the build could not verify the 13F itself — SEC’s EDGAR submissions index, to check whether a newer filing exists; and, only if you have stored a GitHub token for the owner’s live update, api.github.com. Nothing else you do on this page is sent anywhere.</p>
 </footer>
 
@@ -533,6 +539,9 @@ async function load(mode){ // mode: 'manual' = Update button (re-fetch everythin
       : 'Running locally from the repository; figures are fetched live by the local server.';
     if(CFG.sources){ if(CFG.sources.holdings) $('#srcHoldings').href=CFG.sources.holdings; if(CFG.sources.navDaily) $('#srcNav').href=CFG.sources.navDaily; }
     $('#srcJson').href = STATIC_BUILD ? './api/holdings.json' : '/api/holdings';
+    $('#aboutVerify').innerHTML = STATIC_BUILD&&BUILD_META&&BUILD_META.runUrl
+      ? `Produced by <a href="${esc(BUILD_META.runUrl)}" target="_blank" rel="noopener">this Actions run</a> (public log); <a href="./api/build.json" target="_blank" rel="noopener">build.json</a> lists the SHA-256 of every published file, and GitHub’s signed provenance statement can be checked with <span class="mono">gh attestation verify &lt;file&gt; --owner netic123</span>.`
+      : '';
     // All requests start at once, but the Pabrai part renders as soon as it is ready — the daily series behind the market-state models must not hold it back.
     const fgReq=getJson('/api/marketfg');
     const [h,n,p,q,d,np] = await Promise.allSettled([getJson('/api/holdings'),getJson('/api/nav'),getJson('/api/perf'),getJson('/api/quotes'),getJson('/api/dalal'),getJson('/api/nport')]);
@@ -561,6 +570,7 @@ async function load(mode){ // mode: 'manual' = Update button (re-fetch everythin
     if(np.status!=='fulfilled') pabraiErrs.push('SEC N-PORT check could not be fetched ('+np.reason.message+')');
     else if(!np.value.ok) pabraiErrs.push(`SEC N-PORT check unavailable at ${STATIC_BUILD?'build':'update'} time — ${np.value.fetchError||'no reason given'}`);
     renderNport(NPORT);
+    if(STATIC_BUILD) renderBuildHistory();
     if(!DALAL.ok){
       const secCheck=await checkLatestSecAccession(DALAL);
       if(secCheck.checked&&secCheck.newer){
@@ -835,6 +845,33 @@ function renderNport(N){
   tbody.innerHTML=[...(C.matched||[]).map(r=>row(r)),...(C.mismatched||[]).map(r=>row(r)),...(C.onlyInNport||[]).map(r=>row(r,'<span class="down">only in N-PORT</span>')),...(C.onlyInHoldings||[]).map(r=>row(r,'<span class="down">only in the file</span>')),...(C.cashLike||[]).map(r=>row(r,(r.method?esc(method[r.method]||r.method):'—')+' · not counted'))].join('');
   wrap.hidden=false;
 }
+// The last builds as GitHub records them, including the ones that failed and therefore never published anything.
+// Unauthenticated read of the public Actions API (60 requests per hour per address); nothing is sent.
+let BUILDS_LOADED_AT=0;
+async function renderBuildHistory(){
+  const section=$('#buildsSection'); if(!section) return;
+  if(Date.now()-BUILDS_LOADED_AT<5*60*1000) return;
+  BUILDS_LOADED_AT=Date.now();
+  section.hidden=false;
+  const call=$('#buildsCall'), note=$('#buildsNote'), body=$('#tblBuilds tbody');
+  try{
+    const r=await fetch('https://api.github.com/repos/netic123/investments/actions/workflows/pages.yml/runs?per_page=20',{cache:'no-store',headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},signal:AbortSignal.timeout(15000)});
+    if(r.status===403||r.status===429) throw new Error('GitHub’s public API is rate-limited for your address right now (60 requests per hour); try again later');
+    if(!r.ok) throw new Error('GitHub answered HTTP '+r.status);
+    const runs=((await r.json()).workflow_runs||[]);
+    const ok=runs.filter(x=>x.conclusion==='success').length, failed=runs.filter(x=>x.status==='completed'&&x.conclusion!=='success').length;
+    const triggerOf=x=> x.event==='schedule'?'schedule':x.event==='workflow_dispatch'?'on request':x.event==='push'?'push to main':esc(x.event);
+    const resultOf=x=> x.status!=='completed' ? `<span class="muted">${esc(x.status.replace('_',' '))}</span>` : x.conclusion==='success' ? '<span class="up">published</span>' : `<span class="down">${esc(x.conclusion||'failed')} — nothing published</span>`;
+    const durationOf=x=>{ const ms=Date.parse(x.updated_at)-Date.parse(x.run_started_at||x.created_at); return isFinite(ms)&&ms>0 ? Math.round(ms/60000)+' min' : '—'; };
+    body.innerHTML=runs.map(x=>`<tr><td class="mono">${whenFull(x.created_at)}</td><td>${triggerOf(x)}</td><td>${resultOf(x)}</td><td class="num">${durationOf(x)}</td><td><a href="${esc(x.html_url)}" target="_blank" rel="noopener">log</a></td></tr>`).join('');
+    note.textContent=`last ${runs.length} runs · ${ok} published · ${failed} failed`;
+    call.innerHTML=`Every attempt to rebuild this page, as recorded by GitHub Actions and read live from its public API at ${timeStr()}. A failed run leaves the previous snapshot online and is what the status line’s age warning is about. ${BUILD_META&&BUILD_META.runId?`The snapshot you are looking at came from run <a href="${esc(BUILD_META.runUrl)}" target="_blank" rel="noopener">${esc(String(BUILD_META.runId))}</a>.`:''}`;
+  }catch(e){
+    note.textContent='unavailable';
+    body.innerHTML='';
+    call.innerHTML=`<b>Build history could not be read:</b> ${esc(String(e&&e.message||e))}. The <a href="https://github.com/netic123/investments/actions/workflows/pages.yml" target="_blank" rel="noopener">Actions page</a> shows the same list.`;
+  }
+}
 function renderDates(){
   const t0=today0();
   const items=[...CFG.dates].sort((a,b)=>a.date.localeCompare(b.date));
@@ -999,8 +1036,10 @@ function normMarket(M,model,fetchedAt){
   for(const w of M.warnings||[]) callouts.push(esc(w));
   const comps=MARKET_COMP_ORDER.map(k=>M.components[k]).filter(Boolean);
   // "as of" is the benchmark's date; other exchanges may have closed earlier, and the model carries such components forward for up to fillDays.
+  const topUps=Object.entries(M.recentBarTopUps||{});
+  if(topUps.length) callouts.push(`Yahoo’s full-history response trailed the newest completed bars for ${topUps.map(([s,t])=>esc(s)+' (+'+fmt(t.appended)+' through '+dayMon(t.to)+')').join(', ')}; those bars were taken from a short-range request that agreed with the full history on their last shared close.`);
   const carried=comps.filter(c=>c.lag&&c.asOf);
-  if(carried.length) callouts.push(`${carried.length} of ${M.total} indicators are carried forward from an earlier completed bar because their source had no newer one (${carried.map(c=>esc(c.name)+' as of '+dayMon(c.asOf)).join(', ')}); the model allows up to ${fmt(model.fillDays||7)} calendar days.`);
+  if(carried.length) callouts.push(`${carried.length} of ${M.total} indicators are carried forward from an earlier completed bar because their source had no newer one: ${carried.map(c=>esc(c.name)+' as of '+dayMon(c.asOf)+(c.lagDetail?' ('+esc(c.lagDetail)+')':'')).join('; ')}. The model allows up to ${fmt(model.fillDays||7)} calendar days; a later build picks the bars up when Yahoo publishes them.`);
   const realised=comps.some(c=>c.key==='volatility'&&/realised/.test(c.note||''));
   const seriesList=comps.map(c=>`<li><b>${esc(c.name)}</b>: ${c.names.map((n,i)=>esc(n)+' <span class="mono muted">('+esc(c.symbols[i])+')</span>').join(' / ')}${c.note?' — '+esc(c.note):''}</li>`).join('');
   const crypto=M.key==='crypto';
