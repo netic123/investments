@@ -21,17 +21,19 @@ name: Deploy GitHub Pages
     # WAGN's holdings file is normally published just after 00:00 UTC (dated the
     # next weekday) and the matching NAV file around 08:40 UTC. GitHub starts
     # scheduled runs late (5 to 11 hours after the cron time was observed in
-    # August 2026), so the public snapshot keeps itself fresh with an hourly
-    # slot on weekdays: even a late start lands within the hour, and a
-    # transient upstream failure costs an hour, not a day. The 09:20 slot runs
-    # every day (Crypto trades on weekends) and is the one that also runs the
-    # test suite; the other hourly slots skip it, because the suite already ran
-    # on the push that deployed the code. Fear & Greed bars for a trading day
-    # enter the first build after that exchange's local midnight, because only
-    # completed source-local dates are scored. Every build also detects a
-    # newly filed Dalal Street 13F without a code commit.
+    # August 2026), so the public snapshot keeps itself fresh with a slot every
+    # 30 minutes on weekdays (05:20 to 22:50 UTC): even a late start lands
+    # within the half hour, and a transient upstream failure costs half an
+    # hour, not a day. The 09:20 slot runs every day (Crypto trades on
+    # weekends) and is the one that also runs the test suite; every other slot
+    # skips it, because the suite already ran on the push that deployed the
+    # code. Fear & Greed bars for a trading day enter the first build after
+    # that exchange's local midnight, because only completed source-local
+    # dates are scored. Every build also detects a newly filed Dalal Street 13F
+    # without a code commit.
     - cron: '20 9 * * *'
-    - cron: '20 5-8,10-22 * * 1-5'
+    - cron: '20,50 5-8,10-22 * * 1-5'
+    - cron: '50 9 * * 1-5'
 
 permissions: {}
 
@@ -75,10 +77,10 @@ jobs:
 
       - name: Test repository-owned market models
         # Runs on every push, on the daily 09:20 UTC slot, and on a manual
-        # dispatch that did not ask to skip it. The hourly refresh slots and the
-        # page's live update skip it: the code did not change since the push
-        # that already ran it, and the snapshot validation in build-pages.js is
-        # what protects the published data.
+        # dispatch that did not ask to skip it. The half-hourly refresh slots
+        # and the page's live update skip it: the code did not change since the
+        # push that already ran it, and the snapshot validation in
+        # build-pages.js is what protects the published data.
         if: ${{ github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule == '20 9 * * *') || (github.event_name == 'workflow_dispatch' && !(inputs.skip_tests == true || inputs.skip_tests == 'true')) }}
         # Three research suites are machine-anchored by their frozen chains and
         # cannot pass on a fresh runner: the proxy-v2 suites byte-verify frozen
