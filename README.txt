@@ -17,12 +17,12 @@ already ran on the push that deployed the code). In August 2026 GitHub started t
 after its cron time and two of the five scheduled builds between 28 Aug and 1 Sep failed, leaving the site a
 day stale; with a half-hourly slot a late start still lands within the half hour and a transient failure
 costs half an hour. A build without the suite takes about two minutes of runner time, which is free for a
-public repository; each one fetches the fund files, the 33 Yahoo series and the SEC filing once. Fear & Greed
+public repository; each one fetches the fund files, the 33 Yahoo series and both SEC filings once. Fear & Greed
 bars for a trading day enter the first build after that exchange's local midnight, because only completed
 source-local dates are scored. api/build.json records which schedule fired. The workflow first
 compiles the page's inline script without running it (a syntax error would leave the public page at "loading…"
 forever, so the build fails before any network work), then starts the local server temporarily on the GitHub
-runner, fetches and validates the seven public API responses, and publishes only _site/index.html,
+runner, fetches and validates the eight public API responses, and publishes only _site/index.html,
 _site/.nojekyll and _site/api/*.json. The published index.html carries a Content-Security-Policy that the build
 adds and verifies in the artifact: default-src 'none'; script-src only the one inline block, by its SHA-256
 hash; style-src 'unsafe-inline' and fonts.googleapis.com; font-src fonts.gstatic.com; connect-src the site
@@ -106,6 +106,9 @@ TABS (top of the page)
     that a newer 13F may exist. The page never labels fallback as newly verified. While fallback is displayed,
     the visitor's browser also asks the CORS-enabled official SEC submissions endpoint whether a newer accession
     exists, and says so when that check could not run.
+  - Independent check — SEC N-PORT: the fund's own quarterly portfolio report to SEC, held against the saved
+    daily file priced as of the same date (share counts per position, with the matching method per row), or
+    the statement that no such file is saved yet and when the first comparison becomes possible
   - Upcoming dates
   Open directly: / or /#pabrai
 - Crypto, Sweden, USA, US Tech, Europe, Global = one repository-owned unified Fear & Greed model v3 (0–100),
@@ -220,6 +223,31 @@ SOURCES AND HOW THEY WERE VERIFIED (26 Aug 2026; SEC path and pricing date re-ve
   up to 45 days after quarter-end, and omits cash, shorts and many non-US or otherwise non-reportable positions.
   It is manager-submitted data; SEC publication is not an SEC audit or certification that the filing is
   accurate and complete.
+- Pabrai Wagons N-PORT (independent check of the daily file): the fund's own portfolio report to SEC on Form
+  N-PORT, filed by the trust Professionally Managed Portfolios (CIK 0000811030) once per series, so a dozen
+  NPORT-P filings share each filing date and only the primary document names the series. The build reads the
+  submissions index at data.sec.gov, keeps the NPORT-P and NPORT-P/A filings with a quarter-end report date
+  (newest report date first; an amendment before the original it replaces, and the page says when it used
+  one), opens primary_doc.xml one document at a time about a second apart until one names a series containing
+  "Pabrai Wagons", and records the SHA-256 of both responses and every accession it opened. Verified
+  2 Sep 2026: accession 0001193125-26-360389, filed 21 Aug 2026, series S000098509 "Pabrai Wagons ETF" (a new
+  series ID; the mutual fund it replaced in February 2026 was S000081831), report period 30 Jun 2026,
+  19 positions (18 equities and the money-market fund), net assets $209,475,318.76; it was the eighth document
+  opened. Only the report for the last month of each fiscal quarter (year end 30 Jun: 31 Mar, 30 Jun, 30 Sep,
+  31 Dec) becomes public, 60 days after that quarter end, so the check is quarterly and at least two months
+  behind; the trust's reports for other months belong to other series and are skipped. The comparison holds
+  the N-PORT against the saved FilePoint file dated the next weekday after the report date, because that file
+  is priced as of the report date: rows are paired by 9-character CUSIP, else by the national number inside
+  the N-PORT ISIN (FilePoint's CUSIP column carries a SEDOL for most foreign names, and the N-PORT has no CUSIP
+  for them), else by the first two words of the issuer name when that is unique on both sides; share counts
+  within half a share match, the money-market fund is listed but not counted, and the page shows the method
+  per row. No saved file is dated 1 Jul 2026 (saved files start 20 Aug 2026), so no comparison has been
+  possible yet; the first is the 30 Sep 2026 report, expected public by 29 Nov 2026, against the file dated
+  1 Oct 2026. Against the unrelated 28 Aug file all 18 equities pair (3 by CUSIP, 2 by ISIN, 13 by name),
+  which exercises the matching, not the holdings. www.sec.gov, which serves the document, sometimes refuses
+  the built-in User-Agent (see the 13F note above); the build then publishes "SEC N-PORT unavailable" with
+  the reason, never a failure and never a claim about the fund. api/build.json records the outcome as
+  nportCheck. Like the 13F, an N-PORT is fund-submitted data that SEC publishes without auditing it.
 - Unified Market Fear & Greed (own model): marketfg.js calculates all six tabs. Production v3 ranks each raw
   component over all finite observations supplied by Yahoo through each date; Yahoo's claim to maximum history
   is requested but not independently verifiable. Historical v1/v2 research used different score definitions and
@@ -271,6 +299,8 @@ UPDATE BY HAND
   after its date)
 - names: name, flag, Avanza status per ticker (online / telefon / nej); the newest entry is ODL NO (Odfjell
   Drilling, Norway, online)
+- nport: the trust CIK, the series-name fragment that identifies the fund's N-PORT among the trust's filings,
+  and the series ID last seen (informational; the page says if a filing names a different one).
 - cashTickers: currency rows treated as cash (NOK was added with ODL NO). A row whose CUSIP is CASH<ISO code> is
   classified as cash even before its code is listed here, so a new trading currency does not reject the file.
 - marketFearGreed: the one active model ID/version, expanding percentile mode, shared 252-observation strength
@@ -301,6 +331,9 @@ IF SOMETHING GOES WRONG
   filing deadline; a newer 13F may exist", the fallback's stated deadline has passed and the build could not
   check SEC: the Pages build no longer fails on this, but the fallback must be re-verified by hand. The build
   still rejects altered fallback data.
+- "SEC N-PORT check unavailable at build/update time — <reason>" = SEC's submissions index or the filing
+  document could not be fetched or parsed (most often www.sec.gov answering 403 to the built-in User-Agent);
+  the N-PORT section says so and asserts nothing about the fund. The check runs again on the next build.
 - "quote missing: ..." = Yahoo did not respond for that ticker; the rest works.
 - "Fear & Greed <market> could not be computed" / "index series ... missing" = Yahoo did not respond and the
   required raw series could not be fetched, or a required synthetic series could not be constructed, since

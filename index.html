@@ -133,8 +133,8 @@ footer p{margin:0 0 .5em}
 .fg-comps td:first-child{white-space:normal;min-width:220px}
 /* Dense Pabrai data stays inside the page instead of forcing sideways scrolling. */
 #panel-pabrai .tablewrap{max-width:100%}
-#tblAll,#tblPerf,#tblDalal,.changes-table{width:100%;min-width:0;table-layout:fixed}
-#tblAll th,#tblAll td,#tblPerf th,#tblPerf td,#tblDalal th,#tblDalal td,.changes-table th,.changes-table td{white-space:normal;line-height:1.3}
+#tblAll,#tblPerf,#tblDalal,#tblNport,.changes-table{width:100%;min-width:0;table-layout:fixed}
+#tblAll th,#tblAll td,#tblPerf th,#tblPerf td,#tblDalal th,#tblDalal td,#tblNport th,#tblNport td,.changes-table th,.changes-table td{white-space:normal;line-height:1.3}
 #tblAll th,#tblAll td{padding-left:7px;padding-right:7px}
 #tblAll th:nth-child(1){width:4%}
 #tblAll th:nth-child(2){width:22%}
@@ -143,7 +143,7 @@ footer p{margin:0 0 .5em}
 #tblAll th:nth-child(5),#tblAll th:nth-child(6){width:15%}
 #tblAll th:nth-child(7),#tblAll th:nth-child(8){width:9%}
 #tblAll th:nth-child(9){width:8%}
-#tblAll td:nth-child(2),#tblDalal td:first-child,.changes-table td:nth-child(-n+2){overflow-wrap:anywhere}
+#tblAll td:nth-child(2),#tblDalal td:first-child,#tblNport td:first-child,.changes-table td:nth-child(-n+2){overflow-wrap:anywhere}
 #tblAll td.num,#tblPerf td.num,.changes-table td.num{font-size:.78rem}
 #tblAll th:nth-child(9),#tblAll td:nth-child(9){text-align:center}
 #tblPerf th,#tblPerf td{padding-left:8px;padding-right:8px}
@@ -153,6 +153,10 @@ footer p{margin:0 0 .5em}
 #tblDalal th:nth-child(2){width:14%}
 #tblDalal th:nth-child(3){width:20%}
 #tblDalal th:nth-child(4){width:26%}
+#tblNport th:nth-child(1){width:36%}
+#tblNport th:nth-child(2),#tblNport th:nth-child(3){width:17%}
+#tblNport th:nth-child(4){width:13%}
+#tblNport th:nth-child(5){width:17%}
 .changes-table th,.changes-table td{padding-left:8px;padding-right:8px}
 .changes-table:not(.changes-table--dated) th:nth-child(1){width:28%}
 .changes-table:not(.changes-table--dated) th:nth-child(2){width:16%}
@@ -294,12 +298,18 @@ footer p{margin:0 0 .5em}
 </section>
 
 <section>
+  <div class="sec-head"><h2>Independent check — SEC N-PORT</h2><span class="note" id="nportNote">—</span></div>
+  <div class="callout" id="nportCall"></div>
+  <div class="tablewrap" id="nportWrap" hidden><table id="tblNport"><thead></thead><tbody></tbody></table></div>
+</section>
+
+<section>
   <div class="sec-head"><h2>Dates</h2><span class="note">Upcoming</span></div>
   <ul class="dates" id="dates"></ul>
 </section>
 
 <footer>
-  <p>Primary sources: <a href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">WAGN’s official fund page and daily FilePoint files</a> · Yahoo Finance for quotes · SEC EDGAR for Dalal Street LLC’s manager-aggregated 13F. Source status is shown in the page; a 13F is delayed and incomplete. Times are shown in your local time zone (the zone is printed); on the public site every figure is as of the snapshot build time in the status line, and the page warns when that snapshot is more than 30 hours old.</p>
+  <p>Primary sources: <a href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">WAGN’s official fund page and daily FilePoint files</a> · Yahoo Finance for quotes · SEC EDGAR for Dalal Street LLC’s manager-aggregated 13F and for WAGN’s own quarterly Form N-PORT, which is used only as a lagged cross-check of the daily file (its section says what was compared, as of when, and what could not be). Source status is shown in the page; a 13F is delayed and incomplete, and an N-PORT becomes public about 60 days after its quarter end. Times are shown in your local time zone (the zone is printed); on the public site every figure is as of the snapshot build time in the status line, and the page warns when that snapshot is more than 30 hours old.</p>
   <p><b>Changes</b> are differences in the number of shares held between two official files. A holding whose share count did not change is not listed, even when a cash creation diluted its share per WAGN unit; a change that is merely proportional to a change in units outstanding (an in-kind basket) is not listed either. Where units changed, “vs pro-rata” restates the trade relative to deploying the flow in proportion to the previous portfolio. Neither number is proof of Pabrai’s exact trade time, execution price or motive.</p>
   <p>The holdings file is dated the next weekday and priced at the previous NAV date. Its pricing date is asserted only when NetAssets divided by the file’s own unit count equals the official NAV (within half a cent per unit); if units were created or redeemed after the NAV file, the page says so. Snapshots are saved whenever a new official file day is detected; if a file day is missed, only the net change over the displayed interval is knowable.</p>
   <p id="about"><b>About this page.</b> An independent, unofficial dashboard published by the repository owner; it is not affiliated with Pabrai Wagons ETF, Dalal Street LLC, Yahoo or the SEC. Source code and every build: <a href="https://github.com/netic123/investments" target="_blank" rel="noopener">github.com/netic123/investments</a>. <span id="aboutBuild">—</span> Raw inputs: <a id="srcHoldings" href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">fund holdings CSV</a> · <a id="srcNav" href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">daily NAV CSV</a> · <a id="srcJson" href="./api/holdings.json" target="_blank" rel="noopener">this page’s holdings JSON</a>.</p>
@@ -333,7 +343,7 @@ const today0 = ()=>{ const t=new Date(); t.setHours(0,0,0,0); return t; };
 
 const APP_MODE=document.querySelector('meta[name="investments-mode"]')?.content||'local';
 const STATIC_BUILD=APP_MODE==='static';
-let CFG=null, TR_WEIGHT=null, BUILD_META=null, DALAL=null;
+let CFG=null, TR_WEIGHT=null, BUILD_META=null, DALAL=null, NPORT=null;
 let STATUS_RENDER=()=>{};
 let STATIC_BUST=''; // set for a manual reload: a query string bypasses the Pages CDN cache (max-age 600) so the newest deployment is really seen
 const apiUrl=u=>{
@@ -525,7 +535,7 @@ async function load(mode){ // mode: 'manual' = Update button (re-fetch everythin
     $('#srcJson').href = STATIC_BUILD ? './api/holdings.json' : '/api/holdings';
     // All requests start at once, but the Pabrai part renders as soon as it is ready — the daily series behind the market-state models must not hold it back.
     const fgReq=getJson('/api/marketfg');
-    const [h,n,p,q,d] = await Promise.allSettled([getJson('/api/holdings'),getJson('/api/nav'),getJson('/api/perf'),getJson('/api/quotes'),getJson('/api/dalal')]);
+    const [h,n,p,q,d,np] = await Promise.allSettled([getJson('/api/holdings'),getJson('/api/nav'),getJson('/api/perf'),getJson('/api/quotes'),getJson('/api/dalal'),getJson('/api/nport')]);
     const Q = q.status==='fulfilled' ? q.value : {};
     DALAL = d.status==='fulfilled' ? d.value : CFG.dalalStreet;
     // NAV carries the actual pricing date for the T+1 holdings file. Render it first so the watch cards show that date too.
@@ -546,6 +556,11 @@ async function load(mode){ // mode: 'manual' = Update button (re-fetch everythin
     if(d.status!=='fulfilled') pabraiErrs.push(`SEC automatic refresh failed — showing the official filing manually verified${DALAL&&DALAL.manualVerifiedAt?' '+fmtDate(DALAL.manualVerifiedAt):''}`);
     else if(!d.value.ok) pabraiErrs.push(`SEC automatic refresh unavailable at ${STATIC_BUILD?'build':'update'} time — official filing manually verified${d.value.manualVerifiedAt?' '+fmtDate(d.value.manualVerifiedAt):''}${d.value.pastFilingDeadline?' is past its next filing deadline; a newer 13F may exist':''}`);
     renderDalal(DALAL); renderDates();
+    // The fund's own N-PORT is an independent cross-check of the daily file; SEC being unavailable is a labelled state, never a finding.
+    NPORT = np.status==='fulfilled' ? np.value : null;
+    if(np.status!=='fulfilled') pabraiErrs.push('SEC N-PORT check could not be fetched ('+np.reason.message+')');
+    else if(!np.value.ok) pabraiErrs.push(`SEC N-PORT check unavailable at ${STATIC_BUILD?'build':'update'} time — ${np.value.fetchError||'no reason given'}`);
+    renderNport(NPORT);
     if(!DALAL.ok){
       const secCheck=await checkLatestSecAccession(DALAL);
       if(secCheck.checked&&secCheck.newer){
@@ -788,6 +803,37 @@ function renderDalal(D){
     else if(h.prevShares==null) q = h.qChange!=null ? esc(h.qChange) : '<span class="up">new</span>';
     else { const d=h.shares-h.prevShares, p=h.prevShares?d/h.prevShares*100:null; q=`<span class="${cls(d)}">${pct(p,2)} (${d>0?'+':''}${fmt(d)})</span>`; }
     return `<tr class="${mine.has(h.ticker)?'mine':''}"><td><span class="tick">${esc(h.ticker)}</span> ${esc(h.name)}</td><td class="num">${pct(w,2,false)}</td><td class="num">${fmt(h.shares)}</td><td>${q}</td></tr>`; }).join('');
+}
+// The fund's own Form N-PORT held against the saved daily file priced as of the same date. Says exactly what
+// was compared, or why nothing could be, and never turns "SEC unavailable" into a statement about the fund.
+function renderNport(N){
+  const note=$('#nportNote'), call=$('#nportCall'), wrap=$('#nportWrap'), thead=$('#tblNport thead'), tbody=$('#tblNport tbody');
+  const when=STATIC_BUILD?'build':'update';
+  const shares=v=> v==null||!isFinite(v) ? '—' : Number.isInteger(v)?fmt(v):fmt(v,2);
+  if(!N||!N.ok){
+    note.textContent='SEC unavailable at '+when+' time';
+    const cands=N&&Array.isArray(N.candidates)&&N.candidates.length ? ` SEC’s submissions index lists ${N.candidates.length} N-PORT report${N.candidates.length===1?'':'s'} of the trust with quarter-end report dates, the newest as of ${fmtDate(N.candidates[0].reportDate)} (one filing per series); which of them is this fund’s could not be determined without opening the documents.` : '';
+    call.innerHTML=`<b>SEC N-PORT unavailable at ${when} time</b> (${esc(N&&N.fetchError||'no result was returned')}). Nothing about the fund’s N-PORT is asserted here: the report was not read, so neither agreement nor disagreement with the daily file is claimed. The check runs again on the next ${when}.${cands}`;
+    wrap.hidden=true; thead.innerHTML=''; tbody.innerHTML=''; return;
+  }
+  const link=N.sourceUrl?`<a href="${esc(N.sourceUrl)}" target="_blank" rel="noopener">${esc(N.form)} ${esc(N.accession)}</a>`:esc(N.form+' '+N.accession);
+  const C=N.comparison||{};
+  note.textContent='as of '+fmtDate(N.reportDate)+' · filed '+fmtDate(N.filed)+(C.comparable?' · compared with the file dated '+fmtDate(C.snapshotDate):' · not yet comparable');
+  const head=`<b>Official SEC Form N-PORT fetched ${whenFull(N.fetchedAt)}:</b> ${link}${N.isAmendment?' (an amended report, which replaces the original for the same period)':''}, filed ${fmtDate(N.filed)} by ${esc(N.registrantName||'the trust')} for the series ${esc(N.seriesName)} (${esc(N.seriesId)}), report period ${fmtDate(N.reportDate)}: ${fmt(N.holdingCount)} positions, net assets $${fmt(N.netAssets)}.${N.seriesIdMatchesConfig===false?` <b>The series ID differs from the configured ${esc(N.configuredSeriesId)}.</b>`:''} This is the fund’s own portfolio report to SEC; only the report for the last month of each fiscal quarter becomes public, about 60 days after that quarter end, so it is quarterly and lagged, and SEC publication is not an SEC audit of it. Your browser did not contact SEC for this; the ${when} did.`;
+  if(!C.comparable){
+    const nx=N.nextOpportunity||{}, range=N.snapshotRange;
+    call.innerHTML=`${head} <b>Not yet comparable:</b> the daily file priced as of ${fmtDate(N.reportDate)} is the one dated ${fmtDate(C.snapshotDate)}, and no such file is saved${range?` (saved files run from ${fmtDate(range.first)} to ${fmtDate(range.last)})`:' (no files are saved)'}. The first comparison possible is the ${fmtDate(nx.reportDate)} report, expected public by ${fmtDate(nx.publicBy)}, against the file dated ${fmtDate(nx.snapshotDate)}. Below are the positions as reported to SEC, not compared with anything.`;
+    thead.innerHTML='<tr><th>Holding (N-PORT)</th><th class="num">Shares</th><th class="num">Value USD</th><th class="num">% of net assets</th><th>Identifier</th></tr>';
+    tbody.innerHTML=(N.holdings||[]).map(h=>`<tr><td>${h.ticker?`<span class="tick">${esc(h.ticker)}</span> `:''}${esc(h.name)}${h.cashLike?' <span class="muted">(cash-like)</span>':''}</td><td class="num">${shares(h.balance)}</td><td class="num">${fmt(h.valUsd)}</td><td class="num">${pct(h.pctVal,2,false)}</td><td>${esc(h.cusip?'CUSIP '+h.cusip:h.isin?'ISIN '+h.isin:'—')}</td></tr>`).join('');
+    wrap.hidden=false; return;
+  }
+  const S=C.summary||{}, BY=S.byMethod||{}, NA=C.netAssets;
+  const method={cusip:'CUSIP',isin:'ISIN national number',name:'issuer name'};
+  call.innerHTML=`${head} <b>Compared with the daily file dated ${fmtDate(C.snapshotDate)}, which is priced as of ${fmtDate(N.reportDate)}: ${fmt(S.matched)} of ${fmt(S.positions)} N-PORT positions have the same share count</b> (within half a share); ${fmt(S.mismatched)} differ, ${fmt(S.onlyInNport)} appear only in the N-PORT and ${fmt(S.onlyInHoldings)} only in the file; ${fmt(S.cashLike)} cash-like row${S.cashLike===1?'':'s'} listed but not counted.${NA?` Net assets: N-PORT $${fmt(NA.nport)} vs file $${fmt(NA.file)} (${pct(NA.diffPct,2)}).`:''} Rows are paired by CUSIP where the file carries one (${fmt(BY.cusip)}), else by the national number inside the N-PORT ISIN (${fmt(BY.isin)}), else by the first two words of the issuer name (${fmt(BY.name)}); the method is shown per row. A difference is a difference between two documents, not proof of which is right.`;
+  thead.innerHTML='<tr><th>Holding</th><th class="num">N-PORT shares</th><th class="num">FilePoint shares</th><th class="num">Difference</th><th>Matched by</th></tr>';
+  const row=(r,state)=>`<tr><td>${r.fundTicker||r.ticker?`<span class="tick">${esc(r.fundTicker||r.ticker)}</span> `:''}${esc(r.name)}${r.cashLike?' <span class="muted">(cash-like)</span>':''}</td><td class="num">${shares(r.nportShares)}</td><td class="num">${shares(r.fileShares)}</td><td class="num ${r.diff==null?'':cls(r.diff)}">${r.diff==null?'—':(r.diff>0?'+':'')+shares(r.diff)}</td><td>${state||(r.method?esc(method[r.method]||r.method):'—')}</td></tr>`;
+  tbody.innerHTML=[...(C.matched||[]).map(r=>row(r)),...(C.mismatched||[]).map(r=>row(r)),...(C.onlyInNport||[]).map(r=>row(r,'<span class="down">only in N-PORT</span>')),...(C.onlyInHoldings||[]).map(r=>row(r,'<span class="down">only in the file</span>')),...(C.cashLike||[]).map(r=>row(r,(r.method?esc(method[r.method]||r.method):'—')+' · not counted'))].join('');
+  wrap.hidden=false;
 }
 function renderDates(){
   const t0=today0();
