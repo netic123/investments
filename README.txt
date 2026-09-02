@@ -60,8 +60,10 @@ configuration files and repository metadata are not included in the deployed art
 
 LIVE UPDATE ON THE PUBLIC SITE (owner only)
 GitHub Pages has no server, and the fund's FilePoint files and Yahoo send no CORS headers, so a browser cannot
-fetch them directly; "live" on the public site therefore means a fresh build. The page's "Live update…" button
-sets that up: paste a fine-grained GitHub token once, and the button becomes "Update (rebuild)". Pressing it
+fetch them directly; "live" on the public site therefore means a fresh build. Visitors never see this: the
+"Live update…" button appears only when the page is opened with #owner in the address
+(https://netic123.github.io/investments/#owner, remembered for that browser session) or when a token is
+already stored in that browser. The button sets it up: paste a fine-grained GitHub token once, and the button becomes "Update (rebuild)". Pressing it
 sends a workflow_dispatch to pages.yml with skip_tests=true (the suite already ran on the push that deployed the
 code), follows the run through api.github.com, and reloads the page when the deployment is live — about 2 to
 4 minutes, longer if GitHub queues the run behind a scheduled build. Create the token under GitHub → Settings →
