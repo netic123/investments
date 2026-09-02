@@ -58,6 +58,17 @@ fails the build loudly instead of silently degrading every build to the fallback
 The generated _site directory is ignored by Git and is an explicit allowlist; research files, backend code,
 configuration files and repository metadata are not included in the deployed artifact.
 
+PROVENANCE AND BUILD HISTORY
+api/build.json names the commit, the trigger and the Actions run that produced the snapshot (runId, runUrl),
+and lists the SHA-256 of index.html and every api/*.json it published (files). The workflow also runs
+actions/attest-build-provenance on those files, so GitHub signs a provenance statement binding each digest to
+that run and commit; anyone can check a downloaded file with "gh attestation verify <file> --owner netic123".
+The page's About line links the run and explains this. A "Build history" section on the Pabrai tab reads the
+last 20 workflow runs live from GitHub's public Actions API (unauthenticated, CORS-enabled, 60 requests per
+hour per address, nothing is sent) and shows started time, trigger, result and duration with a link to each
+log, including runs that failed and therefore published nothing; that is the reliability record behind the
+status line's age warning.
+
 LIVE UPDATE ON THE PUBLIC SITE (owner only)
 GitHub Pages has no server, and the fund's FilePoint files and Yahoo send no CORS headers, so a browser cannot
 fetch them directly; "live" on the public site therefore means a fresh build. Visitors never see this: the

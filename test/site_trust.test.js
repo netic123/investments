@@ -120,6 +120,17 @@ test('the owner live update only ever talks to api.github.com and keeps the toke
   assert.match(workflow, /INVESTMENTS_BUILD_TRIGGER: \$\{\{ github\.event_name \}\}/);
 });
 
+test('the page shows its provenance and reads the build history from GitHub only', () => {
+  assert.match(html, /gh attestation verify/);
+  assert.match(html, /api\.github\.com\/repos\/netic123\/investments\/actions\/workflows\/pages\.yml\/runs\?per_page=20/);
+  assert.match(html, /nothing published/);
+  assert.match(html, /id="buildsSection" hidden/);
+  const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pages.yml'), 'utf8');
+  assert.match(workflow, /attestations: write/);
+  assert.match(workflow, /uses: actions\/attest-build-provenance@[0-9a-f]{40} # v4/);
+  assert.match(workflow, /subject-path: \|\n\s+_site\/index\.html\n\s+_site\/api\/\*\.json/);
+});
+
 test('config names every current holding and cash currency', () => {
   const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'config.json'), 'utf8'));
   assert.ok(config.names['ODL NO'] && config.names['ODL NO'].flag === '🇳🇴');
