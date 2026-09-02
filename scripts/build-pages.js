@@ -12,13 +12,13 @@ const net = require('net');
 const vm = require('vm');
 const crypto = require('crypto');
 const { spawn, execFileSync } = require('child_process');
-const { reconcileWagnHoldingsToNav, secUserAgent, validateWagnHoldingsFreshness } = require('../pabrai');
+const { isQuarterEndDate, reconcileWagnHoldingsToNav, secUserAgent, summarizeNportCheck, validateWagnHoldingsFreshness } = require('../pabrai');
 const { collectSpecSymbols, hashPublicDecision, hashPublishedScoreHistory } = require('../marketfg');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, '_site');
 const API_OUT = path.join(OUT, 'api');
-const ENDPOINTS = ['config', 'holdings', 'dalal', 'nav', 'perf', 'quotes', 'marketfg'];
+const ENDPOINTS = ['config', 'holdings', 'dalal', 'nport', 'nav', 'perf', 'quotes', 'marketfg'];
 const EXPECTED_FILES = ['.nojekyll', 'index.html', 'api/build.json', ...ENDPOINTS.map(name => `api/${name}.json`)].sort();
 const PUBLIC_POSITION_KEYS = ['currency', 'entry', 'fundTicker', 'nextReport', 'nextReportApprox', 'nextReportNote', 'secTicker', 'ticker', 'yahoo'];
 const PUBLIC_EXPANDING_SIGNAL_KEYS = [
@@ -175,7 +175,7 @@ async function waitForServer(base, child, logs) {
 }
 
 function validateSnapshot(data, publicPositions) {
-  const { config, holdings, dalal, nav, perf, quotes, marketfg } = data;
+  const { config, holdings, dalal, nport, nav, perf, quotes, marketfg } = data;
   assert(config && typeof config === 'object', 'config is missing');
   assert(config.positionsMeta && config.positionsMeta.demo === false && config.positionsMeta.public === true && config.positionsMeta.source === 'public', 'public build did not select the approved public watchlist');
   assert(JSON.stringify(config.myPositions) === JSON.stringify(publicPositions), 'public build positions differ from data/positions.public.json');
@@ -265,6 +265,34 @@ function validateSnapshot(data, publicPositions) {
       process.stderr.write('WARNING: the manually verified 13F fallback is past its next filing deadline and SEC could not be checked; publishing it flagged as possibly superseded.\n');
     }
   }
+  // The fund's own N-PORT is an independent cross-check of the FilePoint file
+  // and nothing else depends on it, so SEC being unavailable is published as a
+  // labelled state, never a build failure; a claimed success must carry its
+  // identity, provenance hashes and a well-formed comparison.
+  assert(nport && typeof nport === 'object', 'N-PORT check response is missing');
+  if (nport.ok === true) {
+    assert(nport.cik === '0000811030' && /Pabrai Wagons/.test(nport.seriesName || '') && /^S\d{9}$/.test(nport.seriesId || ''), 'N-PORT is not the Pabrai Wagons series of CIK 0000811030');
+    assert(/^\d{10}-\d{2}-\d{6}$/.test(nport.accession || '') && /^NPORT-P(\/A)?$/.test(nport.form || '') && /^\d{4}-\d{2}-\d{2}$/.test(nport.filed || ''), 'N-PORT accession, form or filing date is invalid');
+    assert(/^https:\/\/www\.sec\.gov\/Archives\/edgar\/data\//.test(nport.sourceUrl || ''), 'N-PORT source is not an official SEC filing page');
+    assert(isQuarterEndDate(nport.reportDate), `N-PORT report date ${nport.reportDate} is not a quarter end`);
+    assert(nport.provenance && /^[0-9a-f]{64}$/.test(nport.provenance.submissions && nport.provenance.submissions.sha256 || '') && /^[0-9a-f]{64}$/.test(nport.provenance.primary && nport.provenance.primary.sha256 || ''), 'N-PORT SEC provenance hashes are missing');
+    assert(Array.isArray(nport.holdings) && nport.holdings.length > 0 && nport.holdings.every(row => row && typeof row.name === 'string' && Number.isFinite(row.balance) && Number.isFinite(row.valUsd)), 'N-PORT holdings are incomplete');
+    const comparison = nport.comparison;
+    assert(comparison && typeof comparison.comparable === 'boolean' && /^\d{4}-\d{2}-\d{2}$/.test(comparison.snapshotDate || '') && comparison.reportDate === nport.reportDate, 'N-PORT comparison is malformed');
+    for (const key of ['matched', 'mismatched', 'onlyInNport', 'onlyInHoldings', 'cashLike']) assert(Array.isArray(comparison[key]), `N-PORT comparison ${key} is not a list`);
+    assert(comparison.summary && Number.isInteger(comparison.summary.matched) && Number.isInteger(comparison.summary.positions), 'N-PORT comparison summary is malformed');
+    if (comparison.comparable) {
+      assert(comparison.summary.matched === comparison.matched.length && comparison.summary.mismatched === comparison.mismatched.length, 'N-PORT comparison counts do not match its rows');
+      assert(comparison.matched.concat(comparison.mismatched).every(row => ['cusip', 'isin', 'name'].includes(row.method)), 'N-PORT comparison rows lack a match method');
+    } else {
+      assert(typeof comparison.reason === 'string' && comparison.reason.length > 0, 'N-PORT not-comparable state lacks a reason');
+      assert(nport.nextOpportunity && /^\d{4}-\d{2}-\d{2}$/.test(nport.nextOpportunity.reportDate || ''), 'N-PORT next opportunity is missing');
+    }
+  } else {
+    assert(nport.ok === false && typeof nport.fetchError === 'string' && nport.fetchError.length > 0 && nport.sourceStatus === 'SEC N-PORT unavailable', 'N-PORT check is neither fetched data nor a labelled unavailable state');
+    process.stderr.write(`WARNING: SEC N-PORT check unavailable (${nport.fetchError}); publishing that state, labelled as such.\n`);
+  }
+  assert(!JSON.stringify(nport).includes('<edgarSubmission'), 'N-PORT response must not carry raw XML');
   assert(perf && Array.isArray(perf.monthly) && perf.monthly.length > 0, 'performance data is incomplete');
   assert(quotes && typeof quotes === 'object' && Object.values(quotes).some(q => q && Number.isFinite(q.price)), 'all quotes are missing');
   assert(marketfg && marketfg.ok === true && marketfg.markets && typeof marketfg.markets === 'object', 'market Fear & Greed is invalid');
@@ -614,6 +642,7 @@ async function main() {
             : `holdings NetAssets per unit reconcile to the official NAV dated ${data.navReconciliation.navDate}${data.navReconciliation.navFileShares == null ? ' (the NAV file carried no unit count)' : ''}`)
         : `pricing date not asserted: ${data.navReconciliation.reason}`,
       navReconciliationMode: data.navReconciliation.mode,
+      nportCheck: summarizeNportCheck(data.nport),
     };
 
     prepareOutput();

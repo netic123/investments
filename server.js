@@ -9,6 +9,7 @@ const { exec } = require('child_process');
 const marketfg = require('./marketfg'); // one six-component Fear & Greed model for Crypto/Sweden/USA/US Tech/Europe/Global
 const {
   fetchDalalStreet13f,
+  fetchLatestPabraiNport,
   fetchResource: fetchSourceResource,
   diffWagnSnapshots,
   isOlderSameDateRevision,
@@ -316,6 +317,19 @@ async function getDalalStreet() {
   }
 }
 
+// ---------- Pabrai Wagons N-PORT (the fund's own quarterly portfolio report to SEC) ----------
+async function getNport() {
+  try {
+    // The saved snapshots are the FilePoint side of the comparison: the file
+    // dated the next weekday after the report date is priced as of that date.
+    return await fetchLatestPabraiNport(config.nport, { timeoutMs: 30000, snapshots: loadSnapshots(), cashLike: config.cashLike || [] });
+  } catch (error) {
+    // fetchLatestPabraiNport reports SEC failures as ok:false itself; this
+    // catches anything unexpected so the page can still say what happened.
+    return { ok: false, sourceStatus: 'SEC N-PORT unavailable', fetchError: String(error && error.message || error), fetchedAt: new Date().toISOString() };
+  }
+}
+
 // ---------- quotes (Yahoo) ----------
 async function yahooQuote(symbol) {
   const u = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
@@ -351,6 +365,7 @@ function send(res, code, body, type = 'application/json; charset=utf-8') {
 const routes = {
   '/api/holdings': () => cached('holdings', getHoldings, v => v.ok), // a failed fetch is not cached
   '/api/dalal': () => cached('dalal', getDalalStreet, v => v.ok), // fail closed for publishing; local UI may show labelled fallback
+  '/api/nport': () => cached('nport', getNport, v => v.ok), // SEC failures are not cached, like dalal
   '/api/nav': () => cached('nav', getNav),
   '/api/perf': () => cached('perf', getPerf),
   '/api/quotes': () => cached('quotes', getQuotes, v => Object.values(v).some(q => !q.error)),

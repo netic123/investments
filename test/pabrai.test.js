@@ -5,17 +5,26 @@ const assert = require('node:assert/strict');
 const {
   DEFAULT_SEC_USER_AGENT,
   compareManualDalal,
+  compareNportWithSnapshot,
   diffWagnSnapshots,
   isOlderSameDateRevision,
+  isQuarterEndDate,
+  issuerNameKey,
   fetchDalalStreet13f,
+  fetchLatestPabraiNport,
+  nextNportOpportunity,
   normalizeWagnHoldings,
   parseCsv,
+  parseNportPrimary,
   parseSecInformationTable,
   parseSecPrimary,
   reconcileWagnHoldingsToNav,
   secUserAgent,
   selectWagnNavObservation,
   selectCurrentAndPrevious13f,
+  selectNportFilings,
+  selectSnapshotForNport,
+  summarizeNportCheck,
   summarizeWagnUnitFlow,
   validateWagnHoldingsFreshness,
 } = require('../pabrai');
@@ -421,4 +430,245 @@ test('an SEC amendment stops automatic publication for explicit review', () => {
     { form: '13F-HR', accession: 'b', reportDate: '2026-06-30' },
     { form: '13F-HR', accession: 'c', reportDate: '2026-03-31' },
   ]), /manual amendment review is required/);
+});
+
+// ---------- Form N-PORT: the fund's own quarterly report held against the daily file ----------
+
+const NPORT_ROWS = [
+  { name: 'Warrior Met Coal Inc', cusip: '93627C101', isin: 'US93627C1018', ticker: 'HCC', balance: '254389.000000000000', valUsd: '20646211.240000000000', pctVal: '9.8561545877', assetCat: 'EC', country: 'US', curCd: 'USD' },
+  { name: 'Alpha Metallurgical Resources Inc', cusip: '020764106', isin: 'US0207641061', ticker: 'AMR', balance: '48646.000000000000', valUsd: '8023671.240000000000', pctVal: '3.8303659293', assetCat: 'EC', country: 'US', curCd: 'USD' },
+  { name: 'Danaos Corp', cusip: 'N/A', isin: 'MHY1968P1218', ticker: 'DAC', balance: '77116.000000000000', valUsd: '9436684.920000000000', pctVal: '4.5049149350', assetCat: 'EC', country: 'GR', curCd: 'USD' },
+  { name: 'Sygnity SA', cusip: 'N/A', isin: 'PLCMPLD00016', ticker: 'SGN', balance: '65125.000000000000', valUsd: '1364200.650000000000', pctVal: '0.6512464848', assetCat: 'EC', country: 'PL', currency: 'PLN' },
+  { name: 'Noble Corp PLC', cusip: 'N/A', isin: 'GB00BMXNWH07', ticker: 'NE', balance: '251237.000000000000', valUsd: '9371140.100000000000', pctVal: '4.4736249385', assetCat: 'EC', country: 'US', curCd: 'USD' },
+  { name: 'First American Treasury Obligations Fund 01/01/2040', cusip: '31846V328', isin: 'US31846V3289', ticker: 'FXFXX', balance: '1429076.850000000000', valUsd: '1429076.850000000000', pctVal: '0.6822172934', assetCat: 'STIV', country: 'US', curCd: 'USD' },
+];
+
+function nportXml({ form = 'NPORT-P', seriesId = 'S000098509', seriesName = 'Pabrai Wagons ETF', reportDate = '2026-06-30', netAssets = '209475318.760000000000', rows = NPORT_ROWS } = {}) {
+  return `<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/nport">
+  <headerData><submissionType>${form}</submissionType><filerInfo><filer><issuerCredentials><cik>0000811030</cik></issuerCredentials></filer><seriesClassInfo><seriesId>${seriesId}</seriesId><classId>C000268187</classId></seriesClassInfo></filerInfo></headerData>
+  <formData>
+    <genInfo><regName>Professionally Managed Portfolios</regName><regCik>0000811030</regCik><seriesName>${seriesName}</seriesName><seriesId>${seriesId}</seriesId><seriesLei>529900POM4SRHKR00746</seriesLei><repPdEnd>${reportDate}</repPdEnd><repPdDate>${reportDate}</repPdDate><isFinalFiling>N</isFinalFiling></genInfo>
+    <fundInfo><totAssets>211265625.140000000000</totAssets><totLiabs>1790306.380000000000</totLiabs><netAssets>${netAssets}</netAssets></fundInfo>
+    <invstOrSecs>${rows.map(row => `
+      <invstOrSec>
+        <name>${row.name}</name><lei>N/A</lei><title>${row.name}</title><cusip>${row.cusip}</cusip>
+        <identifiers><isin value="${row.isin}"/><ticker value="${row.ticker}"/><other otherDesc="Internal" value="X-${row.ticker}"/></identifiers>
+        <balance>${row.balance}</balance><units>NS</units>${row.curCd ? `<curCd>${row.curCd}</curCd>` : `<currencyConditional curCd="${row.currency}" exchangeRt="40.5"/>`}
+        <valUSD>${row.valUsd}</valUSD><pctVal>${row.pctVal}</pctVal><payoffProfile>Long</payoffProfile><assetCat>${row.assetCat}</assetCat><issuerCat>${row.assetCat === 'STIV' ? 'RF' : 'CORP'}</issuerCat><invCountry>${row.country}</invCountry>
+      </invstOrSec>`).join('')}
+    </invstOrSecs>
+  </formData>
+</edgarSubmission>`;
+}
+
+// The FilePoint file dated 2026-07-01 is priced as of 2026-06-30. Its CUSIP
+// column carries a SEDOL for the Polish name and a CINS for Danaos.
+function nportSnapshot(date = '2026-07-01') {
+  return {
+    date, netAssets: 209475318.76, sharesOutstanding: 13000000,
+    rows: {
+      HCC: { cusip: '93627C101', shares: 254389, name: 'Warrior Met Coal Inc' },
+      AMR: { cusip: '020764106', shares: 62041, name: 'Alpha Metallurgical Resources Inc' },
+      DAC: { cusip: 'Y1968P121', shares: 77116, name: 'Danaos Corp' },
+      'SGN PW': { cusip: '5096747', shares: 65125, name: 'Sygnity SA' },
+      'ODL NO': { cusip: 'BDX87W2', shares: 205316, name: 'Odfjell Drilling Ltd' },
+      FXFXX: { cusip: '31846V328', shares: 1500000, name: 'First American Treasury Obligations Fund 01/01/2040' },
+    },
+    cash: { USD: 1000 },
+  };
+}
+
+test('N-PORT primary document parser reads the series, period, net assets and every identifier', () => {
+  const parsed = parseNportPrimary(nportXml());
+  assert.equal(parsed.form, 'NPORT-P');
+  assert.equal(parsed.isAmendment, false);
+  assert.equal(parsed.cik, '0000811030');
+  assert.equal(parsed.registrantName, 'Professionally Managed Portfolios');
+  assert.equal(parsed.seriesId, 'S000098509');
+  assert.equal(parsed.seriesName, 'Pabrai Wagons ETF');
+  assert.equal(parsed.repPdDate, '2026-06-30');
+  assert.equal(parsed.repPdEnd, '2026-06-30');
+  assert.equal(parsed.netAssets, 209475318.76);
+  assert.equal(parsed.totAssets, 211265625.14);
+  assert.equal(parsed.holdings.length, 6);
+  const hcc = parsed.holdings[0];
+  assert.deepEqual([hcc.name, hcc.cusip, hcc.isin, hcc.ticker, hcc.balance, hcc.units, hcc.curCd, hcc.valUsd, hcc.assetCat, hcc.invCountry, hcc.cashLike],
+    ['Warrior Met Coal Inc', '93627C101', 'US93627C1018', 'HCC', 254389, 'NS', 'USD', 20646211.24, 'EC', 'US', false]);
+  assert.deepEqual(hcc.otherIds, [{ desc: 'Internal', value: 'X-HCC' }]);
+  const sygnity = parsed.holdings.find(row => row.ticker === 'SGN');
+  assert.equal(sygnity.cusip, null, '"N/A" is not a CUSIP');
+  assert.equal(sygnity.isin, 'PLCMPLD00016');
+  assert.equal(sygnity.curCd, 'PLN', 'a non-USD position reports its currency as an attribute');
+  const moneyMarket = parsed.holdings.find(row => row.ticker === 'FXFXX');
+  assert.equal(moneyMarket.cashLike, true, 'STIV rows are cash-like');
+  assert.equal(parseNportPrimary(nportXml({ form: 'NPORT-P/A' })).isAmendment, true);
+  assert.throws(() => parseNportPrimary(primaryXml({ date: '06-30-2026', entries: 1, total: 1 })), /not a Form N-PORT/);
+  assert.throws(() => parseNportPrimary(nportXml().replace('<netAssets>209475318.760000000000</netAssets>', '')), /missing netAssets/);
+});
+
+test('N-PORT filings are selected newest report date first, amendment before original, by document basename', () => {
+  const submissions = {
+    cik: '811030',
+    filings: { recent: {
+      form: ['NPORT-P', '10-K', 'NPORT-P/A', 'NPORT-P', 'NPORT-P'],
+      accessionNumber: ['0001193125-26-000001', '0001193125-26-000002', '0001193125-26-000003', '0001193125-26-000004', '0001193125-26-000005'],
+      filingDate: ['2026-08-27', '2026-08-25', '2026-08-24', '2026-08-21', '2026-07-27'],
+      acceptanceDateTime: ['2026-08-27T20:57:25.000Z', '2026-08-25T10:00:00.000Z', '2026-08-24T15:00:00.000Z', '2026-08-21T16:00:00.000Z', '2026-07-27T16:00:00.000Z'],
+      reportDate: ['2026-06-30', '2026-06-30', '2026-06-30', '2026-06-30', '2026-05-31'],
+      primaryDocument: ['xslFormNPORT-P_X01/primary_doc.xml', 'form10k.htm', 'xslFormNPORT-P_X01/primary_doc.xml', 'primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml'],
+    } },
+  };
+  const filings = selectNportFilings(submissions, '0000811030');
+  assert.deepEqual(filings.map(filing => [filing.accession, filing.form, filing.reportDate, filing.primaryDocument]), [
+    ['0001193125-26-000003', 'NPORT-P/A', '2026-06-30', 'primary_doc.xml'],
+    ['0001193125-26-000001', 'NPORT-P', '2026-06-30', 'primary_doc.xml'],
+    ['0001193125-26-000004', 'NPORT-P', '2026-06-30', 'primary_doc.xml'],
+    ['0001193125-26-000005', 'NPORT-P', '2026-05-31', 'primary_doc.xml'],
+  ]);
+  assert.throws(() => selectNportFilings(submissions, '0001549575'), /does not match/);
+  assert.equal(isQuarterEndDate('2026-06-30'), true);
+  assert.equal(isQuarterEndDate('2026-05-31'), false);
+  assert.equal(isQuarterEndDate('2026-06-29'), false);
+  assert.equal(isQuarterEndDate('2026-12-31'), true);
+  assert.deepEqual(nextNportOpportunity('2026-06-30'), { reportDate: '2026-09-30', publicBy: '2026-11-29', snapshotDate: '2026-10-01' });
+  assert.deepEqual(nextNportOpportunity('2026-12-31'), { reportDate: '2027-03-31', publicBy: '2027-05-30', snapshotDate: '2027-04-01' });
+});
+
+test('N-PORT comparison pairs by CUSIP, then ISIN national number, then issuer name, and sets cash aside', () => {
+  const parsed = parseNportPrimary(nportXml());
+  const snapshots = [nportSnapshot('2026-08-20'), nportSnapshot('2026-07-01')];
+  const { expectedDate, snapshot } = selectSnapshotForNport(snapshots, '2026-06-30');
+  assert.equal(expectedDate, '2026-07-01', 'the file dated the next weekday is priced as of the report date');
+  assert.equal(snapshot.date, '2026-07-01');
+  const result = compareNportWithSnapshot(parsed, snapshot, { cashLike: ['FXFXX'] });
+  assert.equal(result.comparable, true);
+  assert.equal(result.snapshotDate, '2026-07-01');
+  // rows are ordered by N-PORT value, largest first
+  assert.deepEqual(result.matched.map(row => [row.fundTicker, row.method, row.diff]), [
+    ['HCC', 'cusip', 0],
+    ['DAC', 'isin', 0],
+    ['SGN PW', 'name', 0],
+  ]);
+  assert.deepEqual(result.mismatched.map(row => [row.fundTicker, row.method, row.nportShares, row.fileShares, row.diff]), [['AMR', 'cusip', 48646, 62041, 13395]]);
+  assert.deepEqual(result.onlyInNport.map(row => [row.ticker, row.id]), [['NE', 'GB00BMXNWH07']], 'a GB ISIN carries a SEDOL the file does not use, and the name is absent from the file');
+  assert.deepEqual(result.onlyInHoldings.map(row => row.fundTicker), ['ODL NO']);
+  assert.deepEqual(result.cashLike.map(row => [row.fundTicker, row.method, Math.round(row.diff * 100) / 100]), [['FXFXX', 'cusip', 70923.15]], 'the money-market fund is listed, not counted');
+  assert.deepEqual(result.summary, { positions: 5, filePositions: 5, matched: 3, mismatched: 1, onlyInNport: 1, onlyInHoldings: 1, cashLike: 1, byMethod: { cusip: 2, isin: 1, name: 1 } });
+  assert.equal(result.netAssets.diffPct, 0);
+  // an ambiguous name never pairs: two file rows share "SYGNITY SA"
+  const ambiguous = nportSnapshot();
+  ambiguous.rows['SGN2 PW'] = { cusip: '5096748', shares: 1, name: 'Sygnity SA (second line)' };
+  assert.equal(compareNportWithSnapshot(parsed, ambiguous, { cashLike: ['FXFXX'] }).onlyInNport.some(row => row.ticker === 'SGN'), true);
+  assert.equal(issuerNameKey('Topicus.com Inc'), 'TOPICUS COM');
+  assert.equal(issuerNameKey('Constellation Software Inc/Canada'), 'CONSTELLATION SOFTWARE');
+});
+
+test('without a saved file for the report date the N-PORT check says so and names the next opportunity', () => {
+  const parsed = parseNportPrimary(nportXml());
+  const { snapshot } = selectSnapshotForNport([nportSnapshot('2026-08-20')], '2026-06-30');
+  assert.equal(snapshot, null);
+  const result = compareNportWithSnapshot(parsed, snapshot, { cashLike: ['FXFXX'] });
+  assert.equal(result.comparable, false);
+  assert.equal(result.snapshotDate, '2026-07-01');
+  assert.match(result.reason, /no saved holdings file dated 2026-07-01/);
+  assert.deepEqual([result.matched, result.mismatched, result.onlyInNport, result.onlyInHoldings, result.cashLike], [[], [], [], [], []]);
+  assert.equal(result.summary.positions, 5);
+  const line = summarizeNportCheck({ ok: true, form: 'NPORT-P', filed: '2026-08-21', reportDate: '2026-06-30', comparison: result, nextOpportunity: nextNportOpportunity('2026-06-30') });
+  assert.equal(line, 'N-PORT as of 2026-06-30 (NPORT-P, filed 2026-08-21): no saved FilePoint file dated 2026-07-01, so no comparison yet; first check possible with the 2026-09-30 report (public by about 2026-11-29) against the file dated 2026-10-01');
+  assert.equal(summarizeNportCheck({ ok: false, fetchError: '403 Forbidden' }), 'SEC N-PORT unavailable (403 Forbidden)');
+});
+
+function nportSubmissions() {
+  return {
+    cik: '0000811030', name: 'PROFESSIONALLY MANAGED PORTFOLIOS',
+    filings: { recent: {
+      form: ['NPORT-P', 'NPORT-P/A', 'NPORT-P', 'NPORT-P', 'NPORT-P'],
+      accessionNumber: ['0001193125-26-000010', '0001193125-26-000012', '0001193125-26-000011', '0001193125-26-000009', '0001193125-26-000008'],
+      filingDate: ['2026-07-27', '2026-08-28', '2026-08-27', '2026-08-21', '2026-05-28'],
+      acceptanceDateTime: ['2026-07-27T16:00:00.000Z', '2026-08-28T16:00:00.000Z', '2026-08-27T20:57:25.000Z', '2026-08-21T16:00:00.000Z', '2026-05-28T16:00:00.000Z'],
+      reportDate: ['2026-05-31', '2026-06-30', '2026-06-30', '2026-06-30', '2026-03-31'],
+      primaryDocument: ['xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml'],
+    } },
+  };
+}
+
+test('the newest public Pabrai N-PORT is found among the trust filings, preferring an amendment, with provenance', async () => {
+  const archive = 'https://www.sec.gov/Archives/edgar/data/811030';
+  const bodies = new Map([
+    ['https://data.sec.gov/submissions/CIK0000811030.json', JSON.stringify(nportSubmissions())],
+    // an amended report of another series comes first in the walk
+    [`${archive}/000119312526000012/primary_doc.xml`, nportXml({ form: 'NPORT-P/A', seriesId: 'S000036430', seriesName: 'Muzinich Dynamic Income Fund' })],
+    [`${archive}/000119312526000011/primary_doc.xml`, nportXml({ seriesId: 'S000030908', seriesName: 'Boston Common ESG Impact U.S. Equity Fund' })],
+    [`${archive}/000119312526000009/primary_doc.xml`, nportXml()],
+    // the May report belongs to another series and must never be requested
+    [`${archive}/000119312526000010/primary_doc.xml`, nportXml({ seriesId: 'S000099999', seriesName: 'Some Other Fund', reportDate: '2026-05-31' })],
+  ]);
+  const requested = [];
+  const fetchImpl = async (url, init) => {
+    requested.push(url);
+    assert.ok(bodies.has(url), `unexpected URL ${url}`);
+    assert.equal(init.headers['User-Agent'], DEFAULT_SEC_USER_AGENT);
+    return response(bodies.get(url), 200, { etag: 'fixture' });
+  };
+  const config = { trustCik: '0000811030', seriesNameMatch: 'Pabrai Wagons', seriesId: 'S000098509' };
+  const result = await fetchLatestPabraiNport(config, { fetchImpl, userAgent: DEFAULT_SEC_USER_AGENT, delayMs: 0, retryDelayMs: 0, snapshots: [nportSnapshot('2026-08-20')], cashLike: ['FXFXX'] });
+  assert.equal(result.ok, true, result.fetchError);
+  assert.equal(result.accession, '0001193125-26-000009');
+  assert.equal(result.form, 'NPORT-P');
+  assert.equal(result.filed, '2026-08-21');
+  assert.equal(result.reportDate, '2026-06-30');
+  assert.equal(result.seriesId, 'S000098509');
+  assert.equal(result.seriesName, 'Pabrai Wagons ETF');
+  assert.equal(result.seriesIdMatchesConfig, true);
+  assert.equal(result.holdingCount, 6);
+  assert.equal(result.sourceUrl, `${archive}/000119312526000009/0001193125-26-000009-index.html`);
+  assert.deepEqual(result.opened.map(entry => entry.accession), ['0001193125-26-000012', '0001193125-26-000011', '0001193125-26-000009']);
+  assert.ok(!requested.includes(`${archive}/000119312526000010/primary_doc.xml`), 'non-quarter-end reports are not opened');
+  assert.match(result.provenance.submissions.sha256, /^[0-9a-f]{64}$/);
+  assert.match(result.provenance.primary.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(result.provenance.primary.url, `${archive}/000119312526000009/primary_doc.xml`);
+  assert.equal(result.comparison.comparable, false);
+  assert.deepEqual(result.snapshotRange, { first: '2026-08-20', last: '2026-08-20', count: 1 });
+  assert.deepEqual(result.nextOpportunity, { reportDate: '2026-09-30', publicBy: '2026-11-29', snapshotDate: '2026-10-01' });
+  assert.match(result.summary, /no saved FilePoint file dated 2026-07-01/);
+  assert.ok(!JSON.stringify(result).includes('<edgarSubmission'), 'the API result never carries raw XML');
+
+  // an amendment of the fund's own report replaces the original for the period
+  bodies.set(`${archive}/000119312526000012/primary_doc.xml`, nportXml({ form: 'NPORT-P/A' }));
+  const amended = await fetchLatestPabraiNport(config, { fetchImpl, delayMs: 0, retryDelayMs: 0, snapshots: [nportSnapshot('2026-07-01')], cashLike: ['FXFXX'] });
+  assert.equal(amended.ok, true, amended.fetchError);
+  assert.equal(amended.accession, '0001193125-26-000012');
+  assert.equal(amended.isAmendment, true);
+  assert.equal(amended.form, 'NPORT-P/A');
+  assert.equal(amended.comparison.comparable, true);
+  assert.equal(amended.comparison.summary.matched, 3);
+  assert.equal(amended.summary, 'N-PORT as of 2026-06-30 (NPORT-P/A, filed 2026-08-28) vs the FilePoint file dated 2026-07-01: 3 of 5 positions match share counts; 1 differ, 1 only in N-PORT, 1 only in the file, 1 cash-like rows not counted');
+});
+
+test('SEC refusing the N-PORT document is reported as unavailable, never thrown or presented as a finding', async () => {
+  const submissionsUrl = 'https://data.sec.gov/submissions/CIK0000811030.json';
+  let archiveRequests = 0;
+  const fetchImpl = async url => {
+    if (url === submissionsUrl) return response(JSON.stringify(nportSubmissions()), 200);
+    archiveRequests++;
+    return response('<html>Request Rate Threshold Exceeded</html>', 403);
+  };
+  const result = await fetchLatestPabraiNport({ trustCik: '0000811030', seriesNameMatch: 'Pabrai Wagons' }, { fetchImpl, delayMs: 0, retryDelayMs: 0, attempts: 3 });
+  assert.equal(result.ok, false);
+  assert.equal(result.sourceStatus, 'SEC N-PORT unavailable');
+  assert.match(result.fetchError, /403/);
+  assert.match(result.fetchError, /after 3 attempts/);
+  assert.equal(archiveRequests, 3, 'the walk stops at the first document SEC refuses');
+  assert.deepEqual(result.candidates.map(candidate => candidate.accession), ['0001193125-26-000012', '0001193125-26-000011', '0001193125-26-000009', '0001193125-26-000008']);
+  assert.match(result.provenance.submissions.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(result.opened.length, 0);
+  // the submissions index itself being unreachable is the same labelled state
+  const offline = await fetchLatestPabraiNport({}, { fetchImpl: async () => { throw new Error('ENOTFOUND'); }, delayMs: 0, retryDelayMs: 0 });
+  assert.equal(offline.ok, false);
+  assert.match(offline.fetchError, /SEC submissions index: no contact with data\.sec\.gov/);
+  // a walk that never meets the series is also unavailable, with the count opened
+  const otherSeries = async url => url === submissionsUrl ? response(JSON.stringify(nportSubmissions()), 200) : response(nportXml({ seriesId: 'S000000001', seriesName: 'Another Fund' }), 200);
+  const missing = await fetchLatestPabraiNport({ trustCik: '0000811030' }, { fetchImpl: otherSeries, delayMs: 0, retryDelayMs: 0, maxDocuments: 2 });
+  assert.equal(missing.ok, false);
+  assert.match(missing.fetchError, /none of the 2 N-PORT primary documents opened \(limit 2\)/);
 });

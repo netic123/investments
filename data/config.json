@@ -92,6 +92,12 @@
       { "ticker": "KSPI", "name": "Kaspi.kz",             "cusip": "48581R205", "shares": 1702,     "prevShares": null,     "valueUsd": 147461 }
     ]
   },
+  "nport": {
+    "trustCik": "0000811030",
+    "seriesNameMatch": "Pabrai Wagons",
+    "seriesId": "S000098509",
+    "note": "Form N-PORT is filed by the trust Professionally Managed Portfolios once per series, so only the primary document names the series; the ETF has a new series ID (S000098509) since the February 2026 reorganisation of the mutual fund series S000081831. Only the report for the last month of each fiscal quarter (year end 30 Jun: 31 Mar, 30 Jun, 30 Sep, 31 Dec) becomes public, 60 days after that quarter end. Verified 2 Sep 2026: accession 0001193125-26-360389, filed 21 Aug 2026, report period 30 Jun 2026, 19 positions."
+  },
   "dates": [
     { "date": "2026-09-08", "label": "WAGN annual report (Form N-CSR, fiscal year ended 30 Jun, due within 70 days; filed 6 Sep 2024 and 9 Sep 2025) — full holdings + liquidity classification", "approx": true },
     { "date": "2026-09-08", "label": "Kaspi proposed common-share dividend record date (KZT 1,000, subject to vote; ADS record/payment dates not announced); EGM 9 Sep" },
