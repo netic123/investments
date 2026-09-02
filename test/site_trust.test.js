@@ -23,7 +23,7 @@ test('the inline script compiles and the static page gets a matching hash-based 
   const hash = crypto.createHash('sha256').update(script, 'utf8').digest('base64');
   assert.ok(csp.includes(`script-src 'sha256-${hash}'`));
   assert.match(csp, /default-src 'none'/);
-  assert.match(csp, /connect-src 'self' https:\/\/data\.sec\.gov/);
+  assert.match(csp, /connect-src 'self' https:\/\/data\.sec\.gov https:\/\/api\.github\.com;/);
   assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/);
   assert.ok(page.includes('<meta name="investments-mode" content="static">'));
   assert.ok(!page.includes('<meta name="investments-mode" content="local">'));
@@ -98,6 +98,23 @@ test('the browser copy of the pricing-date rule agrees with pabrai.js', () => {
     assert.equal(page.mode, node.mode, JSON.stringify([latest, nav]));
     assert.equal(page.unitChange, node.unitChange, JSON.stringify([latest, nav]));
   }
+});
+
+test('the owner live update only ever talks to api.github.com and keeps the token in local storage', () => {
+  assert.match(html, /const LIVE_REPO='netic123\/investments', LIVE_WORKFLOW='pages\.yml', LIVE_TOKEN_KEY='investments\.liveUpdateToken';/);
+  assert.match(html, /\/actions\/workflows\/'\+LIVE_WORKFLOW\+'\/dispatches'/);
+  assert.match(html, /inputs:\{skip_tests:'true',reason:'live update requested from the page'\}/);
+  assert.match(html, /fetch\('https:\/\/api\.github\.com\/repos\/'\+LIVE_REPO\+path/);
+  // the token is never rendered or logged, only its last four characters are shown
+  assert.doesNotMatch(html, /console\.(log|warn|error)\([^)]*token/i);
+  assert.match(html, /esc\(token\.slice\(-4\)\)/);
+  assert.match(html, /type="password" id="liveTokenInput"/);
+  // and the disclosure names it
+  assert.match(html, /only if you have stored a GitHub token for the owner’s live update, api\.github\.com/);
+  const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pages.yml'), 'utf8');
+  assert.match(workflow, /skip_tests:\n\s+#[^\n]*\n(\s+#[^\n]*\n)*\s+description:/);
+  assert.match(workflow, /if: \$\{\{ !\(github\.event_name == 'workflow_dispatch' && \(inputs\.skip_tests == true \|\| inputs\.skip_tests == 'true'\)\) \}\}/);
+  assert.match(workflow, /INVESTMENTS_BUILD_TRIGGER: \$\{\{ github\.event_name \}\}/);
 });
 
 test('config names every current holding and cash currency', () => {

@@ -56,7 +56,9 @@ const STATIC_CSP_DIRECTIVES = [
   "script-src 'sha256-__SCRIPT_HASH__'",
   "style-src 'unsafe-inline' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
-  "connect-src 'self' https://data.sec.gov",
+  // api.github.com only serves the owner's optional live update (dispatching a
+  // rebuild with a token stored in that browser); visitors never contact it.
+  "connect-src 'self' https://data.sec.gov https://api.github.com",
   "img-src 'self' data:",
   "base-uri 'none'",
   "form-action 'none'",
@@ -570,6 +572,9 @@ async function main() {
       ref: process.env.GITHUB_REF_NAME || gitValue(['branch', '--show-current']),
       // A local build may run on uncommitted changes; the commit alone would then overstate provenance.
       dirty: process.env.GITHUB_SHA ? false : gitValue(['status', '--porcelain'], '') !== '',
+      trigger: process.env.INVESTMENTS_BUILD_TRIGGER || (process.env.GITHUB_SHA ? 'unknown' : 'local'),
+      reason: process.env.INVESTMENTS_BUILD_REASON || null,
+      testsSkipped: process.env.INVESTMENTS_BUILD_TESTS_SKIPPED === 'true',
       dataMode: 'build-time snapshot',
       watchlist: 'public-no-entry-prices',
       refreshTrigger: 'push to main, manual dispatch, or the scheduled builds (09:15 UTC daily and 21:35 UTC Mon-Fri; GitHub may start them hours late)',
