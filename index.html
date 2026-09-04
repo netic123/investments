@@ -919,7 +919,7 @@ function renderFundAssets(H){
   const priced=holdingsNavCheck(H,NAV_DATA);
   $('#kNet').textContent = L.netAssets==null ? '—' : '$'+fmt(L.netAssets/1e6,1)+'M';
   const navFile = priced.navFileNetAssets!=null ? `; the fund’s NAV file dated ${fmtDate(priced.navDate)} reports net assets of $${fmt(priced.navFileNetAssets)}${priced.netAssetsComparable?` (${fmt(Math.abs(priced.netAssetsDifference))} ${priced.netAssetsDifference>=0?'below':'above'} the holdings file)`:` at ${fmt(priced.navFileShares)} units — not directly comparable, different unit counts`}` : '';
-  $('#kNet').title = `Holdings file dated ${fmtDate(L.date)}: NetAssets $${fmt(L.netAssets)}${priced.matched?` = rounded NAV $${fmt(priced.nav,2)} × ${fmt(L.sharesOutstanding)} units (a pricing-date proof, not an independent asset total)`:''}${navFile}`;
+  $('#kNet').title = `Holdings file dated ${fmtDate(L.date)}: NetAssets $${fmt(L.netAssets)}${priced.matched?(priced.mode==='exact'?` = rounded NAV $${fmt(priced.nav,2)} × ${fmt(L.sharesOutstanding)} units (a pricing-date proof, not an independent asset total)`:` ÷ ${fmt(L.sharesOutstanding)} units = the rounded NAV $${fmt(priced.nav,2)} to within half a cent per unit (a pricing-date proof, not an independent asset total)`):''}${navFile}`;
   const firstFlow = hasFirst ? unitFlowWithImplied(F,L,NAV_DATA) : null;
   const pF = hasFirst ? pricingOf(F,NAV_DATA) : null, pL = pricingOf(L,NAV_DATA);
   let sub='';
@@ -1072,7 +1072,7 @@ function renderHoldings(H,Q){
     return `<tr class="${mine.has(t)?'mine ':''}${cl?'cashrow':(c?(c.delta>0?'chg-buy':'chg-sell'):'')}">
       <td class="num">${i+1}</td><td>${flagOf(t)} <span class="tick">${esc(t)}</span> ${esc(nameOf(t))}</td>
       <td class="num">${pct(r.weight,2,false)}</td><td class="num">${fmt(r.shares)}</td><td class="num">${deltaCell(t,r,P,flow,c)}</td><td class="num">${deltaCell(t,r,F,firstFlow,f)}</td>
-      <td class="num">${fmt(px,2)}${ccy?' <span class="muted">'+esc(ccy)+'</span>':''}</td><td class="num">${fmt(div(r.mv,1e6),2)}M</td><td>${avanzaPill(t)}</td></tr>`;
+      <td class="num"${cl&&r.shares&&r.price!==px?` title="derived as MarketValue ÷ Shares; the file’s Price column for this row reads ${fmt(r.price,2)}, which does not match its own MarketValue"`:''}>${fmt(px,2)}${ccy?' <span class="muted">'+esc(ccy)+'</span>':''}</td><td class="num">${fmt(div(r.mv,1e6),2)}M</td><td>${avanzaPill(t)}</td></tr>`;
   }).join('')
   + `<tr class="cashrow"><td></td><td title="${esc(cashBreakdown)}">Currency balances &amp; other (net)${cashLikeNames?' — excludes the '+cashLikeNames+' money-market row above':''}<div class="s">${esc(cashBreakdown)}${cash<0?'. Negative: the file reports more owed than held in those currencies (payables for unsettled purchases or creations can exceed cash on hand); it does not state the cause':''}</div></td><td class="num">${shareOf(cash)}</td><td colspan="4"></td><td class="num">${fmt(cash/1e6,2)}M</td><td></td></tr>`
   + (cashLikeRows.length ? `<tr class="cashrow"><td></td><td>Net cash incl. the ${cashLikeNames} money-market fund</td><td class="num">${shareOf(cash+cashLikeMv)}</td><td colspan="4"></td><td class="num">${fmt((cash+cashLikeMv)/1e6,2)}M</td><td></td></tr>` : '');
@@ -1522,7 +1522,7 @@ function normMarket(M,model,fetchedAt){
   // (trailing-window percentiles) on five markets; the v3 expanding-percentile score shown here has had none of it.
   const studied = M.key==='ustech'
     ? 'US Tech was added on 27 Aug 2026, after the owner’s back-tests: no rule search, replication, diagnostic battery or lockbox covers it. The one research record that includes it is a deliberately overfit fitted lookup, which its own document calls neither a strategy nor evidence of predictive value. '
-    : 'The owner’s back-tests of the earlier v1 and v2 scores (trailing-window percentiles, since replaced by this v3 score) found no reliable buy/sell timing rule: seven kinds of rule were tried across Crypto, Sweden, USA, Europe and Global and rejected after costs; one Europe candidate found on the v2 score failed a replication test on three other markets and is still being tracked in real time, on v2. ';
+    : 'The owner’s back-tests of the earlier v1 and v2 scores (trailing-window percentiles, since replaced by this v3 score) found no reliable buy/sell timing rule: seven kinds of rule were tried on those scores, their components and benchmark prices across Crypto, Sweden, USA, Europe and Global, and rejected after costs; one Europe candidate found on the v2 score failed a replication test on three other markets and is still being tracked in real time, on v2. ';
   const Y=typeof BUILD_META!=='undefined'&&BUILD_META&&BUILD_META.yahooRequests;
   const attempts = typeof BUILD_META!=='undefined'&&BUILD_META&&Number(BUILD_META.snapshotAttempts)>1 ? Number(BUILD_META.snapshotAttempts) : null;
   const allAttempts = typeof BUILD_META!=='undefined'&&BUILD_META&&Number.isFinite(Number(BUILD_META.yahooRequestsAllAttempts)) ? Number(BUILD_META.yahooRequestsAllAttempts) : null;

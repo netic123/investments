@@ -284,7 +284,8 @@ TABS (top of the page)
             BUY/SELL reads as a recommendation. Each Fear & Greed tab's own footer block attributes the research honestly
             (US Tech prints its own variant, naming the one fitted study that includes it): the owner's
             back-tests of the earlier v1 and v2 scores (trailing-window percentiles) found no reliable timing rule —
-            seven kinds of rule across Crypto, Sweden, USA, Europe and Global rejected after costs; one Europe
+            seven kinds of rule on those scores, their components and benchmark prices across Crypto, Sweden, USA, Europe
+            and Global rejected after costs; one Europe
             candidate on v2 failed replication and is still tracked in real time, on v2 — and this v3 score has had
             no rule search and no prospective test.
             Open directly: /#crypto /#sweden /#usa /#ustech /#europe /#global
@@ -645,6 +646,25 @@ IF SOMETHING GOES WRONG
 - "live update: …" messages belong to the owner's live update; they end with the page reloading or with the
   GitHub answer explained (see LIVE UPDATE).
 - If snapshots.json breaks, a copy is saved (snapshots.json.broken-<time>) and the history starts over.
+
+DATED OBSERVATIONS THAT WILL AGE
+Nothing below is derived from a live source; each is true as of the date it carries and must be re-measured by
+hand. Where to change it when it is:
+- GitHub's schedule reliability (7 of 36 slots on 3 Sep 2026; none of the first 8 on 4 Sep): SCHEDULE_NOTE in
+  scripts/build-pages.js (the About line prints it), the GITHUB PAGES section above, and the comment block over
+  the cron lines in .github/workflows/pages.yml.
+- Runner times (build 31–61 s / 224–317 s, deploy 8–63 s, test step 183–261 s over 2–4 Sep 2026): GITHUB PAGES
+  above and the timeout comment on the build job in pages.yml.
+- "Every GitHub build since 2 Sep 2026 verified the SEC filings with the built-in default User-Agent": GITHUB
+  PAGES and SOURCES above, the header comment of pabrai.js, the SEC_USER_AGENT comment in pages.yml and in
+  scripts/build-pages.js. api/build.json dalalVerification, nportCheck and secContact are the live record.
+- The N-PORT quarter dates (next report 30 Sep 2026, due 30 Nov 2026) and candidateCount 228: SOURCES above;
+  the page computes both from SEC's index at each build.
+- The Yahoo gap observations of 2 and 4 Sep 2026: HOW IT WORKS above.
+- The 24 Aug 2026 series check (20 of 23 closes) and the 23 Aug 2026 CNN comparison: SOURCES above and
+  MARKET_DISCLOSURES in marketfg.js.
+- The Avanza column, the flags and the sec13f notes in data/config.json: hand notes; the flags follow the fund's
+  30 Jun 2026 N-PORT and should be re-read against each new one.
 
 Not investment advice.
 

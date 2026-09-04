@@ -1,5 +1,5 @@
 {
-  "_comment": "Public GitHub Pages focus watchlist approved by the user on 24 Aug 2026. Entry prices are deliberately omitted. Report dates are Avanza estimates from the supplied screenshot and were not company-confirmed at verification.",
+  "_comment": "Public GitHub Pages focus watchlist approved by the user on 24 Aug 2026. Entry prices are deliberately omitted. Report dates are Avanza estimates; each note says what the company's own IR page showed when it was last checked.",
   "myPositions": [
     {
       "ticker": "CSU.TO",
@@ -9,7 +9,7 @@
       "currency": "CAD",
       "nextReport": "2026-11-06",
       "nextReportApprox": true,
-      "nextReportNote": "Avanza screenshot estimate; not company-confirmed (checked 23 Aug 2026)."
+      "nextReportNote": "Avanza estimate; no release date announced on csisoftware.com as of 4 Sept 2026."
     },
     {
       "ticker": "KSPI",
@@ -19,7 +19,7 @@
       "currency": "USD",
       "nextReport": "2026-10-28",
       "nextReportApprox": true,
-      "nextReportNote": "Avanza screenshot estimate; not company-confirmed (checked 23 Aug 2026)."
+      "nextReportNote": "Avanza estimate; no 3Q date on ir.kaspi.kz as of 4 Sept 2026."
     },
     {
       "ticker": "HCC",
@@ -29,7 +29,7 @@
       "currency": "USD",
       "nextReport": "2026-10-30",
       "nextReportApprox": true,
-      "nextReportNote": "Avanza screenshot estimate; not company-confirmed (checked 23 Aug 2026)."
+      "nextReportNote": "Avanza estimate; investors.warriormetcoal.com listed no upcoming event on 4 Sept 2026."
     }
   ]
 }
