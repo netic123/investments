@@ -58,7 +58,10 @@ test('the page labels snapshot data, times and changes truthfully', () => {
   assert.match(html, /BUILD_RUNS_24H=\{n:started24h,atLeast:started24h===runs\.length\}/);
   assert.match(html, /'at least ':''\)\+BUILD_RUNS_24H\.n/);
   assert.match(html, /is normally published by \$\{B\.holdingsFileExpectedByUtc\} UTC; this snapshot was built before it and shows the \$\{fmtDate\(fileDate\)\} file/);
-  assert.match(html, /a US market holiday would explain that and is not modelled here/);
+  // US market holidays come from a fixed NYSE list and turn the expectation into a stated unknown, never an assertion
+  assert.match(html, /const US_MARKET_HOLIDAYS=\{'2026-01-01'/);
+  assert.match(html, /is a US market holiday \(\$\{gap\.name\}\), \$\{gap\.kind\}: the fund prices only on trading days, and how FilePoint dates its file around a holiday has not been observed/);
+  assert.doesNotMatch(html, /is not modelled here/);
   assert.match(html, /a file’s bytes do not match the SHA-256 that build\.json publishes for it/);
   assert.match(html, /this page’s code is from build \$\{SNAPSHOT\.codeBuild\.slice\(0,7\)\} while its data is from build/);
   assert.match(html, /meta\[name="investments-build-commit"\]/);
@@ -112,7 +115,7 @@ test('the pure page helpers apply build.json thresholds, the expected weekday fi
   const start = html.indexOf('const hhmmUtc=');
   const end = html.indexOf('// ---- end pure helpers');
   assert.ok(start > 0 && end > start, 'the pure helper block must be delimited in index.html');
-  const helpers = require('node:vm').runInNewContext(`${html.slice(start, end)}\n;({staleThreshold,expectedHoldingsFileDate,filesMatch,describeSchedules,CRON_LABELS})`, {});
+  const helpers = require('node:vm').runInNewContext(`${html.slice(start, end)}\n;({staleThreshold,expectedHoldingsFileDate,filesMatch,describeSchedules,CRON_LABELS,usMarketHoliday,holidayGap})`, {});
   const published = {
     snapshotStaleAfterHours: build.SNAPSHOT_STALE_AFTER_HOURS,
     snapshotStaleAfterHoursOffSchedule: build.SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE,
@@ -138,6 +141,15 @@ test('the pure page helpers apply build.json thresholds, the expected weekday fi
   assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-07T00:10:00Z')), '2026-09-04', 'Monday before the file time');
   assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-07T00:40:00Z')), '2026-09-07', 'Monday after the file time');
   assert.equal(helpers.expectedHoldingsFileDate({}, at('2026-09-07T00:40:00Z')), null, 'no published time means no expectation');
+  // holidays: Labor Day itself, the Tuesday after it (whose file would carry Monday's close), and an ordinary day
+  assert.equal(helpers.usMarketHoliday('2026-09-07'), 'Labor Day');
+  assert.equal(helpers.usMarketHoliday('2026-09-04'), null);
+  // the helper object comes from another vm realm, so compare its fields, not its prototype
+  assert.equal(JSON.stringify(helpers.holidayGap('2026-09-07')), JSON.stringify({ date: '2026-09-07', name: 'Labor Day', kind: 'the date itself' }));
+  assert.equal(helpers.holidayGap('2026-09-08').date, '2026-09-07', 'the day after a holiday would carry the holiday’s close');
+  assert.equal(helpers.holidayGap('2026-09-09'), null);
+  assert.equal(helpers.holidayGap('2027-07-06').date, '2027-07-05', 'Independence Day 2027 is observed on Monday 5 July');
+  assert.equal(helpers.usMarketHoliday('2026-04-03'), 'Good Friday', 'a market closure that is not a federal holiday');
   // digest map: match, mismatch, unknown
   const hex = 'a'.repeat(64);
   assert.equal(helpers.filesMatch({ 'api/quotes.json': hex }, 'api/quotes.json', hex), 'match');
@@ -417,6 +429,9 @@ test('the page shows its provenance and reads the build history from GitHub only
   for (const host of connect) assert.ok(disclosure.includes(host.replace('https://', '')), `${host} must be named in the disclosure`);
   assert.match(disclosure, /this site’s own JSON files/);
   assert.match(disclosure, /Google Fonts/);
+  // locally the browser reaches only the local server and the fonts: the SEC recency check runs on the static site alone
+  assert.match(html, /const secCheck=STATIC_BUILD \? await checkLatestSecAccession\(DALAL\) : \{checked:false\};/);
+  assert.match(html, /Locally your browser contacts only the local server at 127\.0\.0\.1 and Google Fonts/);
   // the SEC check runs on every load while the fallback is published, whichever tab is open
   assert.match(disclosure, /data\.sec\.gov \(SEC’s EDGAR submissions index\), on a page load and, at most once an hour, on a re-check that loads a newer snapshot, while the published snapshot carries the manually verified 13F fallback — whichever tab you have open/);
   // the owner's token and interval are the exception to "nothing you type is sent"
