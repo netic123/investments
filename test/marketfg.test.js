@@ -353,11 +353,11 @@ test('research acquisition never adds the short-range top-up request', async () 
   }
 });
 
-test('a carried-forward component says whether Yahoo returned no close or no bar for the missed dates', async () => {
+test('a carried-forward component says what the data shows: no close, weekend, venue-wide missing bar, or a single-series feed gap', async () => {
   const { lagDetailFor } = require('../marketfg');
   const originalFetch = global.fetch;
   const day = 86400, first = Date.parse('2020-01-01T00:00:00Z') / 1000;
-  const timestamps = Array.from({ length: 40 }, (_, i) => first + i * day);
+  const timestamps = Array.from({ length: 40 }, (_, i) => first + i * day); // daily bars 2020-01-01 .. 2020-02-09
   const closes = timestamps.map((_, i) => (i === 38 ? null : 100 + i)); // Yahoo lists 2020-02-08 without a close
   global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ chart: { result: [{
     meta: { symbol: 'GAP-TEST', longName: 'Gap fixture', currency: 'USD', exchangeTimezoneName: 'UTC' },
@@ -368,14 +368,37 @@ test('a carried-forward component says whether Yahoo returned no close or no bar
     assert.equal(series.rows.length, 39);
     assert.deepEqual(series.missingCloseDates, ['2020-02-08']);
     const sources = new Map([['GAP-TEST', series]]);
-    assert.equal(lagDetailFor(['2020-02-08'], ['GAP-TEST'], sources), 'GAP-TEST: Yahoo returned no close for 2020-02-08');
-    assert.equal(lagDetailFor(['2020-02-10', '2020-02-11'], ['GAP-TEST'], sources), 'GAP-TEST: Yahoo has no bar for 2020-02-10, 2020-02-11');
-    assert.equal(lagDetailFor(['2020-02-08', '2020-02-10'], ['GAP-TEST'], sources), 'GAP-TEST: Yahoo returned no close for 2020-02-08; GAP-TEST: Yahoo has no bar for 2020-02-10');
+    // a listed bar without a close is the one case that is certainly a feed gap
+    assert.equal(lagDetailFor(['2020-02-08'], ['GAP-TEST'], sources), 'GAP-TEST: Yahoo listed 2020-02-08 with no close (feed gap)');
+    // weekday dates the only series of its venue lacks: holiday or feed gap, and the text says the model cannot tell
+    assert.equal(lagDetailFor(['2020-02-10', '2020-02-11'], ['GAP-TEST'], sources),
+      'GAP-TEST: no 2020-02-10, 2020-02-11 bars on the only US-listed series (exchange holiday or feed gap; the model cannot tell which)');
+    assert.equal(lagDetailFor(['2020-02-08', '2020-02-10'], ['GAP-TEST'], sources),
+      'GAP-TEST: Yahoo listed 2020-02-08 with no close (feed gap); GAP-TEST: no 2020-02-10 bar on the only US-listed series (exchange holiday or feed gap; the model cannot tell which)');
     assert.equal(lagDetailFor(['2020-02-09'], ['GAP-TEST'], sources), null, 'a date the series has is not the cause');
     assert.equal(lagDetailFor(['2020-02-10'], ['SYNTHETIC-ID'], sources), null, 'unknown sources are skipped');
+    assert.doesNotMatch(String(lagDetailFor(['2020-02-10'], ['GAP-TEST'], sources)), /later build|publishes|will/i, 'never promises a later bar');
   } finally {
     global.fetch = originalFetch;
   }
+
+  // Two London-listed series in one market: 2026-08-31 (a Monday, the UK bank holiday) missing on both,
+  // 2026-09-01 missing on one only, and a weekend date missing on both.
+  const rowsFor = dates => dates.map((date, i) => ({ date, close: 100 + i }));
+  const london = new Map([
+    ['IHYG.L', { symbol: 'IHYG.L', rows: rowsFor(['2026-08-27', '2026-08-28', '2026-09-02']), missingCloseDates: [] }],
+    ['IEAC.L', { symbol: 'IEAC.L', rows: rowsFor(['2026-08-27', '2026-08-28', '2026-09-01', '2026-09-02']), missingCloseDates: [] }],
+    ['SXRQ.DE', { symbol: 'SXRQ.DE', rows: rowsFor(['2026-08-27', '2026-08-28', '2026-08-31', '2026-09-01', '2026-09-02']), missingCloseDates: [] }],
+  ]);
+  const marketSymbols = ['^STOXX', 'SXRQ.DE', 'IHYG.L', 'IEAC.L'];
+  assert.equal(lagDetailFor(['2026-08-31', '2026-09-01'], ['IHYG.L', 'IEAC.L'], london, marketSymbols),
+    'IHYG.L: no 2026-08-31 bar on any of the 2 London-listed series (exchange holiday or feed gap; the model cannot tell which); '
+    + 'IHYG.L: no 2026-09-01 bar for IHYG.L while other London-listed series have one (feed gap); '
+    + 'IEAC.L: no 2026-08-31 bar on any of the 2 London-listed series (exchange holiday or feed gap; the model cannot tell which)');
+  assert.equal(lagDetailFor(['2026-08-29', '2026-08-30'], ['IHYG.L'], london, marketSymbols),
+    'IHYG.L: no 2026-08-29, 2026-08-30 bars (weekend; the source has no weekend bars)');
+  // a Xetra series is never compared with the London ones
+  assert.equal(lagDetailFor(['2026-08-31'], ['SXRQ.DE'], london, marketSymbols), null);
 });
 
 test('Yahoo acquisition rejects a response bound to the wrong provider symbol on both hosts', async () => {
@@ -670,4 +693,230 @@ test('config exposes the versioned full-history model identity and six market ma
     symbols: CRYPTO,
   });
   assert.equal(config.marketFearGreed.markets.crypto.symbols.small.method, 'equalWeightReturns');
+});
+
+test('an HTTP 429 or 5xx answer waits (Retry-After when present) and is retried once more on the other host; fetchStats counts it', async () => {
+  const { newFetchStats } = require('../marketfg');
+  const originalFetch = global.fetch;
+  const first = Date.parse('2020-01-01T00:00:00Z') / 1000;
+  const timestamps = Array.from({ length: 40 }, (_, i) => first + i * 86400);
+  const closes = timestamps.map((_, i) => 100 + i);
+  const good = { ok: true, status: 200, headers: { get: () => null }, json: async () => ({ chart: { result: [{
+    meta: { symbol: 'RATE-LIMIT-TEST', longName: 'Rate limit fixture', currency: 'USD', exchangeTimezoneName: 'UTC' },
+    timestamp: timestamps, indicators: { quote: [{ close: closes }], adjclose: [{ adjclose: closes }] },
+  }], error: null } }) };
+  const limited = status => ({ ok: false, status, headers: { get: name => (name === 'retry-after' ? '0' : null) }, json: async () => ({ chart: { result: null, error: { description: 'Too Many Requests' } } }) });
+  let calls = [];
+  // 429 on query1, success on query2: two requests, one retry, no third attempt
+  global.fetch = async url => { calls.push(String(url)); return calls.length === 1 ? limited(429) : good; };
+  try {
+    let stats = newFetchStats();
+    const series = await fetchSeries('RATE-LIMIT-TEST', 'max', undefined, stats);
+    assert.equal(series.sourceHost, 'query2.finance.yahoo.com');
+    assert.equal(calls.length, 2);
+    assert.deepEqual([stats.requests, stats.retries, stats.http429, stats.http5xx, stats.fullHistoryRequests, stats.topUpRequests], [2, 1, 1, 0, 1, 0]);
+    assert.deepEqual(stats.byHost, { 'query1.finance.yahoo.com': 1, 'query2.finance.yahoo.com': 1 });
+    // 503 on both hosts, then success on query1 again: three attempts, never more
+    calls = [];
+    global.fetch = async url => { calls.push(String(url)); return calls.length <= 2 ? limited(503) : good; };
+    stats = newFetchStats();
+    const recovered = await fetchSeries('RATE-LIMIT-TEST', 'max', undefined, stats);
+    assert.equal(recovered.sourceHost, 'query1.finance.yahoo.com');
+    assert.deepEqual(calls.map(url => new URL(url).host), ['query1.finance.yahoo.com', 'query2.finance.yahoo.com', 'query1.finance.yahoo.com']);
+    assert.deepEqual([stats.requests, stats.retries, stats.http429, stats.http5xx], [3, 2, 0, 2]);
+    // three failures in a row fail the series with every status in the message
+    calls = [];
+    global.fetch = async url => { calls.push(String(url)); return limited(429); };
+    stats = newFetchStats();
+    await assert.rejects(fetchSeries('RATE-LIMIT-TEST', 'max', undefined, stats), /HTTP 429.*HTTP 429.*HTTP 429/s);
+    assert.equal(calls.length, 3);
+    assert.equal(stats.http429, 3);
+    // a plain 404 is not retried beyond the usual second host
+    calls = [];
+    global.fetch = async url => { calls.push(String(url)); return limited(404); };
+    stats = newFetchStats();
+    await assert.rejects(fetchSeries('RATE-LIMIT-TEST', 'max', undefined, stats), /HTTP 404/);
+    assert.equal(calls.length, 2);
+    assert.equal(stats.http429 + stats.http5xx, 0);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('the result records what was actually sent to Yahoo and publishes the warm-up and band definitions', async () => {
+  const { BANDS, WARMUP } = require('../marketfg');
+  const originalFetch = global.fetch;
+  const first = Date.parse('2020-01-01T00:00:00Z') / 1000;
+  const timestamps = Array.from({ length: 40 }, (_, i) => first + i * 86400);
+  const closes = timestamps.map((_, i) => 100 + i);
+  global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ chart: { result: [{
+    meta: { symbol: 'STATS-TEST', longName: 'Stats fixture', currency: 'USD', exchangeTimezoneName: 'UTC' },
+    timestamp: timestamps, indicators: { quote: [{ close: closes }], adjclose: [{ adjclose: closes }] },
+  }], error: null } }) });
+  clearCache();
+  try {
+    const cfg = { range: 'max', timeoutMs: 2000, concurrency: 1, markets: { usa: { name: 'USA', symbols: { index: 'STATS-TEST' } } } };
+    const result = await getMarketFearGreedResearchHistory(cfg);
+    assert.deepEqual(
+      [result.fetchStats.requests, result.fetchStats.fullHistoryRequests, result.fetchStats.topUpRequests, result.fetchStats.retries, result.fetchStats.cacheHits, result.fetchStats.symbols, result.fetchStats.topUpEnabled],
+      [1, 1, 0, 0, 0, 1, false],
+    );
+    assert.deepEqual(result.fetchStats.byHost, { 'query1.finance.yahoo.com': 1, 'query2.finance.yahoo.com': 0 });
+    assert.match(result.fetchStats.meaning, /one full-history request per symbol/);
+    // a second call inside the 15-minute cache sends nothing and says so
+    const cachedResult = await getMarketFearGreedResearchHistory(cfg);
+    assert.deepEqual([cachedResult.fetchStats.requests, cachedResult.fetchStats.cacheHits], [0, 1]);
+    // model block: bands with edges and names, warm-up arithmetic as the code does it
+    assert.deepEqual(result.model.bands, [
+      { min: 0, max: 24.9, label: 'Extreme Fear' }, { min: 25, max: 44.9, label: 'Fear' }, { min: 45, max: 55.9, label: 'Neutral' },
+      { min: 56, max: 74.9, label: 'Greed' }, { min: 75, max: 100, label: 'Extreme Greed' },
+    ]);
+    assert.deepEqual(result.model.bands, BANDS.map(band => ({ ...band })));
+    assert.match(result.model.bandsMeaning, /one decimal/);
+    assert.deepEqual(result.model.warmup, { strengthWindow: 252, percentileMinPoints: 126, description: WARMUP.description });
+    assert.match(result.model.warmup.description, /126th benchmark observation onward on a trailing high whose window grows from 126 to 252/);
+    assert.match(result.model.warmup.description, /126 finite raw values/);
+    assert.match(result.model.warmup.description, /strength is first scored at the benchmark's 251st observation, momentum at its 250th/);
+    assert.match(result.model.warmup.description, /about 251 observations after the latest-starting source series/);
+  } finally {
+    clearCache();
+    global.fetch = originalFetch;
+  }
+});
+
+test('the warm-up sentence is literally what compStrength, compMomentum and expandingPctScores do', () => {
+  const { compStrength, compMomentum } = require('../marketfg');
+  const rows = Array.from({ length: 300 }, (_, i) => ({ date: dateAt(i), close: 100 * Math.exp(0.001 * i + 0.01 * Math.sin(i / 7)) }));
+  const strength = compStrength({ rows }, 252, 126).raw;
+  assert.equal(strength[124], null);
+  assert.ok(Number.isFinite(strength[125]), 'strength emits from the 126th observation on a partial window');
+  const strengthScores = expandingPctScores(strength, 126);
+  assert.equal(strengthScores.findIndex(value => value != null), 250, 'first strength percentile at the 251st observation');
+  const momentum = compMomentum({ rows }).raw;
+  assert.equal(momentum[123], null);
+  assert.ok(Number.isFinite(momentum[124]));
+  assert.equal(expandingPctScores(momentum, 126).findIndex(value => value != null), 249, 'first momentum percentile at the 250th observation');
+  // and the market's published first scored date is the first composite row
+  const result = computeMarket('crypto', MARKET, fixture(), OPTIONS);
+  assert.equal(result.firstScoredDate, result.history[0].date);
+  assert.equal(result.history[0].date, dateAt(250), 'all six components have a percentile from the 251st common observation');
+});
+
+test('every published label, for the market, its components and every history row, is the one-decimal band of the published score', () => {
+  const { BANDS } = require('../marketfg');
+  const bandOf = score => { const s = Math.round(score * 10) / 10; const hit = BANDS.find(b => s >= b.min && s <= b.max); return hit ? hit.label : null; };
+  const result = computeMarket('crypto', MARKET, fixture(2600), OPTIONS);
+  assert.equal(result.label, bandOf(result.score));
+  for (const component of Object.values(result.components)) {
+    assert.equal(component.label, bandOf(component.score), component.key);
+    assert.equal(component.score, Math.round(component.score * 10) / 10, 'component scores carry one decimal');
+  }
+  const seen = new Set();
+  for (const row of result.history) {
+    assert.equal(row.score, Math.round(row.score * 10) / 10, 'history scores carry one decimal');
+    assert.equal(row.label, bandOf(row.score), row.date);
+    seen.add(row.label);
+  }
+  assert.ok(seen.size >= 3, `history should cross several bands (${[...seen].join(', ')})`);
+  // an integer-rounded reading would contradict these; the API never rounds to integers
+  assert.equal(labelOf(24.95), 'Fear');
+  assert.equal(labelOf(24.94), 'Extreme Fear');
+  assert.equal(labelOf(44.95), 'Neutral');
+  assert.equal(labelOf(55.95), 'Greed');
+  assert.equal(labelOf(74.95), 'Extreme Greed');
+});
+
+test('a market lists its carried components with the reason, the oldest component date and what asOf means', () => {
+  const series = fixture(999); // 2022-09-25, a Sunday
+  for (const symbol of ['IEF', 'HYG', 'LQD']) {
+    const source = series.get(symbol);
+    source.rows = source.rows.filter(row => { const day = new Date(`${row.date}T00:00:00Z`).getUTCDay(); return day !== 0 && day !== 6; });
+    source.lastDate = source.rows.at(-1).date;
+  }
+  const result = computeMarket('crypto', MARKET, series, OPTIONS);
+  assert.equal(result.asOfMeaning, 'last completed benchmark bar; carried components are older');
+  assert.equal(result.asOf, '2022-09-25');
+  assert.equal(result.oldestComponentAsOf, '2022-09-23');
+  assert.deepEqual(result.carriedComponents.map(c => c.component).sort(), ['credit', 'safeHaven']);
+  for (const carried of result.carriedComponents) {
+    assert.equal(carried.asOf, '2022-09-23');
+    assert.equal(carried.benchmarkDate, '2022-09-25');
+    assert.equal(carried.detail, result.components[carried.component].lagDetail);
+    assert.match(carried.detail, /no 2022-09-24, 2022-09-25 bars \(weekend; the source has no weekend bars\)/);
+  }
+  assert.equal(result.carriedComponents.find(c => c.component === 'safeHaven').symbol, 'IEF', 'only the source that lacks the bars is named');
+  assert.equal(result.carriedComponents.find(c => c.component === 'credit').symbol, 'HYG, LQD');
+  const complete = computeMarket('crypto', MARKET, fixture(), OPTIONS);
+  assert.deepEqual(complete.carriedComponents, []);
+  assert.equal(complete.oldestComponentAsOf, complete.asOf);
+});
+
+test('series carry a proper instrument name and type, Yahoo\'s own name alongside, and every configured symbol has one', async () => {
+  const { DISPLAY_NAMES, MARKET_DISCLOSURES, venueOf, collectSpecSymbols } = require('../marketfg');
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'config.json'), 'utf8')).marketFearGreed;
+  const configured = [...new Set(Object.values(config.markets).flatMap(m => Object.values(m.symbols || {}).flatMap(spec => collectSpecSymbols(spec))))].sort();
+  assert.equal(configured.length, 33);
+  assert.deepEqual(Object.keys(DISPLAY_NAMES).sort(), configured, 'DISPLAY_NAMES covers exactly the 33 configured symbols');
+  for (const [symbol, entry] of Object.entries(DISPLAY_NAMES)) {
+    assert.ok(typeof entry.type === 'string' && entry.type, `${symbol} has a type`);
+    if (entry.name === null) assert.match(entry.type, /Yahoo name/, `${symbol} without a curated name says the Yahoo name is used`);
+  }
+  assert.deepEqual(DISPLAY_NAMES['^STOXX'], { name: 'STOXX Europe 600', type: 'price index (dividends excluded)' });
+  assert.deepEqual(DISPLAY_NAMES['^OMXSBGI'], { name: 'OMX Stockholm Benchmark GI', type: 'gross total return index' });
+  assert.deepEqual(DISPLAY_NAMES['^VXN'], { name: 'Cboe Nasdaq-100 Volatility Index', type: 'implied volatility index' });
+  assert.deepEqual(Object.keys(MARKET_DISCLOSURES).sort(), Object.keys(config.markets).sort());
+  for (const disclosure of Object.values(MARKET_DISCLOSURES)) {
+    for (const key of ['benchmarkType', 'verified', 'note']) assert.ok(typeof disclosure[key] === 'string' && disclosure[key], key);
+  }
+  assert.match(MARKET_DISCLOSURES.ustech.verified, /XLK, \^VXN and RSPT .* have not had it/);
+  assert.match(MARKET_DISCLOSURES.ustech.note, /after the retrospective rule searches, the replication test, the diagnostic battery and the Europe lockbox activation, none of which covers it/);
+  assert.match(MARKET_DISCLOSURES.ustech.note, /FG-X2-FITTED-V1 \(28 Aug 2026\), a deliberately overfit fitted lookup/, 'the one study that does include US Tech is named');
+  assert.doesNotMatch(MARKET_DISCLOSURES.ustech.note, /no rule search, replication, diagnostic battery or lockbox in research\/ covers it/);
+  assert.match(MARKET_DISCLOSURES.europe.benchmarkType, /price index \(STOXX Europe 600, dividends excluded\)/);
+  assert.match(MARKET_DISCLOSURES.sweden.benchmarkType, /gross total return/);
+  for (const key of ['sweden', 'usa', 'europe', 'global', 'crypto']) assert.match(MARKET_DISCLOSURES[key].verified, /24 Aug 2026/);
+  assert.deepEqual(['IHYG.L', 'SXRQ.DE', 'XACT-SVERIGE.ST', '0P0001C87Y.ST', 'SPY', '^VIX', '^STOXX', '^OMXSBGI', 'BTC-USD'].map(venueOf),
+    ['London-listed', 'Xetra-listed', 'Stockholm-listed', 'Stockholm fund NAV', 'US-listed', 'US-listed', 'STOXX Europe index', 'Stockholm-listed', 'crypto']);
+
+  const originalFetch = global.fetch;
+  const first = Date.parse('2020-01-01T00:00:00Z') / 1000;
+  const timestamps = Array.from({ length: 40 }, (_, i) => first + i * 86400);
+  const closes = timestamps.map((_, i) => 100 + i);
+  const chart = (symbol, longName) => async () => ({ ok: true, status: 200, json: async () => ({ chart: { result: [{
+    meta: { symbol, longName, currency: 'EUR', exchangeTimezoneName: 'UTC' },
+    timestamp: timestamps, indicators: { quote: [{ close: closes }], adjclose: [{ adjclose: closes }] },
+  }], error: null } }) });
+  try {
+    global.fetch = chart('^STOXX', 'STXE 600 I');
+    const stoxx = await fetchSeries('^STOXX', 'max');
+    assert.equal(stoxx.name, 'STOXX Europe 600');
+    assert.equal(stoxx.providerName, 'STXE 600 I');
+    assert.equal(stoxx.type, 'price index (dividends excluded)');
+    assert.equal(stoxx.venue, 'STOXX Europe index');
+    global.fetch = chart('0P0001C87Y.ST', 'Carnegie High Yield Select 3 SEK Cap');
+    const fund = await fetchSeries('0P0001C87Y.ST', 'max');
+    assert.equal(fund.name, 'Carnegie High Yield Select 3 SEK Cap', 'no curated name: Yahoo\'s is used');
+    assert.equal(fund.type, 'fund NAV series (Yahoo name)');
+    global.fetch = chart('UNKNOWN-SYMBOL', 'Some Yahoo Name');
+    const unknown = await fetchSeries('UNKNOWN-SYMBOL', 'max');
+    assert.deepEqual([unknown.name, unknown.providerName, unknown.type], ['Some Yahoo Name', 'Some Yahoo Name', null]);
+  } finally {
+    global.fetch = originalFetch;
+  }
+
+  // per component: seriesNames with symbol/name/type; per market: the dated disclosure
+  const series = fixture();
+  const source = series.get('IEF');
+  series.set('IEF', { ...source, name: 'iShares 7-10 Year Treasury Bond ETF', providerName: 'iShares 7-10 Year Treasury Bond ETF', type: 'ETF' });
+  const crypto = computeMarket('crypto', MARKET, series, OPTIONS);
+  assert.deepEqual(crypto.components.safeHaven.seriesNames, [
+    { symbol: 'CRYPTO-BROAD-EW', name: 'Broad crypto equal-weight basket', type: 'repository-built daily-rebalanced arithmetic equal-weight return index', providerName: null },
+    { symbol: 'IEF', name: 'iShares 7-10 Year Treasury Bond ETF', type: 'ETF', providerName: 'iShares 7-10 Year Treasury Bond ETF' },
+  ]);
+  assert.deepEqual(crypto.components.safeHaven.names, ['Broad crypto equal-weight basket', 'iShares 7-10 Year Treasury Bond ETF'], 'names stays in step with seriesNames');
+  assert.deepEqual(crypto.disclosure, { ...MARKET_DISCLOSURES.crypto });
+  const control = computeMarket('control', { ...MARKET, name: 'Control' }, series, OPTIONS);
+  assert.equal(control.disclosure.benchmarkType, null);
+  assert.match(control.disclosure.verified, /no dated verification/);
+  assert.deepEqual(control.history, crypto.history, 'names and disclosures do not touch the scores');
 });
