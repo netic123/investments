@@ -782,7 +782,7 @@ function renderAbout(set){
   const how = B.trigger==='workflow_dispatch' ? ', on request'+(B.reason?' ('+String(B.reason).slice(0,80)+')':'')
     : B.trigger==='schedule' ? ', in a scheduled run'+(slot?' (the slot '+slot+'; GitHub starts such runs late, so the slot is not the build time)':'')
     : B.trigger==='push' ? ', after a push to main' : B.trigger==='local' ? ', locally' : '';
-  const tests = B.testsSkipped ? ' The test suite was skipped in this run'+(B.testsVerifiedBy?' because it had passed on the same commit in an earlier run (linked below).':'; no run that passed it on this commit is recorded.') : '';
+  const tests = B.testsSkipped ? ' The test suite was skipped in this run'+(B.testsVerifiedBy?' because it had passed on the same commit in an earlier run (linked next).':'; no run that passed it on this commit is recorded.') : '';
   const schedules=describeSchedules(B.schedules);
   const parts=[`This snapshot was built from commit ${String(B.commit).slice(0,7)} (${B.ref||'main'}${B.dirty?', with uncommitted changes':''}) at ${whenFull(B.generatedAt)}${how}.${tests}`];
   if(schedules) parts.push(`Builds run after a push to main, on request, and when GitHub starts one of the scheduled slots: ${schedules}.`);
@@ -887,7 +887,7 @@ const navFileNetAssetsText=checked=>{
   if(!checked||checked.navFileNetAssets==null) return '';
   return checked.netAssetsComparable
     ? ` The fund’s NAV file dated ${fmtDate(checked.navDate)} reports net assets of <b>$${fmt(checked.navFileNetAssets)}</b>, ${fmt(Math.abs(checked.netAssetsDifference))} ${checked.netAssetsDifference>=0?'below':'above'} the holdings file’s figure.`
-    : ` The fund’s NAV file dated ${fmtDate(checked.navDate)} reports net assets of <b>$${fmt(checked.navFileNetAssets)}</b>${checked.navFileShares?' at '+fmt(checked.navFileShares)+' units':''}; the two totals are not directly comparable because the unit counts differ.`;
+    : ` The fund’s NAV file dated ${fmtDate(checked.navDate)} reports net assets of <b>$${fmt(checked.navFileNetAssets)}</b>${checked.navFileShares?' at '+fmt(checked.navFileShares)+' units':''}; the two totals are not directly comparable ${checked.navFileShares?'because the unit counts differ':'because the NAV file carries no unit count'}.`;
 };
 // Two stamps for the displayed file, never one: when this exact file (by SHA-256) was first saved, and what the fetch behind
 // this snapshot established about it (H.upstreamCheckOutcome, latest.source.lastConfirmedAt). An older holdings.json without
@@ -1189,7 +1189,7 @@ function renderNport(N){
   const when=STATIC_BUILD?'build':'update';
   const shares=v=> v==null||!isFinite(v) ? '—' : Number.isInteger(v)?fmt(v):fmt(v,2);
   // the archive's 30-character <name> when it differs from the untruncated name the build published
-  const filedAs=h=> h.secName&&h.secName!==h.name ? ` <span class="muted" title="the 30-character issuer name as filed">(filed as “${esc(h.secName)}”)</span>` : '';
+  const filedAs=h=> h.secName&&h.secName!==h.name ? ` <span class="muted" title="the issuer name as filed in the archive, which truncates it to 30 characters">(filed as “${esc(h.secName)}”)</span>` : '';
   if(!N||!N.ok){
     note.textContent='SEC unavailable at '+when+' time';
     // candidateCount is the whole index; candidates is the capped list the walk may open (an older snapshot has only the latter)
@@ -1329,8 +1329,6 @@ const fgLabel=(label,v,bands)=> FG_LABEL[String(label||'').toLowerCase()] || lab
 const todayIso=()=>{ const t=new Date(); return new Date(t.getTime()-t.getTimezoneOffset()*60000).toISOString().slice(0,10); }; // local calendar day, YYYY-MM-DD
 const addDays=(iso,n)=>{ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
 const dayMon=iso=> iso ? new Date(iso+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—';
-const whenStr=iso=>{ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return '—'; const same=d.toDateString()===new Date().toDateString();
-  return same ? 'today '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : d.toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); };
 const stampStr=iso=> whenFull(iso);
 const fetchedStr=iso=>{ const d=iso?new Date(iso):null; return d&&!isNaN(d) ? 'computed '+whenFull(iso) : ''; };
 const arcPt=(v,r)=>{ const a=Math.PI*(1-v/100); return [100+r*Math.cos(a), 104-r*Math.sin(a)]; }; // half circle, centre (100,104)
@@ -1483,11 +1481,13 @@ function normMarket(M,model,fetchedAt){
   const carried=Array.isArray(M.carriedComponents) ? M.carriedComponents.map(c=>({name:compName(c.component),symbol:c.symbol,asOf:c.asOf,detail:c.detail}))
     : comps.filter(c=>c.lag&&c.asOf).map(c=>({name:c.name,symbol:(c.symbols||[]).join(', '),asOf:c.asOf,detail:c.lagDetail}));
   const oldest=M.oldestComponentAsOf || (carried.length ? carried.map(c=>c.asOf).sort()[0] : M.asOf);
+  // when the carried components have different dates, dating them all to the oldest would overstate the age of the newer ones
+  const carriedDates=Array.isArray(M.carriedDates)&&M.carriedDates.length ? M.carriedDates : [...new Set(carried.map(c=>c.asOf))].sort();
   const total=M.total||comps.length||6;
   if(carried.length) callouts.push(`${carried.length} of ${total} indicators are carried from an earlier completed bar of their own source: ${carried.map(c=>`<b>${esc(c.name)}</b> as of ${dayMon(c.asOf)}${c.detail?' — '+esc(humanDates(c.detail)):' ('+esc(c.symbol)+')'}`).join('; ')}. The model carries a component for up to ${fmt(model.fillDays||7)} calendar days and moves it forward only once its source has a newer completed bar; an exchange holiday leaves no bar to publish, so nothing here promises that a missing bar will appear.`);
   // the stamp used by the header KPI, the Indicators note and the section note
   const asOfText = carried.length
-    ? `as of ${when} — composite of the last completed benchmark bar; ${carried.length} of ${total} indicators carried from ${fmtDate(oldest)}`
+    ? `as of ${when} — composite of the last completed benchmark bar; ${carried.length} of ${total} indicators carried from ${carriedDates.length>1?carriedDates.map(fmtDate).join(" / "):fmtDate(oldest)}`
     : `as of ${when} — all ${total} indicators as of that date`;
   const realised=comps.some(c=>c.key==='volatility'&&/realised/.test(c.note||''));
   // Series list: marketfg's curated display names and instrument types (seriesNames) with the symbol; Yahoo's own name is

@@ -499,7 +499,8 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   const ctx = fgContext({ BUILD_META: { yahooRequests: { requests: 66, symbols: 33, fullHistoryRequests: 33, topUpRequests: 33, retries: 0 } } });
   const N = ctx.normMarket(fgMarket('europe'), fgModel(), '2026-09-04T09:31:19Z');
   // as-of stamps name the benchmark bar and the carried indicators, with the oldest component date
-  const stamp = 'as of 2026-09-03 — composite of the last completed benchmark bar; 2 of 6 indicators carried from 2026-08-28';
+  // two carried components with different dates are listed with both dates, not dated to the older one
+  const stamp = 'as of 2026-09-03 — composite of the last completed benchmark bar; 2 of 6 indicators carried from 2026-08-28 / 2026-09-02';
   assert.equal(N.kpiSub, 'Fear · ' + stamp);
   assert.equal(N.compnote, '6 of 6 indicators scored · ' + stamp);
   assert.ok(strip(N.note).includes(stamp));
@@ -565,7 +566,7 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   for (const c of Object.values(old.components)) delete c.seriesNames;
   const oldModel = fgModel(); delete oldModel.bands; delete oldModel.warmup;
   const L = ctx.normMarket(old, oldModel, null);
-  assert.equal(L.kpiSub, 'Fear · as of 2026-09-03 — composite of the last completed benchmark bar; 2 of 6 indicators carried from 2026-08-28');
+  assert.equal(L.kpiSub, 'Fear · as of 2026-09-03 — composite of the last completed benchmark bar; 2 of 6 indicators carried from 2026-08-28 / 2026-09-02');
   assert.match(strip(L.callouts[0]), /2 of 6 indicators are carried .* IHYG\.L: no D31 bar/);
   assert.doesNotMatch(strip(L.explain), /What was checked|Benchmark:|first scored date|Warm-up:/);
   assert.equal(L.bands[1][1], 44.9, 'model.labels still supplies the bands');
