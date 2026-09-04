@@ -70,7 +70,7 @@ test('the page labels snapshot data, times and changes truthfully', () => {
   // schedule is active, 30 h outside that window; the window agrees with the crons
   assert.equal(build.SNAPSHOT_STALE_AFTER_HOURS, 3);
   assert.equal(build.SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE, 30);
-  assert.deepEqual(build.SCHEDULE_WINDOW_UTC, { days: 'Mon-Fri', from: '05:20', to: '23:20' });
+  assert.deepEqual(build.SCHEDULE_WINDOW_UTC, { days: 'Mon-Fri', from: '05:05', to: '23:20' });
   assert.equal(build.HOLDINGS_FILE_EXPECTED_BY_UTC, '00:30');
   // the reload skips only the browser cache: no cache-busting query (the Pages CDN ignores it), the CDN copy's
   // age is read from the same-origin Age header, and the verdict says what was served
@@ -127,8 +127,8 @@ test('the pure page helpers apply build.json thresholds, the expected weekday fi
   assert.deepEqual([helpers.staleThreshold(published, at('2026-09-04T13:31:00Z')).hours, helpers.staleThreshold(published, at('2026-09-04T13:31:00Z')).inWindow], [3, true], 'Friday afternoon');
   assert.equal(helpers.staleThreshold(published, at('2026-09-04T23:30:00Z')).hours, 30, 'Friday after the last slot');
   assert.equal(helpers.staleThreshold(published, at('2026-09-05T10:00:00Z')).hours, 30, 'Saturday');
-  assert.equal(helpers.staleThreshold(published, at('2026-09-07T05:19:00Z')).hours, 30, 'Monday before the first slot');
-  assert.equal(helpers.staleThreshold(published, at('2026-09-07T05:20:00Z')).hours, 3, 'Monday at the first slot');
+  assert.equal(helpers.staleThreshold(published, at('2026-09-07T05:04:00Z')).hours, 30, 'Monday before the first slot');
+  assert.equal(helpers.staleThreshold(published, at('2026-09-07T05:05:00Z')).hours, 3, 'Monday at the first slot');
   const single = helpers.staleThreshold({ snapshotStaleAfterHours: 30 }, at('2026-09-05T10:00:00Z'));
   assert.deepEqual([single.hours, single.inWindow, single.window], [30, null, null], 'an older build.json with one threshold claims no window');
   assert.equal(helpers.staleThreshold({}, at('2026-09-05T10:00:00Z')).hours, null, 'no threshold means no age warning');
@@ -162,7 +162,9 @@ test('the pure page helpers apply build.json thresholds, the expected weekday fi
   // and an unfamiliar cron is printed verbatim
   const crons = build.workflowSchedules(fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pages.yml'), 'utf8'));
   for (const cron of crons) assert.ok(cron in helpers.CRON_LABELS, `index.html CRON_LABELS lacks '${cron}'`);
-  assert.equal(helpers.describeSchedules(crons), 'every 30 min 05:20–22:50 UTC Mon–Fri; 09:20 UTC daily, with the test suite');
+  assert.equal(helpers.describeSchedules(crons), 'every 15 min 05:05–22:50 UTC Mon–Fri; 09:20 UTC daily, with the test suite');
+  // a build.json from before the schedule was doubled still reads as the half-hourly series
+  assert.equal(helpers.describeSchedules(['20 9 * * *', '20,50 5-8,10-22 * * 1-5', '50 9 * * 1-5']), 'every 30 min 05:20–22:50 UTC Mon–Fri; 09:20 UTC daily, with the test suite');
   assert.equal(helpers.describeSchedules(['20 9 * * *', '0 0 1 * *']), "09:20 UTC daily, with the test suite; cron '0 0 1 * *' (UTC)");
   assert.equal(helpers.describeSchedules([]), '');
   assert.equal(helpers.describeSchedules(null), '');
@@ -620,7 +622,8 @@ test('the Pages workflow asks for half-hourly weekday slots and a daily tested s
   assert.match(workflow, /- cron: '20 9 \* \* \*'/);
   assert.match(workflow, /- cron: '20,50 5-8,10-22 \* \* 1-5'/);
   assert.match(workflow, /- cron: '50 9 \* \* 1-5'/);
-  assert.deepEqual(build.workflowSchedules(workflow), ['20 9 * * *', '20,50 5-8,10-22 * * 1-5', '50 9 * * 1-5']);
+  assert.match(workflow, /- cron: '5,35 5-22 \* \* 1-5'/);
+  assert.deepEqual(build.workflowSchedules(workflow), ['20 9 * * *', '20,50 5-8,10-22 * * 1-5', '50 9 * * 1-5', '5,35 5-22 * * 1-5']);
   assert.equal(build.testedScheduleSlot(workflow), '20 9 * * *');
   assert.match(workflow, /INVESTMENTS_BUILD_SCHEDULE: \$\{\{ github\.event\.schedule \}\}/);
   assert.match(workflow, /SEC_USER_AGENT: \$\{\{ vars\.SEC_USER_AGENT \}\}/);
@@ -632,7 +635,8 @@ test('the Pages workflow asks for half-hourly weekday slots and a daily tested s
   // the staleness window published by build.json covers every weekday slot
   const [hoursStart, hoursEnd] = ['5', '22'];
   assert.match(workflow, new RegExp(`- cron: '20,50 ${hoursStart}-8,10-${hoursEnd} \\* \\* 1-5'`));
-  assert.equal(build.SCHEDULE_WINDOW_UTC.from, `0${hoursStart}:20`);
+  assert.equal(build.SCHEDULE_WINDOW_UTC.from, `0${hoursStart}:05`);
+  assert.match(workflow, new RegExp(`- cron: '5,35 ${hoursStart}-${hoursEnd} \\* \\* 1-5'`));
   assert.ok(build.SCHEDULE_WINDOW_UTC.to > `${hoursEnd}:50`, 'the window ends after the last weekday slot');
 });
 
@@ -640,13 +644,15 @@ test('build.json describes the schedule from the workflow itself, in words that 
   assert.equal(build.describeCron('20 9 * * *'), '09:20 UTC every day');
   assert.equal(build.describeCron('50 9 * * 1-5'), '09:50 UTC Mon-Fri');
   assert.equal(build.describeCron('20,50 5-8,10-22 * * 1-5'), ':20 and :50 past 05-08 and 10-22 UTC Mon-Fri');
+  assert.equal(build.describeCron('5,35 5-22 * * 1-5'), ':05 and :35 past 05-22 UTC Mon-Fri');
   assert.equal(build.describeCron('0 0 1 * *'), "cron '0 0 1 * *' (UTC)", 'an unfamiliar shape is printed verbatim, never guessed');
   const sentence = build.refreshTriggerSentence(build.workflowSchedules(workflowText()), '20 9 * * *');
   assert.match(sentence, /09:20 UTC every day \(with the test suite\)/);
   assert.match(sentence, /:20 and :50 past 05-08 and 10-22 UTC Mon-Fri/);
   assert.match(sentence, /skips most slots/);
   assert.doesNotMatch(sentence, /every 30 minutes/, 'the sentence must not promise a cadence GitHub does not keep');
-  assert.match(build.SCHEDULE_NOTE, /3 Sep 2026 it started 7 of the 36 weekday slots/);
+  assert.match(build.SCHEDULE_NOTE, /3 Sep 2026 it started 7 of the 36 half-hourly weekday slots then configured/);
+  assert.match(build.SCHEDULE_NOTE, /doubled to 72 slots on 4 Sep 2026/);
 });
 
 test('the test suite is skipped only when a successful tested run of the same commit exists, and build.json records the real outcome', () => {
