@@ -195,6 +195,12 @@ jobs:
     needs: deploy
     if: github.event_name == 'push' || github.event.schedule == '20 9 * * *'
     runs-on: ubuntu-latest
+    # This job runs after the snapshot is already published. The page's Build
+    # history reads a run's conclusion and tells the visitor that a failed run
+    # published nothing, so a bookkeeping failure here must not make that true
+    # of a run that did publish: every failure below is a warning, and the job
+    # cannot fail the run.
+    continue-on-error: true
     timeout-minutes: 10
     permissions:
       contents: write
@@ -221,9 +227,12 @@ jobs:
           # after deploy-pages reports success; wait until build.json names
           # this commit (up to 10 tries, 30 s apart) before reading holdings.json.
           served=""
+          want=""
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            served=$(curl -fsS -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$PUBLISHED_API/build.json" \
-              | node -e "let t='';process.stdin.on('data',c=>t+=c).on('end',()=>{try{process.stdout.write(String(JSON.parse(t).commit||''))}catch{}})" || true)
+            build_json=$(curl -fsS -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$PUBLISHED_API/build.json" || true)
+            served=$(printf '%s' "$build_json" | node -e "let t='';process.stdin.on('data',c=>t+=c).on('end',()=>{try{process.stdout.write(String(JSON.parse(t).commit||''))}catch{}})" || true)
+            # the digest this build published for the file about to be committed
+            want=$(printf '%s' "$build_json" | node -e "let t='';process.stdin.on('data',c=>t+=c).on('end',()=>{try{process.stdout.write(String((JSON.parse(t).files||{})['api/holdings.json']||''))}catch{}})" || true)
             if [ "$served" = "$EXPECTED_COMMIT" ]; then
               echo "the CDN serves build $served (attempt $attempt)"
               break
@@ -234,7 +243,19 @@ jobs:
               sleep 30
             fi
           done
-          curl -fsS -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' -o published-holdings.json "$PUBLISHED_API/holdings.json"
+          if ! curl -fsS -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' -o published-holdings.json "$PUBLISHED_API/holdings.json"; then
+            echo "::warning::the published holdings.json could not be read; the receipts stay on the CDN until the next record run"
+            exit 0
+          fi
+          # Commit only bytes that match the digest the build published for them:
+          # the CDN serves each file separately and can still be holding an older one.
+          got=$(sha256sum published-holdings.json | cut -d' ' -f1)
+          if [ -n "$want" ] && [ "$got" != "$want" ]; then
+            echo "::warning::the CDN served an api/holdings.json ($got) that does not match the digest this build published ($want); nothing imported this run"
+            rm -f published-holdings.json
+            exit 0
+          fi
+          [ -n "$want" ] || echo "::warning::this build published no digest for api/holdings.json; importing the served file unverified"
           node scripts/record-holdings-history.js published-holdings.json --target data/snapshots.json
           rm -f published-holdings.json
 
@@ -254,5 +275,5 @@ jobs:
             if git push origin main; then exit 0; fi
             git pull --rebase origin main
           done
-          echo "::error::could not push the holdings history after 3 attempts"
-          exit 1
+          echo "::warning::could not push the holdings history after 3 attempts; the next record run imports the same receipts from the CDN"
+          exit 0
