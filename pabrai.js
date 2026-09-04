@@ -19,8 +19,10 @@ const WAGN_REQUIRED_HEADERS = [
 // by data.sec.gov (the submissions index) and, in every GitHub Pages build
 // since 2026-09-02, by the archive host www.sec.gov as well: api/build.json of
 // those builds records the 13F and the N-PORT as fetched and validated with
-// no SEC_USER_AGENT variable set. From some other networks www.sec.gov has
-// answered 403 to the same default. SEC's guidance asks for a contact, so
+// no SEC_USER_AGENT variable set. A bare curl with the same default from the
+// owner's own connection has received 403 from www.sec.gov while this module's
+// own fetch received 200 there (4 Sep 2026); what triggers the 403 has not been
+// established. SEC's guidance asks for a contact, so
 // setting SEC_USER_AGENT to "<app> (<your e-mail>)" remains the recommended
 // courtesy and the first thing to try if 403s reappear; anything mentioning
 // github.com/github.io is rejected here. Results only ever say whether the
