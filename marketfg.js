@@ -141,36 +141,42 @@ function venueOf(symbol) {
 // cent against Nasdaq, Cboe/FRED, Avanza, Carnegie, stoxx.com, Xetra and LSE;
 // see README). The seven crypto pairs and the three US Tech series were not
 // part of it, and no research study in research/ covers US Tech.
-const CHECK_23 = 'among the 23 series whose identity, freshness and gaps were checked on 24 Aug 2026 (20 of the 23 closes verified to the cent against a second source); no later check';
+const CHECK_23 = 'among the 23 series whose identity, freshness and gaps were checked on 24 Aug 2026 (20 of the 23 closes verified to the cent against a second source)';
+// 4 Sep 2026: the ten US-listed series (SPY, XLK, ACWI, IEF, HYG, LQD, IWM, RSPT, ^VIX, ^VXN) were checked again by
+// hand: the name and every close from 20 Aug to 3 Sep 2026 against Nasdaq's historical table (the eight ETFs) or
+// Cboe's published daily history (the two indices), 111 closes in all, and Yahoo's dividend adjustment of IEF, HYG
+// and LQD for their 1 Sep 2026 ex-dates against the amounts and the prior closes. The sixteen European and Swedish
+// series and the seven crypto pairs were not part of it.
+const CHECK_US = 'checked again on 4 Sep 2026: name and every close from 20 Aug to 3 Sep 2026 verified to the cent against Nasdaq (the ETFs) or Cboe’s published daily history (^VIX, ^VXN), and Yahoo’s dividend adjustment of IEF, HYG and LQD for their 1 Sep 2026 ex-dates reproduced to six decimals from the amounts and the prior closes';
 const MARKET_DISCLOSURES = Object.freeze({
   crypto: Object.freeze({
     benchmarkType: 'repository-built daily-rebalanced equal-weight return index of seven Yahoo crypto pairs (not investable, not market-cap weighted)',
-    verified: `IEF, HYG and LQD were ${CHECK_23}; the seven crypto pairs were not among those 23 series`,
+    verified: `IEF, HYG and LQD were ${CHECK_23} and ${CHECK_US}; the seven crypto pairs were not among those 23 series and have had no second-source check`,
     note: 'volatility is the basket\'s realised 20-observation volatility against its 50-observation average, because no implied-volatility series exists for it; it is backward-looking and behaves differently from a VIX-style measure. IEF and HYG/LQD are external US Treasury and corporate-credit proxies, not crypto-native sentiment; they trade on weekdays only, so weekend composites carry their latest scored values',
   }),
   sweden: Object.freeze({
     benchmarkType: 'gross total return index (OMX Stockholm Benchmark GI, dividends reinvested)',
-    verified: `every series of this market was ${CHECK_23}`,
+    verified: `every series of this market was ${CHECK_23}; no later check`,
     note: 'realised volatility is used because no matching implied-volatility series is configured; the two credit inputs are fund NAV series (Carnegie), not exchange-traded closes',
   }),
   usa: Object.freeze({
     benchmarkType: 'ETF total-return proxy (SPY, dividend-adjusted closes)',
-    verified: `every series of this market was ${CHECK_23}`,
+    verified: `every series of this market was ${CHECK_23} and ${CHECK_US}`,
     note: 'CNN\'s put/call and NYSE breadth inputs have no open data source and are not replicated',
   }),
   ustech: Object.freeze({
     benchmarkType: 'ETF total-return proxy (XLK, dividend-adjusted closes); XLK is the S&P 500 technology sector, not QQQ or the Nasdaq-100',
-    verified: 'XLK, ^VXN and RSPT were added after the 24 Aug 2026 check and have not had it or any other second-source check; IEF, HYG and LQD were among the 23 series checked then',
+    verified: `XLK, ^VXN and RSPT were added on 27 Aug 2026, after the 24 Aug 2026 check, and IEF, HYG and LQD were ${CHECK_23}; all six were ${CHECK_US}`,
     note: 'US Tech was added on 27 Aug 2026, after the retrospective rule searches, the replication test, the diagnostic battery and the Europe lockbox activation, none of which covers it; the only research/ records that include it are FG-X2-FITTED-V1 (28 Aug 2026), a deliberately overfit fitted lookup that its own document calls neither a strategy nor evidence of predictive value, and the PLS1 pre-registration draft, which is not activated. The volatility input is Nasdaq-100 implied volatility (^VXN) applied to a sector ETF, and the bond/credit inputs are general US proxies',
   }),
   europe: Object.freeze({
     benchmarkType: 'price index (STOXX Europe 600, dividends excluded), unlike Sweden\'s gross total return benchmark',
-    verified: `every series of this market was ${CHECK_23}`,
+    verified: `every series of this market was ${CHECK_23}; no later check`,
     note: 'every ex-dividend drop lowers the price index, so momentum, strength and safe-haven read lower than they would on a total-return benchmark; European dividends cluster in spring; realised volatility is used because no matching implied-volatility series is configured',
   }),
   global: Object.freeze({
     benchmarkType: 'ETF total-return proxy (ACWI, dividend-adjusted closes)',
-    verified: `every series of this market was ${CHECK_23}`,
+    verified: `every series of this market was ${CHECK_23}; ACWI, ^VIX and IEF were ${CHECK_US}; the four London-listed series have had no later check`,
     note: 'HYLD.L and CORP.L are thinly traded, so the credit indicator is noisier; the volatility input is the US ^VIX, not a global implied-volatility index',
   }),
 });

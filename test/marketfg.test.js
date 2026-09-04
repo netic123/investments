@@ -868,7 +868,17 @@ test('series carry a proper instrument name and type, Yahoo\'s own name alongsid
   for (const disclosure of Object.values(MARKET_DISCLOSURES)) {
     for (const key of ['benchmarkType', 'verified', 'note']) assert.ok(typeof disclosure[key] === 'string' && disclosure[key], key);
   }
-  assert.match(MARKET_DISCLOSURES.ustech.verified, /XLK, \^VXN and RSPT .* have not had it/);
+  // the 4 Sep 2026 re-check covers exactly the US-listed series of each market; the rest say so
+  assert.match(MARKET_DISCLOSURES.ustech.verified, /XLK, \^VXN and RSPT were added on 27 Aug 2026, after the 24 Aug 2026 check, and IEF, HYG and LQD were among the 23 series/);
+  assert.match(MARKET_DISCLOSURES.ustech.verified, /all six were checked again on 4 Sep 2026: name and every close from 20 Aug to 3 Sep 2026 verified to the cent against Nasdaq \(the ETFs\) or Cboe’s published daily history \(\^VIX, \^VXN\)/);
+  assert.match(MARKET_DISCLOSURES.usa.verified, /every series of this market was among the 23 series .* and checked again on 4 Sep 2026/);
+  assert.match(MARKET_DISCLOSURES.global.verified, /ACWI, \^VIX and IEF were checked again on 4 Sep 2026/);
+  assert.match(MARKET_DISCLOSURES.global.verified, /the four London-listed series have had no later check$/);
+  assert.match(MARKET_DISCLOSURES.crypto.verified, /IEF, HYG and LQD were among the 23 series .* and checked again on 4 Sep 2026/);
+  assert.match(MARKET_DISCLOSURES.crypto.verified, /the seven crypto pairs were not among those 23 series and have had no second-source check$/);
+  for (const key of ['sweden', 'europe']) assert.match(MARKET_DISCLOSURES[key].verified, /among the 23 series .*; no later check$/, key);
+  for (const key of ['sweden', 'europe']) assert.doesNotMatch(MARKET_DISCLOSURES[key].verified, /4 Sep 2026/, key + ' has no US-listed series');
+  assert.doesNotMatch(Object.values(MARKET_DISCLOSURES).map(d => d.verified).join('\n'), /have not had it/);
   assert.match(MARKET_DISCLOSURES.ustech.note, /after the retrospective rule searches, the replication test, the diagnostic battery and the Europe lockbox activation, none of which covers it/);
   assert.match(MARKET_DISCLOSURES.ustech.note, /FG-X2-FITTED-V1 \(28 Aug 2026\), a deliberately overfit fitted lookup/, 'the one study that does include US Tech is named');
   assert.doesNotMatch(MARKET_DISCLOSURES.ustech.note, /no rule search, replication, diagnostic battery or lockbox in research\/ covers it/);
