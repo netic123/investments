@@ -407,7 +407,7 @@ test('the page shows its provenance and reads the build history from GitHub only
   assert.doesNotMatch(html, /esc\(BUILD_META\.(ref|reason|schedule)\)|esc\(B\.(ref|reason|schedule)\)/);
   assert.match(html, /describeSchedules\(B\.schedules\)/);
   assert.match(html, /GitHub starts such runs late, so the slot is not the build time/);
-  for (const field of ['scheduleNote', 'secContact', 'historyDurability', 'yahooRequests', 'testsVerifiedBy', 'testsSkipped']) assert.match(html, new RegExp(`B\\.${field}`), field);
+  for (const field of ['scheduleNote', 'secContact', 'historyDurability', 'yahooRequests', 'testsVerifiedBy', 'testsSkipped']) assert.match(html, new RegExp('B\\.' + field), field);
   assert.match(html, /<a href="\$\{esc\(B\.testsVerifiedBy\)\}" target="_blank" rel="noopener">/);
   assert.match(html, /String\(B\.reason\)\.slice\(0,80\)/);
   // the contact disclosure names every connect-src host of the CSP and says when each is contacted
@@ -787,7 +787,7 @@ test('build.json states the SEC contact kind, the attestation prerequisite and t
   assert.match(source, /\n\s+secContact,\n/, 'only the kind of contact is published, never the value');
   assert.doesNotMatch(source, /secContact: process\.env/);
   assert.match(source, /attestation: process\.env\.GITHUB_RUN_ID \? 'GitHub artifact attestation \(SLSA provenance\) signed for this run; with a GitHub account: gh attestation verify <file> --owner netic123' : null/);
-  assert.match(source, /historyDurability: 'push builds and the daily 09:20 UTC slot \(when GitHub runs it\) commit new receipts to data\/snapshots\.json; every build also imports the previously published history'/);
+  assert.ok(source.includes("historyDurability: 'push builds and the daily 09:20 UTC slot (when GitHub runs it) commit new receipts to data/snapshots.json, but only bytes that match the digest this build published for them;"), 'build.json says what the record job actually commits');
   assert.match(source, /testsVerifiedBy,\n/);
   assert.match(source, /yahooRequests: \(data\.marketfg && data\.marketfg\.fetchStats\) \?\? null/);
   assert.match(source, /INVESTMENTS_ALLOW_SNAPSHOT_HISTORY_SHRINK/);

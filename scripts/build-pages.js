@@ -818,7 +818,7 @@ async function main() {
       scheduleWindowUtc: { ...SCHEDULE_WINDOW_UTC },
       holdingsFileExpectedByUtc: HOLDINGS_FILE_EXPECTED_BY_UTC,
       carriedSnapshotCount: carriedSnapshots.length,
-      historyDurability: 'push builds and the daily 09:20 UTC slot (when GitHub runs it) commit new receipts to data/snapshots.json; every build also imports the previously published history',
+      historyDurability: 'push builds and the daily 09:20 UTC slot (when GitHub runs it) commit new receipts to data/snapshots.json, but only bytes that match the digest this build published for them; every build also imports the previously published history',
       holdingsSource: data.holdingsSource,
       carriedForwardComponents: data.carriedForwardComponents,
       recentBarTopUps: data.recentBarTopUps,
