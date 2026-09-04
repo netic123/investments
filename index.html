@@ -367,7 +367,21 @@ function staleThreshold(build,now){
 // The newest weekday holdings file that should exist at `now`: the fund publishes the file dated a weekday by
 // holdingsFileExpectedByUtc on that day; before that time the previous weekday's file is the newest, and on a weekend the
 // Friday file is (FilePoint sometimes publishes Monday's file on Saturday, which only makes a saved file newer, never older).
-// US market holidays are not modelled: on a holiday the expected file may legitimately not exist.
+// NYSE full-day closures, 2026–2027, as a fixed list (nyse.com/markets/hours-calendars). The fund prices only on US trading
+// days, so on one of these days no new NAV exists; how FilePoint dates its file on and after a holiday has not been observed.
+const US_MARKET_HOLIDAYS={'2026-01-01':'New Year’s Day','2026-01-19':'Martin Luther King Jr. Day','2026-02-16':'Presidents’ Day','2026-04-03':'Good Friday','2026-05-25':'Memorial Day','2026-06-19':'Juneteenth','2026-07-03':'Independence Day (observed)','2026-09-07':'Labor Day','2026-11-26':'Thanksgiving Day','2026-12-25':'Christmas Day','2027-01-01':'New Year’s Day','2027-01-18':'Martin Luther King Jr. Day','2027-02-15':'Presidents’ Day','2027-03-26':'Good Friday','2027-05-31':'Memorial Day','2027-06-18':'Juneteenth (observed)','2027-07-05':'Independence Day (observed)','2027-09-06':'Labor Day','2027-11-25':'Thanksgiving Day','2027-12-24':'Christmas Day (observed)'};
+const usMarketHoliday=iso=>US_MARKET_HOLIDAYS[iso]||null;
+// Why a file dated `expected` may legitimately not exist: the date is a market holiday, or the previous weekday (whose close
+// the file would carry) is one. Null on an ordinary trading day.
+function holidayGap(expected){
+  if(!expected) return null;
+  const own=usMarketHoliday(expected); if(own) return {date:expected,name:own,kind:'the date itself'};
+  const d=new Date(expected+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()-1);
+  const p=d.toISOString().slice(0,10), pn=d.getUTCDay()>=1&&d.getUTCDay()<=5 ? usMarketHoliday(p) : null;
+  return pn ? {date:p,name:pn,kind:'the previous weekday, whose close a file dated the next day would carry'} : null;
+}
+// The newest weekday whose file should exist by now (weekday after the published time; Friday's at the weekend). A holiday
+// is not skipped here: holidayGap() says when that expectation cannot be asserted, and the status line says so instead.
 function expectedHoldingsFileDate(build,now){
   const by=build&&build.holdingsFileExpectedByUtc; if(!/^\d\d:\d\d$/.test(String(by||''))) return null;
   const d=new Date(now);
@@ -663,9 +677,11 @@ function sharedWarnings(){
   const H=SNAPSHOT.data.holdings, fileDate=H&&H.latest&&H.latest.date, expected=expectedHoldingsFileDate(B,now);
   if(fileDate&&expected&&fileDate<expected){
     const expectedAt=Date.parse(expected+'T'+B.holdingsFileExpectedByUtc+':00Z'), builtBefore=Number.isFinite(expectedAt)&&Date.parse(B.generatedAt)<expectedAt;
-    out.push({level:'warn',text: builtBefore
+    const gap=holidayGap(expected);
+    if(gap) out.push({level:'warn',text:`${fmtDate(gap.date)} is a US market holiday (${gap.name}), ${gap.kind}: the fund prices only on trading days, and how FilePoint dates its file around a holiday has not been observed, so no file dated ${fmtDate(expected)} is expected with confidence; this snapshot shows the ${fmtDate(fileDate)} file`});
+    else out.push({level:'warn',text: builtBefore
       ? `the fund’s file dated ${fmtDate(expected)} is normally published by ${B.holdingsFileExpectedByUtc} UTC; this snapshot was built before it and shows the ${fmtDate(fileDate)} file`
-      : `the fund’s file dated ${fmtDate(expected)} is normally published by ${B.holdingsFileExpectedByUtc} UTC, but this snapshot, built after that time, still shows the ${fmtDate(fileDate)} file: the fund had not published a newer one when the build fetched (a US market holiday would explain that and is not modelled here) or the fetch failed`});
+      : `the fund’s file dated ${fmtDate(expected)} is normally published by ${B.holdingsFileExpectedByUtc} UTC, but this snapshot, built after that time, still shows the ${fmtDate(fileDate)} file: the fund had not published a newer one when the build fetched, or the fetch failed`});
   }
   if(SNAPSHOT.mixed) out.push({level:'err',text:'a file’s bytes do not match the SHA-256 that build.json publishes for it, normally the CDN still serving a file from an earlier build; figures may not match'});
   if(SNAPSHOT.codeBuild&&B.commit&&SNAPSHOT.codeBuild!==B.commit) out.push({level:'warn',text:`this page’s code is from build ${SNAPSHOT.codeBuild.slice(0,7)} while its data is from build ${String(B.commit).slice(0,7)}: the CDN serves the page and the JSON files separately, and it may keep either for up to 10 min. Reload in a few minutes`});
@@ -749,7 +765,8 @@ async function renderSet(set){
   renderNport(NPORT);
   renderDates(NPORT); // the shareholder-report lines come from the same SEC index the N-PORT check reads
   if(!DALAL.ok){
-    const secCheck=await checkLatestSecAccession(DALAL);
+    // the static site has no server to ask, so the browser checks SEC itself; locally the server already did
+    const secCheck=STATIC_BUILD ? await checkLatestSecAccession(DALAL) : {checked:false};
     if(secCheck.checked&&secCheck.newer){
       $('#dalalCall').insertAdjacentHTML('afterbegin',`<b>NEW SEC FILING DETECTED:</b> ${esc(secCheck.latest.form)} ${esc(secCheck.latest.accession)}, filed ${fmtDate(secCheck.latest.filed)}. The holdings below are older and must not be treated as current.<br>`);
       pabraiErrs.push('new Dalal Street SEC filing detected — holdings import pending');
@@ -776,7 +793,7 @@ function renderAbout(set){
   if(!STATIC_BUILD){
     $('#aboutBuild').textContent='Running locally from the repository; figures are fetched live by the local server.';
     // the static paragraph describes the public site; locally the browser talks only to the local server
-    $('#contacts').innerHTML='<b>Not investment advice.</b> Locally your browser contacts only the local server at 127.0.0.1 and Google Fonts for the typefaces; the server fetches the fund’s files, Yahoo Finance and SEC EDGAR on Update and every 10 minutes. Nothing you type on this page is sent anywhere.';
+    $('#contacts').innerHTML='<b>Not investment advice.</b> Locally your browser contacts only the local server at 127.0.0.1 and Google Fonts for the typefaces; the server re-fetches the fund’s files, both SEC filings and the quotes when this page asks it to (on Update, and on its 10-minute re-check while the tab is open) and the 33 Yahoo series behind the Fear &amp; Greed tabs on Update or once their 15-minute cache has expired. Nothing you type on this page is sent anywhere.';
     $('#aboutVerify').innerHTML=''; $('#aboutFreshness').textContent='Locally every figure is as of the update time in the status line.'; return;
   }
   if(!B||!B.commit){ $('#aboutBuild').textContent='Build identity unavailable.'; $('#aboutVerify').innerHTML=''; return; }
@@ -1529,7 +1546,7 @@ function normMarket(M,model,fetchedAt){
   const attempts = typeof BUILD_META!=='undefined'&&BUILD_META&&Number(BUILD_META.snapshotAttempts)>1 ? Number(BUILD_META.snapshotAttempts) : null;
   const allAttempts = typeof BUILD_META!=='undefined'&&BUILD_META&&Number.isFinite(Number(BUILD_META.yahooRequestsAllAttempts)) ? Number(BUILD_META.yahooRequestsAllAttempts) : null;
   // marketfg.js counts per model computation; a build that discarded an attempt sent that many again, so say both
-  const requests = Y&&Number.isFinite(Y.requests) ? ` The model computation behind this snapshot sent ${fmt(Y.requests)} Yahoo chart requests for ${Number.isFinite(Y.symbols)?fmt(Y.symbols)+' ':''}series${Number.isFinite(Y.fullHistoryRequests)&&Number.isFinite(Y.topUpRequests)?` (${fmt(Y.fullHistoryRequests)} full-history, ${fmt(Y.topUpRequests)} top-up${Number.isFinite(Y.retries)?', '+fmt(Y.retries)+' retries':''})`:''}${attempts&&allAttempts?`; the build itself made ${fmt(attempts)} attempts and sent ${fmt(allAttempts)} requests in all, because an attempt whose components were carried forward is discarded and repeated`:''}.` : '';
+  const requests = Y&&Number.isFinite(Y.requests) ? ` The model computation behind this snapshot sent ${fmt(Y.requests)} Yahoo chart requests for ${Number.isFinite(Y.symbols)?fmt(Y.symbols)+' ':''}series${Number.isFinite(Y.fullHistoryRequests)&&Number.isFinite(Y.topUpRequests)?` (${fmt(Y.fullHistoryRequests)} full-history, ${fmt(Y.topUpRequests)} top-up${Number.isFinite(Y.retries)?', '+fmt(Y.retries)+' retries':''})`:''}${attempts&&allAttempts?`; the build itself made ${fmt(attempts)} attempts and sent ${fmt(allAttempts)} requests in all, because an earlier attempt was discarded and repeated (build.json lists why)`:''}.` : '';
   const footer=`<p><b>Who calculates this:</b> the repository’s own code (<span class="mono">marketfg.js</span>) from daily Yahoo Finance price histories; Yahoo supplies prices, not a score, and no third-party Fear &amp; Greed score (CoinMarketCap, Alternative.me, CNN) enters the calculation. Yahoo’s chart feed has no public API guarantee.${requests}</p><p><b>Descriptive indicator only.</b> ${SHOW_RESEARCH_SIGNAL?'The BUY/SELL research card above is an unvalidated research model shown in the local app and to the owner only.':studied+'This v3 score (expanding percentiles) has had no rule search and no prospective test, so no buy/sell signal is shown here; a separate research learner’s output is published in api/marketfg.json for auditing only.'}</p>`;
   return { bands, value:v, label:M.label, title:`Fear & Greed — ${M.name} (own model)`, note:`${esc(M.indexName)} · ${esc(asOfText)} · ${fetchedStr(fetchedAt)}`,
     sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous observation · `:'')+'last bar before the build day, as of '+when,

@@ -89,11 +89,13 @@ build; a new snapshot appears after a push, after a requested build, or when Git
 slots, and it skips most of them" and, once Build history has been read, how many runs GitHub started in the
 last 24 hours ("at least N" when every listed run falls inside them, since only 20 are read). Holdings file: build.json publishes holdingsFileExpectedByUtc = 00:30
 (the fund's file for a weekday was live at about 00:02 UTC on 1–4 Sep 2026); when the snapshot's file is
-older than the newest weekday file that should exist (Friday's on a weekend; US market holidays are not
-modelled) the status line says "the fund's file dated <D> is normally published by 00:30 UTC; this snapshot
-was built before it and shows the <F> file", or, for a build made after that time, "… still shows the <F>
-file: the fund had not published a newer one when the build fetched (a US market holiday would explain that
-and is not modelled here) or the fetch failed". The About line states the rule with the published numbers.
+older than the newest weekday file that should exist (Friday's on a weekend) the status line says "the fund's
+file dated <D> is normally published by 00:30 UTC; this snapshot was built before it and shows the <F> file",
+or, for a build made after that time, "… still shows the <F> file: the fund had not published a newer one when
+the build fetched, or the fetch failed". US market holidays come from a fixed NYSE list for 2026–2027 in
+index.html (US_MARKET_HOLIDAYS): on a holiday, and on the day after it (whose file would carry the holiday's
+close), the line instead says which holiday it is and that how FilePoint dates its file around one has not
+been observed, so no file is expected with confidence. The About line states the rule with the published numbers.
 Mixed set: when a JSON file's bytes do not match the digest build.json publishes for it (normally the CDN still
 serving an earlier build's file) the status line says so on every tab. Build stamp: the build writes its commit
 into index.html as a meta tag; when that differs from build.json's commit, the CDN paired one build's page with
@@ -398,9 +400,10 @@ HOW IT WORKS
   top-up (recentBarTopUps). That top-up is made by every getMarketFearGreed caller — the local server's
   /api/marketfg and the public build alike — so the public model computation sends two chart requests per
   symbol, 66 in all (api/marketfg.json fetchStats, copied to build.json yahooRequests) — and that count is per
-  model computation: a build whose first attempt carried a component forward discards it and computes again, so
-  build.json also publishes snapshotAttempts and yahooRequestsAllAttempts (132 requests over two attempts on
-  4 Sep 2026). The research replays in research/ call getMarketFearGreed too and therefore also top up; only the
+  model computation: a build that discards an attempt (a carried-forward component on the first try, a holdings
+  file that was not accepted, or a snapshot that failed validation) computes the model again, so build.json also
+  publishes snapshotAttempts, yahooRequestsAllAttempts and snapshotRetryReasons (132 requests over two attempts
+  on 4 Sep 2026, the first discarded for carried-forward components). The research replays in research/ call getMarketFearGreed too and therefore also top up; only the
   lockbox collectors, which call getMarketFearGreedResearchHistory, send the 33 full-history requests alone and
   never top up, keeping the exact single request their frozen capture contracts expect. A request that fails is
   retried once on Yahoo's other chart host (query2, or query1); an HTTP 429 or 5xx answer first waits
@@ -624,7 +627,8 @@ IF SOMETHING GOES WRONG
   started; nothing on the page can trigger a build except the owner's live update.
 - "the fund's file dated <D> is normally published by 00:30 UTC; this snapshot …" (public site, every tab) = the
   newest weekday file is not in the snapshot: either the build predates the file, or the fund had not published
-  it when the build fetched (a US market holiday is not modelled), or the fetch failed. Not an error in itself.
+  it when the build fetched, or the fetch failed. Not an error in itself. On a US market holiday and the day
+  after it the line says so instead (see GITHUB PAGES).
 - "a file's bytes do not match the SHA-256 that build.json publishes for it …; figures may not match" = the first
   load got a mixed set even
   after one retry; Reload snapshot a few minutes later.
@@ -670,8 +674,8 @@ hand. Where to change it when it is:
 - The N-PORT quarter dates (next report 30 Sep 2026, due 30 Nov 2026) and candidateCount 228: SOURCES above;
   the page computes both from SEC's index at each build.
 - The Yahoo gap observations of 2 and 4 Sep 2026: HOW IT WORKS above.
-- The 24 Aug 2026 series check (20 of 23 closes) and the 23 Aug 2026 CNN comparison: SOURCES above and
-  MARKET_DISCLOSURES in marketfg.js.
+- The 24 Aug 2026 series check (20 of 23 closes): SOURCES above and CHECK_23 / MARKET_DISCLOSURES in marketfg.js.
+- The 23 Aug 2026 CNN comparison (0.88 correlation, 8.9-point mean gap): SOURCES above only.
 - The Avanza column, the flags and the sec13f notes in data/config.json: hand notes; the flags follow the fund's
   30 Jun 2026 N-PORT and should be re-read against each new one.
 
