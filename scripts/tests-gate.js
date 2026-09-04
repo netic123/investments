@@ -46,16 +46,25 @@ async function githubJson(fetchImpl, token, url) {
   return response.json();
 }
 
-// The newest completed, successful run of pages.yml for this commit whose test
-// step ran and passed; null when there is none.
+// A completed, successful run of pages.yml for this commit whose test step ran
+// and passed; null when there is none. GitHub lists runs newest first and the
+// proving run (the push, or the daily tested slot) is normally the OLDEST run
+// for a commit, with every suite-skipping build stacked on top of it, so the
+// listing is read in pages of 100, up to three pages.
+const RUN_PAGE = 100;
+const RUN_PAGES = 3;
 async function findTestedRun({ repo, sha, workflow, stepName, token, fetchImpl }) {
-  const runs = await githubJson(fetchImpl, token, `${API}/repos/${repo}/actions/workflows/${workflow}/runs?head_sha=${encodeURIComponent(sha)}&status=success&per_page=30`);
-  for (const run of (runs && runs.workflow_runs) || []) {
-    if (run.head_sha !== sha || run.conclusion !== 'success') continue;
-    const jobs = await githubJson(fetchImpl, token, `${API}/repos/${repo}/actions/runs/${run.id}/jobs?per_page=100`);
-    const proved = ((jobs && jobs.jobs) || []).some(job => job.conclusion === 'success'
-      && (job.steps || []).some(step => step.name === stepName && step.conclusion === 'success'));
-    if (proved) return { id: run.id, htmlUrl: run.html_url, event: run.event };
+  for (let page = 1; page <= RUN_PAGES; page++) {
+    const runs = await githubJson(fetchImpl, token, `${API}/repos/${repo}/actions/workflows/${workflow}/runs?head_sha=${encodeURIComponent(sha)}&status=success&per_page=${RUN_PAGE}&page=${page}`);
+    const list = (runs && runs.workflow_runs) || [];
+    for (const run of list) {
+      if (run.head_sha !== sha || run.conclusion !== 'success') continue;
+      const jobs = await githubJson(fetchImpl, token, `${API}/repos/${repo}/actions/runs/${run.id}/jobs?per_page=100`);
+      const proved = ((jobs && jobs.jobs) || []).some(job => job.conclusion === 'success'
+        && (job.steps || []).some(step => step.name === stepName && step.conclusion === 'success'));
+      if (proved) return { id: run.id, htmlUrl: run.html_url, event: run.event };
+    }
+    if (list.length < RUN_PAGE) break;
   }
   return null;
 }

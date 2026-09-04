@@ -77,8 +77,8 @@ null). A DailyNAV file that lags the historical NAV file (a newer rate without a
 build; it only limits which proof is available. GitHub Pages is static: it does not keep server.js running.
 Every public figure is as of the build time in the status line — "snapshot built <time> (<age>) · CDN copy
 N s old · page loaded <time>[ · checked <time>]", in the visitor's local time with the zone abbreviation that
-applied at each instant — and changes only on the next successful deployment. Two warnings come from the
-snapshot alone and show on every tab. Age: api/build.json publishes snapshotStaleAfterHours = 3, applied while
+applied at each instant — and changes only on the next successful deployment. Three warnings come from the
+snapshot alone and show on every tab, and a fourth from the page's own build stamp. Age: api/build.json publishes snapshotStaleAfterHours = 3, applied while
 the weekday schedule is active (scheduleWindowUtc: Mon–Fri 05:20–23:20 UTC), and
 snapshotStaleAfterHoursOffSchedule = 30 for weekends and nights; past the applicable threshold the status line
 says "this snapshot is N h old, older than the T h expected while the weekday schedule is active | outside
@@ -91,6 +91,10 @@ modelled) the status line says "the fund's file dated <D> is normally published 
 was built before it and shows the <F> file", or, for a build made after that time, "… still shows the <F>
 file: the fund had not published a newer one when the build fetched (a US market holiday would explain that
 and is not modelled here) or the fetch failed". The About line states the rule with the published numbers.
+Mixed set: when a JSON file's bytes do not match the digest build.json publishes for it (normally the CDN still
+serving an earlier build's file) the status line says so on every tab. Build stamp: the build writes its commit
+into index.html as a meta tag; when that differs from build.json's commit, the CDN paired one build's page with
+another's data, and the status line says so and asks for a reload in a few minutes.
 
 "Reload snapshot" re-downloads the JSON files skipping the browser cache (cache: no-store). It cannot bypass
 the Pages CDN, which keeps each file for up to 10 minutes (Cache-Control max-age=600) and ignores query
@@ -123,8 +127,8 @@ publishes the gitignored data/positions.local.json or data/portfolio.local.json,
 run on a computer where those files exist. No API key or GitHub secret is supplied to the snapshot server. The
 only optional input is the repository variable SEC_USER_AGENT, passed by pages.yml as the environment variable
 of the same name: a declared User-Agent with a contact address for SEC EDGAR, e.g. "<app> (<e-mail>)". It is not
-set for this repository, and every GitHub build since 2 Sep 2026 has fetched and verified both SEC filings with
-the built-in default (see SOURCES, Dalal Street, for the whole record). A value mentioning github.com or
+set for this repository, and every GitHub build since 2 Sep 2026 has fetched and verified the 13F, and the
+N-PORT once that check existed, with the built-in default (see SOURCES, Dalal Street, for the whole record). A value mentioning github.com or
 github.io, which SEC's edge rejects, fails the build loudly instead of silently degrading every build to the
 fallback. build.json records which contact was used as secContact ("repository variable SEC_USER_AGENT" or
 "built-in default (no e-mail contact)"), never the value, and the About line shows it; the build log carries a
@@ -277,7 +281,8 @@ TABS (top of the page)
             The expanding-history BUY/SELL research signal is still computed and published in api/marketfg.json, but
             the public page does not show it (the card appears only in the local app or with #owner in the address,
             remembered for that browser tab session): it has passed no prospective validation, and a coloured
-            BUY/SELL reads as a recommendation. The public footer attributes the research honestly: the owner's
+            BUY/SELL reads as a recommendation. Each Fear & Greed tab's own footer block attributes the research honestly
+            (US Tech prints its own variant, naming the one fitted study that includes it): the owner's
             back-tests of the earlier v1 and v2 scores (trailing-window percentiles) found no reliable timing rule —
             seven kinds of rule across Crypto, Sweden, USA, Europe and Global rejected after costs; one Europe
             candidate on v2 failed replication and is still tracked in real time, on v2 — and this v3 score has had
@@ -439,9 +444,12 @@ dates, 13F fallback and N-PORT note re-checked 4 Sep 2026)
   now takes the basename so the raw XML is read. Since then every build from GitHub's runners (13 of 13 on
   2 Sep 2026 for the 13F, and every build since for both filings, per api/build.json dalalVerification and
   nportCheck) has fetched the filings from www.sec.gov with that built-in default; no SEC_USER_AGENT variable is
-  set. data.sec.gov (the submissions index) accepts a declared User-Agent without an e-mail address; from other
-  networks (the owner's home connection on 2 Sep 2026) www.sec.gov has answered 403 to the default while
-  accepting an e-mail-style contact. Setting SEC_USER_AGENT to "<app> (<e-mail>)" therefore remains SEC's
+  set. data.sec.gov (the submissions index) accepts a declared User-Agent without an e-mail address. www.sec.gov
+  has answered 403 to that default to a bare curl from the owner's own connection (2 and 4 Sep 2026: curl with
+  the default and no other headers, 403; the same curl with an e-mail contact, 200), while this application's
+  own client (Node fetch, with Accept and User-Agent headers) received 200 from the same connection with the
+  default on 4 Sep 2026; what exactly triggers the 403 has not been established. Setting SEC_USER_AGENT to
+  "<app> (<e-mail>)" remains SEC's
   requested courtesy and the first thing to try if the fallback message reappears; a value mentioning
   github.com or github.io is refused; build.json secContact and the dalal/nport results' secContact ("default"
   | "configured") record which was used, never the value. Verified 2 Sep 2026: accession 0001549575-26-000015
@@ -624,8 +632,9 @@ IF SOMETHING GOES WRONG
 - "SEC N-PORT check unavailable at build/update time — <reason>" = SEC's submissions index or the filing
   document could not be fetched or parsed; the reason names the request, and the N-PORT section says how many
   filings the index lists and how many documents were opened, and asserts nothing about the fund. The check
-  runs again on the next build; the Dates section then says the shareholder reports could not be read from
-  SEC's index, and asserts nothing about them. "SEC N-PORT check could not be fetched (<reason>)" = the browser
+  runs again on the next build. The shareholder-report lines come from the same submissions index and survive a
+  failed document walk, so the Dates section keeps showing them; only when the index itself could not be fetched
+  does it say the shareholder reports could not be read from SEC's index, and assert nothing about them. "SEC N-PORT check could not be fetched (<reason>)" = the browser
   could not load api/nport.json; the Dates section then shows the configured entries only.
 - "quote missing: ..." = Yahoo did not respond for that ticker; the rest works.
 - "Fear & Greed <market> could not be computed" / "index series ... missing" = Yahoo did not respond and the
