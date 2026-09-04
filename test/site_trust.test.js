@@ -429,6 +429,9 @@ test('the page shows its provenance and reads the build history from GitHub only
   for (const host of connect) assert.ok(disclosure.includes(host.replace('https://', '')), `${host} must be named in the disclosure`);
   assert.match(disclosure, /this site’s own JSON files/);
   assert.match(disclosure, /Google Fonts/);
+  // locally the browser reaches only the local server and the fonts: the SEC recency check runs on the static site alone
+  assert.match(html, /const secCheck=STATIC_BUILD \? await checkLatestSecAccession\(DALAL\) : \{checked:false\};/);
+  assert.match(html, /Locally your browser contacts only the local server at 127\.0\.0\.1 and Google Fonts/);
   // the SEC check runs on every load while the fallback is published, whichever tab is open
   assert.match(disclosure, /data\.sec\.gov \(SEC’s EDGAR submissions index\), on a page load and, at most once an hour, on a re-check that loads a newer snapshot, while the published snapshot carries the manually verified 13F fallback — whichever tab you have open/);
   // the owner's token and interval are the exception to "nothing you type is sent"
