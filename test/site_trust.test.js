@@ -558,11 +558,11 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   assert.equal(N.bands[0][1], 24.9);
   assert.equal(N.bands[ctx.fgBand(24.95, N.bands)][2], 'Fear');
   assert.equal(N.stats[0][0], 'Latest');
-  // US Tech: the footer does not inherit the five-market studies; the disclosure states the unverified series
-  const T = ctx.normMarket({ ...fgMarket('ustech'), carriedComponents: [], oldestComponentAsOf: '2026-09-03', disclosure: { benchmarkType: 'ETF total-return proxy (XLK)', verified: 'XLK, ^VXN and RSPT were added after the 24 Aug 2026 check and have not had it or any other second-source check', note: 'US Tech was added after the research programme: no rule search, replication, diagnostic battery or lockbox in research/ covers it' } }, fgModel(), null);
+  // US Tech: the footer does not inherit the five-market studies; the disclosure states what was checked and when
+  const T = ctx.normMarket({ ...fgMarket('ustech'), carriedComponents: [], oldestComponentAsOf: '2026-09-03', disclosure: { benchmarkType: 'ETF total-return proxy (XLK)', verified: 'XLK, ^VXN and RSPT were added on 27 Aug 2026, after the 24 Aug 2026 check; all six were checked again on 4 Sep 2026', note: 'US Tech was added after the research programme: no rule search, replication, diagnostic battery or lockbox in research/ covers it' } }, fgModel(), null);
   assert.match(strip(T.footer), /US Tech was added on 27 Aug 2026, after the owner’s back-tests: no rule search, replication, diagnostic battery or lockbox covers it\./);
   assert.doesNotMatch(strip(T.footer), /seven kinds of rule/);
-  assert.match(strip(T.explain), /XLK, \^VXN and RSPT were added after the 24 Aug 2026 check and have not had it or any other second-source check/);
+  assert.match(strip(T.explain), /What was checked about the raw series: XLK, \^VXN and RSPT were added on 27 Aug 2026, after the 24 Aug 2026 check; all six were checked again on 4 Sep 2026\./);
   assert.equal(T.kpiSub, 'Fear · as of 2026-09-03 — all 6 indicators as of that date');
   assert.doesNotMatch(strip(fgContext().normMarket(fgMarket('ustech'), fgModel(), null).footer), /Yahoo chart requests/, 'no build record (local mode), no request count');
   // USA: CNN publishes a number, not an open source; the 23 Aug 2026 comparison was manual, on v1, and validates nothing

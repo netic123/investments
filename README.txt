@@ -546,8 +546,13 @@ dates, 13F fallback and N-PORT note re-checked 4 Sep 2026)
   its percentile score.
 - The original 23 equity Yahoo series were checked for identity (ISIN/name), freshness and gaps on 24 Aug 2026;
   20 of 23 closes were verified to the cent against Nasdaq, Cboe/FRED, Avanza, Carnegie, stoxx.com,
-  Xetra and LSE; no later check has been made. The three US Tech series added on 27 Aug 2026 (XLK, ^VXN, RSPT)
-  have not had that check or any other second-source check, and the seven crypto pairs were not among the 23;
+  Xetra and LSE. On 4 Sep 2026 the ten US-listed series (SPY, XLK, ACWI, IEF, HYG, LQD, IWM, RSPT, ^VIX, ^VXN;
+  the three US Tech series added on 27 Aug 2026 had had no check before) were checked again by hand: the name and
+  every close from 20 Aug to 3 Sep 2026 matched Nasdaq's historical table (the eight ETFs) or Cboe's published
+  daily history (the two indices) to the cent, 111 closes in all, and Yahoo's dividend adjustment of IEF, HYG and
+  LQD for their 1 Sep 2026 ex-dates reproduced to six decimals from the amounts and the prior closes. The sixteen
+  Stockholm-, Xetra- and London-listed series (two indices, eleven UCITS ETFs, two fund NAV series, one STOXX
+  index) have had no check since 24 Aug 2026, and the seven crypto pairs were not among the 23 and have had none;
   each tab's disclosure (api/marketfg.json markets.<key>.disclosure) says which of its series were checked,
   without counting them, so the sentence cannot drift from the component table beside it. Model validation: the US version of the FIRST rolling-window model (v1) was compared ONCE, on
   23 Aug 2026, by hand with CNN's published index number (CNN publishes a number, not an open feed or component
@@ -677,7 +682,8 @@ hand. Where to change it when it is:
 - The N-PORT quarter dates (next report 30 Sep 2026, due 30 Nov 2026) and candidateCount 228: SOURCES above;
   the page computes both from SEC's index at each build.
 - The Yahoo gap observations of 2 and 4 Sep 2026: HOW IT WORKS above.
-- The 24 Aug 2026 series check (20 of 23 closes): SOURCES above and CHECK_23 / MARKET_DISCLOSURES in marketfg.js.
+- The 24 Aug 2026 series check (20 of 23 closes) and the 4 Sep 2026 re-check of the ten US-listed series (111
+  closes, three dividend adjustments): SOURCES above and CHECK_23 / CHECK_US / MARKET_DISCLOSURES in marketfg.js.
 - The 23 Aug 2026 CNN comparison (0.88 correlation, 8.9-point mean gap): SOURCES above only.
 - The Avanza column, the flags and the sec13f notes in data/config.json: hand notes; the flags follow the fund's
   30 Jun 2026 N-PORT and should be re-read against each new one.
