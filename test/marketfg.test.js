@@ -834,7 +834,7 @@ test('a market lists its carried components with the reason, the oldest componen
     source.lastDate = source.rows.at(-1).date;
   }
   const result = computeMarket('crypto', MARKET, series, OPTIONS);
-  assert.equal(result.asOfMeaning, 'last completed benchmark bar; carried components are older');
+  assert.equal(result.asOfMeaning, 'last benchmark bar dated before the retrieval date at the exchange (a same-day close is excluded until the next day); carried components are older');
   assert.equal(result.asOf, '2022-09-25');
   assert.equal(result.oldestComponentAsOf, '2022-09-23');
   assert.deepEqual(result.carriedComponents.map(c => c.component).sort(), ['credit', 'safeHaven']);
