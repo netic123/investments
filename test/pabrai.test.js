@@ -4,14 +4,19 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   DEFAULT_SEC_USER_AGENT,
+  classify13fChange,
   compareManualDalal,
   compareNportWithSnapshot,
   diffWagnSnapshots,
+  formatDayMonthYear,
+  impliedUnitsFromNav,
   isOlderSameDateRevision,
   isQuarterEndDate,
+  usFederalHoliday,
   issuerNameKey,
   fetchDalalStreet13f,
   fetchLatestPabraiNport,
+  next13fDeadline,
   nextNportOpportunity,
   normalizeWagnHoldings,
   parseCsv,
@@ -19,10 +24,13 @@ const {
   parseSecInformationTable,
   parseSecPrimary,
   reconcileWagnHoldingsToNav,
+  rollToBusinessDay,
+  secContactKind,
   secUserAgent,
   selectWagnNavObservation,
   selectCurrentAndPrevious13f,
   selectNportFilings,
+  selectShareholderReports,
   selectSnapshotForNport,
   summarizeNportCheck,
   summarizeWagnUnitFlow,
@@ -209,7 +217,8 @@ test('CUSIP identity survives a ticker rename and flow adjustment separates ETF 
   assert.equal(change.signalDelta, 20, 'the headline is the raw inventory change');
   assert.equal(change.approxUsd, 200, 'value at the latest price is the raw change');
   assert.equal(change.flowAdjusted, true);
-  assert.deepEqual(change.unitFlow, { from: '2026-08-24', to: '2026-08-25', unitsFrom: 1000, unitsTo: 1100, delta: 100, pct: 10, kind: 'creation', perUnitPct: 1000 / 1100 * 100 - 100 });
+  assert.deepEqual(change.unitFlow, { from: '2026-08-24', to: '2026-08-25', known: true, state: 'known', unitsFrom: 1000, unitsTo: 1100, delta: 100, pct: 10, kind: 'creation', perUnitPct: 1000 / 1100 * 100 - 100 });
+  assert.equal(change.unitsKnown, true);
   after.rows.NEW.shares = 110;
   assert.deepEqual(diffWagnSnapshots(before, after), [], 'a purely proportional in-kind creation flow is not a manager-change signal');
 });
@@ -242,7 +251,15 @@ test('a cash creation never turns untraded holdings into changes', () => {
   assert.equal(flow.delta, 150000);
   assert.equal(flow.kind, 'creation');
   assert.ok(Math.abs(flow.perUnitPct + 0.8188) < 0.001);
-  assert.equal(summarizeWagnUnitFlow({ date: '2026-08-20', rows: {} }, after), null, 'legacy receipts without units have no flow');
+  // a legacy receipt without a unit count is an explicit unknown, never "no flow"
+  assert.deepEqual(summarizeWagnUnitFlow({ date: '2026-08-20', rows: {} }, after),
+    { from: '2026-08-20', to: '2026-09-01', known: false, state: 'units unknown for the earlier file', unitsFrom: null, unitsTo: 18320814, delta: null, pct: null, kind: 'unknown', perUnitPct: null });
+  assert.equal(summarizeWagnUnitFlow({ date: '2026-08-20', rows: {} }, { date: '2026-08-24', rows: {} }).state, 'units unknown for both files');
+  assert.equal(summarizeWagnUnitFlow(after, { date: '2026-09-02', rows: {} }).state, 'units unknown for the later file');
+  const legacyChange = diffWagnSnapshots({ date: '2026-08-20', rows: { HCC: { cusip: '93627C101', shares: 254000, price: 108, mv: 27432000 } } }, after);
+  assert.equal(legacyChange.find(c => c.ticker === 'HCC').unitsKnown, false);
+  assert.equal(legacyChange.find(c => c.ticker === 'HCC').unitFlowState, 'units unknown for the earlier file');
+  assert.equal(legacyChange.find(c => c.ticker === 'HCC').flowAdjusted, false);
   // no units changed: nothing is flow-adjusted, and identical files produce no rows
   const same = { ...after, date: '2026-09-02' };
   assert.deepEqual(diffWagnSnapshots(after, same), []);
@@ -274,6 +291,50 @@ test('pricing date reconciles exactly or per share, and says why when it cannot'
   assert.match(reconcileWagnHoldingsToNav(receipt, { date: '2026-09-02', nav: 16.19, sharesOut: 18320814 }).reason, /not within the four days/);
   assert.match(reconcileWagnHoldingsToNav(receipt, { date: '2026-08-25', nav: 16.19, sharesOut: 18320814 }).reason, /not within the four days/);
   assert.equal(reconcileWagnHoldingsToNav(receipt, null).reason, 'required NAV reconciliation fields are missing');
+});
+
+test('the NAV reconciliation reports the NAV file\'s own net assets and how far the rounded NAV x units is from it', () => {
+  // WAGN 2026-09-04 file: NetAssets 294,965,105.40 = 16.10 x 18,320,814; DailyNAV 3 Sep: net assets 294,891,395.17
+  const receipt = { date: '2026-09-04', netAssets: 294965105.4, sharesOutstanding: 18320814 };
+  const same = reconcileWagnHoldingsToNav(receipt, { date: '2026-09-03', nav: 16.10, sharesOut: 18320814, netAssets: 294891395.17 });
+  assert.equal(same.mode, 'exact');
+  assert.equal(same.navFileNetAssets, 294891395.17);
+  assert.ok(Math.abs(same.netAssetsDifference - 73710.23) < 0.01, 'holdings file minus NAV file');
+  assert.equal(same.netAssetsComparable, true);
+  assert.ok(Math.abs(same.navFileNavPerUnit - 16.0960) < 0.0001, 'the NAV file implies an unrounded NAV per unit');
+  assert.match(same.netAssetsNote, /rounded NAV x units; the NAV file's own net assets differ by \+73710\.23 USD/);
+  // different unit counts: the totals are not comparable, and the result says so instead of a number
+  const creation = reconcileWagnHoldingsToNav({ date: '2026-09-01', netAssets: 296613978.66, sharesOutstanding: 18320814 }, { date: '2026-08-31', nav: 16.19, sharesOut: 18170814, netAssets: 294200000 });
+  assert.equal(creation.mode, 'per-share');
+  assert.equal(creation.netAssetsDifference, null);
+  assert.equal(creation.netAssetsComparable, false);
+  assert.match(creation.netAssetsNote, /different unit counts/);
+  // a NAV observation without net assets
+  const bare = reconcileWagnHoldingsToNav(receipt, { date: '2026-09-03', nav: 16.10, sharesOut: null });
+  assert.equal(bare.navFileNetAssets, null);
+  assert.match(bare.netAssetsNote, /carries no net assets figure/);
+});
+
+test('units implied from NetAssets / NAV are accepted only when the file is exactly NAV x a whole number of units', () => {
+  // the two legacy receipts (no SharesOutstanding column saved): 20 Aug priced at the 19 Aug NAV, 24 Aug at the 21 Aug NAV
+  assert.equal(impliedUnitsFromNav(277772617, 15.50).units, 17920814);
+  assert.equal(impliedUnitsFromNav(282432028.64, 15.76).units, 17920814);
+  const good = impliedUnitsFromNav(277772617, 15.50);
+  assert.equal(good.implied, true);
+  assert.equal(good.residual, 0);
+  // the accept band is the only deviation the arithmetic allows (two cent-roundings), not a flat 0.01 units
+  assert.ok(good.roundingErrorBound < 0.001 && good.tolerance === good.roundingErrorBound * 2, 'the accept band is twice the cent-rounding bound');
+  // a quotient 0.004 units off is inside the old flat band and outside the arithmetic one
+  const nearMiss = impliedUnitsFromNav(17920814 * 15.5 + 0.062, 15.50);
+  assert.equal(nearMiss.implied, false, '0.004 units from a whole number proves nothing at this NAV');
+  // the wrong NAV date
+  const wrong = impliedUnitsFromNav(277772617, 15.67);
+  assert.equal(wrong.implied, false);
+  assert.equal(wrong.units, null);
+  assert.match(wrong.reason, /not a whole number of units/);
+  // the NAV file's own net assets are not NAV x units, and must never yield a count
+  assert.equal(impliedUnitsFromNav(294891395.17, 16.10).implied, false);
+  assert.equal(impliedUnitsFromNav(null, 16.10).reason, 'NetAssets or NAV is missing');
 });
 
 test('the in-kind flow tolerance is pinned at its boundary', () => {
@@ -321,6 +382,66 @@ test('SEC requests use a declared User-Agent that SEC accepts', () => {
   assert.throws(() => secUserAgent('bot (+https://user.github.io/site)'), /SEC rejects/);
   assert.throws(() => secUserAgent('bot (me@example.com)\r\nX-Injected: 1'), /printable ASCII/);
   assert.throws(() => secUserAgent('bot (mé@example.com)'), /printable ASCII/);
+  // results say which kind of contact was used, never the value
+  assert.equal(secContactKind(''), 'default');
+  assert.equal(secContactKind(undefined), 'default');
+  assert.equal(secContactKind('Example Fund research (contact@example.com)'), 'configured');
+});
+
+test('the next 13F deadline is computed from the report date: 45 days after the next quarter end, weekends rolled to Monday', () => {
+  assert.deepEqual(next13fDeadline('2026-06-30'), {
+    nextReportDate: '2026-09-30', dueDate: '2026-11-14', nextFilingDeadline: '2026-11-16', weekendRolled: true, rolledReason: 'a weekend', holidaysModelled: true,
+    note: '45 days after the 2026-09-30 quarter end (2026-11-14 is a weekend, so the next business day)',
+  });
+  assert.equal(next13fDeadline('2026-03-31').nextFilingDeadline, '2026-08-14', 'a Friday stays');
+  assert.equal(next13fDeadline('2026-03-31').weekendRolled, false);
+  // 14 Feb 2027 is a Sunday and 15 Feb is Presidents' Day, so the deadline is Tuesday 16 Feb
+  assert.equal(next13fDeadline('2026-09-30').nextFilingDeadline, '2027-02-16');
+  assert.equal(next13fDeadline('2026-09-30').rolledReason, "a Sunday, and Presidents' Day the next working day");
+  assert.equal(next13fDeadline('2026-12-31').nextFilingDeadline, '2027-05-17', '15 May 2027 is a Saturday');
+  assert.throws(() => next13fDeadline('2026-6-30'), /exact ISO date/);
+  assert.equal(rollToBusinessDay('2026-11-29'), '2026-11-30');
+  assert.equal(rollToBusinessDay('2026-11-28'), '2026-11-30');
+  assert.equal(rollToBusinessDay('2026-11-27'), '2026-11-27');
+  // the eleven federal holidays, including the observed-day rule
+  assert.equal(usFederalHoliday('2027-02-15'), "Presidents' Day");
+  assert.equal(usFederalHoliday('2026-07-03'), 'Independence Day', '4 July 2026 is a Saturday, observed on the Friday');
+  assert.equal(usFederalHoliday('2027-12-24'), 'Christmas Day', '25 Dec 2027 is a Saturday, observed on the Friday');
+  assert.equal(usFederalHoliday('2026-11-26'), 'Thanksgiving Day');
+  assert.equal(usFederalHoliday('2026-11-27'), null, 'the day after Thanksgiving is not a federal holiday');
+  assert.equal(rollToBusinessDay('2027-07-03'), '2027-07-06', 'Saturday, Sunday, then the observed Independence Day');
+  assert.equal(formatDayMonthYear('2026-11-16'), '16 Nov 2026');
+  assert.equal(formatDayMonthYear('2026-09-08'), '8 Sept 2026', 'the page\'s own month style');
+});
+
+test('13F rows are classified by what the filings establish, with the de minimis threshold flagged', () => {
+  // KSPI in 0001549575-26-000015: 1,702 shares, $147,461, absent from the prior filing
+  const kspi = classify13fChange({ shares: 1702, prevShares: null, valueUsd: 147461, prevValueUsd: null });
+  assert.equal(kspi.deMinimis, true);
+  assert.equal(kspi.change, 'first reported');
+  assert.match(kspi.changeNote, /under 10,000 shares and under \$200,000.*may have been held unreported last quarter/);
+  // a large row not in the prior filing
+  const large = classify13fChange({ shares: 50000, prevShares: null, valueUsd: 5000000 });
+  assert.equal(large.deMinimis, false);
+  assert.equal(large.change, 'new');
+  assert.equal(large.changeText, 'new (not reported last quarter)');
+  // rows above the threshold on both sides keep the plain direction
+  assert.equal(classify13fChange({ shares: 1744050, prevShares: 1810831, valueUsd: 141547098, prevValueUsd: 150000000 }).change, 'decrease');
+  assert.equal(classify13fChange({ shares: 20398659, prevShares: 20392672, valueUsd: 99749443, prevValueUsd: 90000000 }).change, 'increase');
+  assert.equal(classify13fChange({ shares: 10, prevShares: 10, valueUsd: 5000000, prevValueUsd: 4000000 }).change, 'unchanged');
+  // a vanished row: small last quarter, so it may still be held; large last quarter, so sold or below threshold; unknown prior value
+  const smallExit = classify13fChange({ shares: 0, prevShares: 7, valueUsd: 0, prevValueUsd: 30, exited: true });
+  assert.equal(smallExit.change, 'no longer reported');
+  assert.equal(smallExit.prevDeMinimis, true);
+  assert.match(smallExit.changeNote, /may still be held/);
+  const largeExit = classify13fChange({ shares: 0, prevShares: 100000, valueUsd: 0, prevValueUsd: 8000000 });
+  assert.equal(largeExit.prevDeMinimis, false);
+  assert.match(largeExit.changeNote, /sold out, reduced below the 13F reporting threshold, or no longer a 13\(f\) security/);
+  const manualExit = classify13fChange({ shares: 0, prevShares: 100000, valueUsd: 0 });
+  assert.equal(manualExit.prevDeMinimis, null);
+  assert.match(manualExit.changeNote, /prior value is not in this copy/);
+  // the threshold is both conditions: 9,999 shares worth $250,000 is reportable
+  assert.equal(classify13fChange({ shares: 9999, prevShares: 9000, valueUsd: 250000, prevValueUsd: 200000 }).deMinimis, false);
 });
 
 test('SEC XML parsers preserve leading-zero and letter-leading CUSIPs', () => {
@@ -377,8 +498,29 @@ test('automatic SEC ingestion selects the latest two quarters and validates tota
   assert.equal(result.holdings[0].ticker, 'AMR');
   assert.equal(result.holdings[0].shares, 10);
   assert.equal(result.holdings[0].prevShares, 5);
+  assert.equal(result.holdings[0].prevValueUsd, 50);
   assert.equal(result.manualFallbackCheck.matches, true);
   assert.deepEqual([...seenUserAgents], [DEFAULT_SEC_USER_AGENT]);
+  // the wording says who verified what; the machine value the build asserts is unchanged
+  assert.equal(result.sourceStatus, 'official SEC verified');
+  assert.match(result.sourceStatusText, /fetched from SEC EDGAR and validated by this build/);
+  assert.doesNotMatch(result.sourceStatusText, /auto-verified/);
+  assert.equal(result.secContact, 'default');
+  // the prior filing behind every quarter-on-quarter change is named
+  assert.deepEqual(result.previous, {
+    form: '13F-HR', asOf: '2026-03-31', filed: '2026-05-14', accepted: '2026-05-14T15:00:59.000Z', accession: '0001549575-26-000009',
+    sourceUrl: 'https://www.sec.gov/Archives/edgar/data/1549575/000154957526000009/0001549575-26-000009-index.html', entryTotal: 1, portfolioValueUsd: 50,
+  });
+  assert.match(result.source, /previous quarter 0001549575-26-000009$/);
+  // the next filing deadline is computed from the displayed report date, not copied from the config
+  assert.equal(result.nextReportDate, '2026-09-30');
+  assert.equal(result.nextFilingDeadline, '2026-11-16');
+  assert.equal(result.nextFilingWindow, 'by 16 Nov 2026');
+  assert.equal(result.nextFilingSource, 'computed');
+  assert.equal(result.nextFilingHolidaysModelled, false);
+  assert.equal(result.provenance.requests, 5, 'submissions index plus primary document and information table of two filings');
+  assert.match(result.provenance.previousInformationTable.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(result.deMinimisRule.shares, 10000);
 });
 
 test('a position reported only in the prior quarter is shown as an exit, not dropped', async () => {
@@ -395,8 +537,12 @@ test('a position reported only in the prior quarter is shown as an exit, not dro
   };
   const bodies = new Map([
     ['https://data.sec.gov/submissions/CIK0001549575.json', JSON.stringify(submissions)],
-    ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/primary_doc.xml', primaryXml({ date: '06-30-2026', entries: 1, total: 100 })],
-    ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/infotable.xml', infoXml([{ issuer: 'ALPHA METALLURGICAL RESOUR I', cusip: '020764106', shares: 10, value: 100 }])],
+    ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/primary_doc.xml', primaryXml({ date: '06-30-2026', entries: 2, total: 147561 })],
+    ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/infotable.xml', infoXml([
+      { issuer: 'ALPHA METALLURGICAL RESOUR I', cusip: '020764106', shares: 10, value: 100 },
+      // KASPI KZ JSC SPONSORED ADS as filed: under 10,000 shares and under $200,000
+      { issuer: 'KASPI KZ JSC', title: 'SPONSORED ADS', cusip: '48581R205', shares: 1702, value: 147461 },
+    ])],
     ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000009/primary_doc.xml', primaryXml({ date: '03-31-2026', entries: 2, total: 80 })],
     ['https://www.sec.gov/Archives/edgar/data/1549575/000154957526000009/infotable.xml', infoXml([
       { issuer: 'ALPHA METALLURGICAL RESOUR I', cusip: '020764106', shares: 5, value: 50 },
@@ -406,19 +552,33 @@ test('a position reported only in the prior quarter is shown as an exit, not dro
   const fetchImpl = async url => response(bodies.get(url), 200);
   const manual = {
     cik: '0001549575', managerName: 'Dalal Street, LLC', manualVerifiedAt: '2026-08-26',
-    asOf: '2026-06-30', filed: '2026-08-13', accession: '0001549575-26-000015', portfolioValueUsd: 100,
+    asOf: '2026-06-30', filed: '2026-08-13', accession: '0001549575-26-000015', portfolioValueUsd: 147561,
     previous: { accession: '0001549575-26-000009' },
-    holdings: [{ ticker: 'AMR', name: 'Alpha Metallurgical', cusip: '020764106', shares: 10, prevShares: 5, valueUsd: 100 }],
+    holdings: [
+      { ticker: 'KSPI', name: 'Kaspi.kz', cusip: '48581R205', shares: 1702, prevShares: null, valueUsd: 147461 },
+      { ticker: 'AMR', name: 'Alpha Metallurgical', cusip: '020764106', shares: 10, prevShares: 5, valueUsd: 100 },
+    ],
   };
   const result = await fetchDalalStreet13f(manual, { fetchImpl });
   assert.deepEqual(result.holdings.map(row => [row.cusip, row.shares, row.prevShares, row.valueUsd, !!row.exited]), [
+    ['48581R205', 1702, null, 147461, false],
     ['020764106', 10, 5, 100, false],
     ['674599105', 0, 7, 0, true],
   ]);
+  // what the two filings establish, not "new" and "sold out"
+  assert.deepEqual(result.holdings.map(row => [row.cusip, row.change, row.deMinimis, row.prevDeMinimis]), [
+    ['48581R205', 'first reported', true, null],
+    ['020764106', 'increase', true, true],
+    ['674599105', 'no longer reported', false, true],
+  ]);
+  assert.match(result.holdings[0].changeNote, /may have been held unreported last quarter/);
+  assert.match(result.holdings[2].changeNote, /may still be held/);
+  assert.equal(result.holdings[2].prevValueUsd, 30);
+  assert.equal(result.changeByCusip['674599105'].change, 'no longer reported');
   assert.equal(result.holdings.reduce((sum, row) => sum + row.valueUsd, 0), result.portfolioValueUsd);
   assert.equal(result.manualFallbackCheck.matches, true, JSON.stringify(result.manualFallbackCheck));
   // the manual copy is also checked against the prior quarter and the accession identity
-  const wrongPrior = await fetchDalalStreet13f({ ...manual, holdings: [{ ...manual.holdings[0], prevShares: 6 }] }, { fetchImpl });
+  const wrongPrior = await fetchDalalStreet13f({ ...manual, holdings: [manual.holdings[0], { ...manual.holdings[1], prevShares: 6 }] }, { fetchImpl });
   assert.match(wrongPrior.manualFallbackCheck.mismatches.join('; '), /prior-quarter shares 6 != 5/);
   const wrongAccession = await fetchDalalStreet13f({ ...manual, accession: '0001549575-26-000001' }, { fetchImpl });
   assert.match(wrongAccession.manualFallbackCheck.mismatches.join('; '), /accession 0001549575-26-000001 != 0001549575-26-000015/);
@@ -451,7 +611,7 @@ function nportXml({ form = 'NPORT-P', seriesId = 'S000098509', seriesName = 'Pab
     <fundInfo><totAssets>211265625.140000000000</totAssets><totLiabs>1790306.380000000000</totLiabs><netAssets>${netAssets}</netAssets></fundInfo>
     <invstOrSecs>${rows.map(row => `
       <invstOrSec>
-        <name>${row.name}</name><lei>N/A</lei><title>${row.name}</title><cusip>${row.cusip}</cusip>
+        <name>${row.name}</name><lei>N/A</lei><title>${row.title || row.name}</title><cusip>${row.cusip}</cusip>
         <identifiers><isin value="${row.isin}"/><ticker value="${row.ticker}"/><other otherDesc="Internal" value="X-${row.ticker}"/></identifiers>
         <balance>${row.balance}</balance><units>NS</units>${row.curCd ? `<curCd>${row.curCd}</curCd>` : `<currencyConditional curCd="${row.currency}" exchangeRt="40.5"/>`}
         <valUSD>${row.valUsd}</valUSD><pctVal>${row.pctVal}</pctVal><payoffProfile>Long</payoffProfile><assetCat>${row.assetCat}</assetCat><issuerCat>${row.assetCat === 'STIV' ? 'RF' : 'CORP'}</issuerCat><invCountry>${row.country}</invCountry>
@@ -461,11 +621,17 @@ function nportXml({ form = 'NPORT-P', seriesId = 'S000098509', seriesName = 'Pab
 </edgarSubmission>`;
 }
 
-// The FilePoint file dated 2026-07-01 is priced as of 2026-06-30. Its CUSIP
-// column carries a SEDOL for the Polish name and a CINS for Danaos.
-function nportSnapshot(date = '2026-07-01') {
+// The FilePoint file dated 2026-07-01 is priced as of 2026-06-30: its
+// NetAssets is the 30 Jun NAV (16.11) x its 13,000,000 units to the cent. Its
+// CUSIP column carries a SEDOL for the Polish name and a CINS for Danaos.
+const NAV_HISTORY = [
+  { date: '2026-06-29', nav: 16.05, price: 16.07, premium: 0.12 },
+  { date: '2026-06-30', nav: 16.11, price: 16.14, premium: 0.19, netAssets: 209475318.76, sharesOut: 13000000 },
+  { date: '2026-07-01', nav: 16.20, price: 16.22, premium: 0.12 },
+];
+function nportSnapshot(date = '2026-07-01', { netAssets = 209430000, sharesOutstanding = 13000000 } = {}) {
   return {
-    date, netAssets: 209475318.76, sharesOutstanding: 13000000,
+    date, netAssets, sharesOutstanding,
     rows: {
       HCC: { cusip: '93627C101', shares: 254389, name: 'Warrior Met Coal Inc' },
       AMR: { cusip: '020764106', shares: 62041, name: 'Alpha Metallurgical Resources Inc' },
@@ -506,6 +672,53 @@ test('N-PORT primary document parser reads the series, period, net assets and ev
   assert.throws(() => parseNportPrimary(nportXml().replace('<netAssets>209475318.760000000000</netAssets>', '')), /missing netAssets/);
 });
 
+test('cash-like is decided by asset category, a money-market name or a configured ticker, never by the word Cash in an issuer name', () => {
+  const rows = [
+    ...NPORT_ROWS,
+    { name: 'Cash Converters International', title: 'Cash Converters International Ltd', cusip: 'N/A', isin: 'AU000000CCV6', ticker: 'CCV', balance: '1000.000000000000', valUsd: '250.000000000000', pctVal: '0.0001', assetCat: 'EC', country: 'AU', currency: 'AUD' },
+    { name: 'Some Money Market Fund', cusip: '999999999', isin: 'US9999999995', ticker: 'MMKT', balance: '1.000000000000', valUsd: '1.000000000000', pctVal: '0.0001', assetCat: 'EC', country: 'US', curCd: 'USD' },
+    { name: 'Repo Counterparty', cusip: 'N/A', isin: 'US8888888884', ticker: 'REPO', balance: '1.000000000000', valUsd: '1.000000000000', pctVal: '0.0001', assetCat: 'RA', country: 'US', curCd: 'USD' },
+  ];
+  const parsed = parseNportPrimary(nportXml({ rows }));
+  const byTicker = Object.fromEntries(parsed.holdings.map(row => [row.ticker, row.cashLike]));
+  assert.equal(byTicker.CCV, false, 'an equity issuer named Cash Converters is not cash-like');
+  assert.equal(byTicker.FXFXX, true, 'STIV');
+  assert.equal(byTicker.REPO, true, 'RA');
+  assert.equal(byTicker.MMKT, true, 'a money-market-fund name');
+  assert.equal(byTicker.HCC, false);
+  // a ticker the configuration lists as cash-like
+  const configured = parseNportPrimary(nportXml({ rows }), { cashLike: ['CCV'] });
+  assert.equal(configured.holdings.find(row => row.ticker === 'CCV').cashLike, true);
+  const comparison = compareNportWithSnapshot(parsed, nportSnapshot(), { cashLike: ['FXFXX'] });
+  assert.equal(comparison.onlyInNport.some(row => row.ticker === 'CCV'), true, 'the equity is compared, not set aside');
+  assert.match(comparison.cashLikeRule, /STIV or RA/);
+});
+
+test('N-PORT names come from the untruncated <title> when it extends the 30-character <name>, and pairing uses that full name', () => {
+  const rows = [
+    ...NPORT_ROWS,
+    // the archive's 30-character cut falls inside the second word: the first two words of <name> would never match the file
+    { name: 'Internationalconglomerate Hold', title: 'Internationalconglomerate Holdings Ltd', cusip: 'N/A', isin: 'TRERGYO00019', ticker: 'ICH', balance: '500.000000000000', valUsd: '5000.000000000000', pctVal: '0.0024', assetCat: 'EC', country: 'TR', currency: 'TRY' },
+    // a security title that is not the issuer name leaves the name alone
+    { name: 'Example Corp', title: '5.25% Notes due 2030', cusip: 'N/A', isin: 'XS0000000001', ticker: 'EXNOTE', balance: '100.000000000000', valUsd: '100.000000000000', pctVal: '0.0001', assetCat: 'DBT', country: 'US', curCd: 'USD' },
+  ];
+  const parsed = parseNportPrimary(nportXml({ rows }));
+  const ich = parsed.holdings.find(row => row.ticker === 'ICH');
+  assert.equal(ich.name, 'Internationalconglomerate Hold', 'the raw <name> is kept');
+  assert.equal(ich.fullName, 'Internationalconglomerate Holdings Ltd');
+  assert.equal(parsed.holdings.find(row => row.ticker === 'EXNOTE').fullName, 'Example Corp');
+  const snapshot = nportSnapshot();
+  snapshot.rows['ICH TI'] = { cusip: 'B3VKHD1', shares: 500, name: 'Internationalconglomerate Holdings Ltd' };
+  const result = compareNportWithSnapshot(parsed, snapshot, { cashLike: ['FXFXX'] });
+  const pair = result.matched.find(row => row.fundTicker === 'ICH TI');
+  assert.ok(pair, 'paired by the full issuer name');
+  assert.equal(pair.method, 'name');
+  assert.equal(pair.methodLabel, 'issuer name (first two words)');
+  assert.equal(pair.name, 'Internationalconglomerate Holdings Ltd');
+  assert.equal(pair.secName, 'Internationalconglomerate Hold');
+  assert.deepEqual(result.methodLabels, { cusip: 'CUSIP', isin: 'ISIN national number', name: 'issuer name (first two words)' });
+});
+
 test('N-PORT filings are selected newest report date first, amendment before original, by document basename', () => {
   const submissions = {
     cik: '811030',
@@ -530,19 +743,44 @@ test('N-PORT filings are selected newest report date first, amendment before ori
   assert.equal(isQuarterEndDate('2026-05-31'), false);
   assert.equal(isQuarterEndDate('2026-06-29'), false);
   assert.equal(isQuarterEndDate('2026-12-31'), true);
-  assert.deepEqual(nextNportOpportunity('2026-06-30'), { reportDate: '2026-09-30', publicBy: '2026-11-29', snapshotDate: '2026-10-01' });
-  assert.deepEqual(nextNportOpportunity('2026-12-31'), { reportDate: '2027-03-31', publicBy: '2027-05-30', snapshotDate: '2027-04-01' });
+  // The third-month report is public on EDGAR when it is filed; 60 days after the quarter end is the filing deadline,
+  // and a deadline on a weekend or federal holiday rolls to the next business day (Rule 0-3).
+  const q3 = nextNportOpportunity('2026-06-30', { observedLagDays: 52 });
+  assert.deepEqual([q3.reportDate, q3.dueDate, q3.filingDeadline, q3.deadlineRolled, q3.publicWhenFiled, q3.holidaysModelled, q3.snapshotDate],
+    ['2026-09-30', '2026-11-29', '2026-11-30', true, true, true, '2026-10-01'], '29 Nov 2026 is a Sunday');
+  assert.equal(q3.deadlineRolledReason, 'a Sunday');
+  assert.match(q3.note, /public on EDGAR as soon as the trust files it, which must be no later than 60 days after that quarter end: 29 Nov 2026, which is a Sunday, so by 30 Nov 2026/);
+  assert.match(q3.note, /filed 52 days after its period end.*probably appear before the deadline/);
+  assert.doesNotMatch(q3.note, /releases it|makes it public 60 days/, 'no sentence may claim SEC withholds the report');
+  assert.equal(nextNportOpportunity('2026-06-30').observedLagDays, null, 'no lag claim without a measured one');
+  assert.match(q3.snapshotDateNote, /normally the FilePoint file dated 1 Oct 2026 .* proving its NetAssets per unit against the official NAV of 30 Sept 2026/);
+  const q1 = nextNportOpportunity('2026-12-31');
+  assert.deepEqual([q1.reportDate, q1.dueDate, q1.filingDeadline, q1.snapshotDate], ['2027-03-31', '2027-05-30', '2027-06-01', '2027-04-01'], '30 May 2027 is a Sunday and 31 May is Memorial Day');
+  const q2 = nextNportOpportunity('2026-03-31');
+  assert.deepEqual([q2.dueDate, q2.filingDeadline], ['2026-08-29', '2026-08-31'], '29 Aug 2026 is a Saturday');
+  const q4 = nextNportOpportunity('2026-09-30');
+  assert.deepEqual([q4.reportDate, q4.dueDate, q4.filingDeadline, q4.deadlineRolled], ['2026-12-31', '2027-03-01', '2027-03-01', false], 'a weekday 60th day is left alone');
+  assert.equal(q4.deadlineRolledReason, null);
 });
 
 test('N-PORT comparison pairs by CUSIP, then ISIN national number, then issuer name, and sets cash aside', () => {
   const parsed = parseNportPrimary(nportXml());
   const snapshots = [nportSnapshot('2026-08-20'), nportSnapshot('2026-07-01')];
-  const { expectedDate, snapshot } = selectSnapshotForNport(snapshots, '2026-06-30');
-  assert.equal(expectedDate, '2026-07-01', 'the file dated the next weekday is priced as of the report date');
+  const { expectedDate, snapshot, selection } = selectSnapshotForNport(snapshots, '2026-06-30', { navHistory: NAV_HISTORY });
+  assert.equal(expectedDate, '2026-07-01', 'the file dated the next weekday is normally the one priced as of the report date');
   assert.equal(snapshot.date, '2026-07-01');
-  const result = compareNportWithSnapshot(parsed, snapshot, { cashLike: ['FXFXX'] });
+  assert.equal(selection.rule, 'nav-reconciled', 'chosen by proof against the NAV of the report date, not by its date');
+  assert.deepEqual(selection.pricingDateProof, { navDate: '2026-06-30', nav: 16.11, mode: 'exact', perUnit: 16.11, fundShares: 13000000, navFileShares: 13000000, unitChange: 0, fileDate: '2026-07-01' });
+  // without a NAV for the report date the next-weekday file is used but flagged as unproven
+  const unproven = selectSnapshotForNport(snapshots, '2026-06-30');
+  assert.equal(unproven.snapshot.date, '2026-07-01');
+  assert.equal(unproven.selection.rule, 'unproven');
+  assert.equal(unproven.selection.pricingDateProof, null);
+  const result = compareNportWithSnapshot(parsed, snapshot, { cashLike: ['FXFXX'], selection });
   assert.equal(result.comparable, true);
   assert.equal(result.snapshotDate, '2026-07-01');
+  assert.equal(result.snapshotSelection.rule, 'nav-reconciled');
+  assert.equal(result.pricingDateProof.navDate, '2026-06-30');
   // rows are ordered by N-PORT value, largest first
   assert.deepEqual(result.matched.map(row => [row.fundTicker, row.method, row.diff]), [
     ['HCC', 'cusip', 0],
@@ -554,7 +792,9 @@ test('N-PORT comparison pairs by CUSIP, then ISIN national number, then issuer n
   assert.deepEqual(result.onlyInHoldings.map(row => row.fundTicker), ['ODL NO']);
   assert.deepEqual(result.cashLike.map(row => [row.fundTicker, row.method, Math.round(row.diff * 100) / 100]), [['FXFXX', 'cusip', 70923.15]], 'the money-market fund is listed, not counted');
   assert.deepEqual(result.summary, { positions: 5, filePositions: 5, matched: 3, mismatched: 1, onlyInNport: 1, onlyInHoldings: 1, cashLike: 1, byMethod: { cusip: 2, isin: 1, name: 1 } });
-  assert.equal(result.netAssets.diffPct, 0);
+  // the file's NetAssets is the rounded NAV x units, the N-PORT's is the fund's own total: they differ, and the row says why
+  assert.ok(Math.abs(result.netAssets.diffPct - (209475318.76 / 209430000 - 1) * 100) < 1e-9);
+  assert.match(result.netAssets.fileNote, /rounded NAV x its unit count/);
   // an ambiguous name never pairs: two file rows share "SYGNITY SA"
   const ambiguous = nportSnapshot();
   ambiguous.rows['SGN2 PW'] = { cusip: '5096748', shares: 1, name: 'Sygnity SA (second line)' };
@@ -563,31 +803,99 @@ test('N-PORT comparison pairs by CUSIP, then ISIN national number, then issuer n
   assert.equal(issuerNameKey('Constellation Software Inc/Canada'), 'CONSTELLATION SOFTWARE');
 });
 
-test('without a saved file for the report date the N-PORT check says so and names the next opportunity', () => {
+test('without a saved file priced as of the report date the N-PORT check says so and names the next opportunity', () => {
   const parsed = parseNportPrimary(nportXml());
-  const { snapshot } = selectSnapshotForNport([nportSnapshot('2026-08-20')], '2026-06-30');
+  const { snapshot, selection } = selectSnapshotForNport([nportSnapshot('2026-08-20')], '2026-06-30', { navHistory: NAV_HISTORY });
   assert.equal(snapshot, null);
-  const result = compareNportWithSnapshot(parsed, snapshot, { cashLike: ['FXFXX'] });
+  assert.equal(selection.rule, null);
+  assert.equal(selection.reason, 'no saved holdings file dated within four calendar days after 2026-06-30 has NetAssets per unit equal to the official NAV of 16.11 dated 2026-06-30 (no saved file is dated within those four days)');
+  const result = compareNportWithSnapshot(parsed, snapshot, { cashLike: ['FXFXX'], selection });
   assert.equal(result.comparable, false);
-  assert.equal(result.snapshotDate, '2026-07-01');
-  assert.match(result.reason, /no saved holdings file dated 2026-07-01/);
+  assert.equal(result.snapshotDate, '2026-07-01', 'the date a file would normally carry');
+  assert.equal(result.reason, selection.reason);
+  assert.equal(result.snapshotSelection.navDate, '2026-06-30');
   assert.deepEqual([result.matched, result.mismatched, result.onlyInNport, result.onlyInHoldings, result.cashLike], [[], [], [], [], []]);
   assert.equal(result.summary.positions, 5);
   const line = summarizeNportCheck({ ok: true, form: 'NPORT-P', filed: '2026-08-21', reportDate: '2026-06-30', comparison: result, nextOpportunity: nextNportOpportunity('2026-06-30') });
-  assert.equal(line, 'N-PORT as of 2026-06-30 (NPORT-P, filed 2026-08-21): no saved FilePoint file dated 2026-07-01, so no comparison yet; first check possible with the 2026-09-30 report (public by about 2026-11-29) against the file dated 2026-10-01');
+  assert.equal(line, 'N-PORT as of 2026-06-30 (NPORT-P, filed 2026-08-21): no saved holdings file dated within four calendar days after 2026-06-30 has NetAssets per unit equal to the official NAV of 16.11 dated 2026-06-30 (no saved file is dated within those four days), so no comparison yet; first check possible with the 2026-09-30 report (public on EDGAR when the trust files it, due by 2026-11-30 (the 60th day, 2026-11-29, is a Sunday)) against the first saved file priced as of 2026-09-30, normally the one dated 2026-10-01');
   assert.equal(summarizeNportCheck({ ok: false, fetchError: '403 Forbidden' }), 'SEC N-PORT unavailable (403 Forbidden)');
+  // without any NAV history the old date rule is the fallback, and the reason says the pricing date could not be proven
+  const dated = compareNportWithSnapshot(parsed, null, { cashLike: ['FXFXX'], selection: selectSnapshotForNport([nportSnapshot('2026-08-20')], '2026-06-30').selection });
+  assert.equal(dated.reason, 'no saved holdings file dated 2026-07-01, the next weekday after 2026-06-30, and no official NAV dated 2026-06-30 was available to prove another file\'s pricing date (no saved file is dated within those four days)');
+});
+
+test('the file for an N-PORT is chosen by its NAV-proven pricing date, so a market holiday or a missed capture cannot mislead', () => {
+  // 31 Dec 2026 report: 1 Jan 2027 is a holiday, the first file is dated Monday 4 Jan 2027 and priced as of 31 Dec
+  const holiday = selectSnapshotForNport([nportSnapshot('2027-01-04', { netAssets: 16.50 * 13000000 })], '2026-12-31', { navHistory: [{ date: '2026-12-31', nav: 16.50 }, { date: '2027-01-04', nav: 16.62 }] });
+  assert.equal(holiday.expectedDate, '2027-01-01', 'the date rule alone would demand a file that cannot exist');
+  assert.equal(holiday.snapshot.date, '2027-01-04');
+  assert.equal(holiday.selection.rule, 'nav-reconciled');
+  assert.equal(holiday.selection.pricingDateProof.navDate, '2026-12-31');
+  assert.equal(holiday.selection.pricingDateProof.perUnit, 16.5);
+  // 30 Sep 2026 report: the 1 Oct file was never captured; the 2 Oct file is priced as of 1 Oct and must not be used
+  const missed = selectSnapshotForNport([nportSnapshot('2026-10-02', { netAssets: 16.25 * 13000000 })], '2026-09-30', { navHistory: [{ date: '2026-09-30', nav: 16.20 }, { date: '2026-10-01', nav: 16.25 }] });
+  assert.equal(missed.snapshot, null);
+  assert.match(missed.selection.reason, /^no saved holdings file dated within four calendar days after 2026-09-30 has NetAssets per unit equal to the official NAV of 16\.20 dated 2026-09-30 \(tried: 2026-10-02 at 16\.2500 per unit, /);
+  assert.deepEqual(missed.selection.candidates.map(c => [c.date, c.matched]), [['2026-10-02', false]]);
+  // a creation settled between the NAV file and the holdings file still proves the date per unit
+  const perShare = selectSnapshotForNport([nportSnapshot('2026-10-01', { netAssets: 16.20 * 13250000, sharesOutstanding: 13250000 })], '2026-09-30', { navHistory: [{ date: '2026-09-30', nav: 16.20, sharesOut: 13000000 }] });
+  assert.equal(perShare.selection.rule, 'nav-reconciled');
+  assert.equal(perShare.selection.pricingDateProof.mode, 'per-share');
+  assert.equal(perShare.selection.pricingDateProof.unitChange, 250000);
+  // a legacy receipt without a unit count cannot be proven even with a NAV
+  const legacy = selectSnapshotForNport([{ date: '2026-07-01', netAssets: 209430000, rows: { HCC: { shares: 1 } } }], '2026-06-30', { navHistory: NAV_HISTORY });
+  assert.equal(legacy.snapshot, null);
+  assert.match(legacy.selection.reason, /tried: 2026-07-01 without a unit count/);
+});
+
+test('the trust\'s N-CSR and N-CSRS shareholder reports for the series are read from the submissions index', () => {
+  // SEC EDGAR, CIK 0000811030, as listed on 4 Sep 2026 (plus other series' reports and an N-PX, which must be ignored)
+  const submissions = {
+    cik: '0000811030', name: 'PROFESSIONALLY MANAGED PORTFOLIOS',
+    filings: { recent: {
+      form: ['N-CSR', 'N-CSR', 'N-PX', 'N-CSRS', 'N-CSR', 'N-CSRS', 'N-CSR'],
+      accessionNumber: ['0001133228-26-012211', '0001133228-26-012210', '0001549575-26-000020', '0001133228-26-003326', '0001133228-25-009634', '0001133228-25-002338', '0001133228-24-008836'],
+      filingDate: ['2026-09-03', '2026-09-03', '2026-08-28', '2026-03-09', '2025-09-09', '2025-03-07', '2024-09-06'],
+      acceptanceDateTime: ['2026-09-03T19:56:52.000Z', '2026-09-03T19:50:00.000Z', '2026-08-28T12:00:00.000Z', '2026-03-09T18:29:40.000Z', '2025-09-08T21:53:05.000Z', '2025-03-07T21:37:25.000Z', '2024-09-06T19:47:55.000Z'],
+      reportDate: ['2026-06-30', '2026-06-30', '2026-06-30', '2025-12-31', '2025-06-30', '2024-12-31', '2024-06-30'],
+      primaryDocument: ['pweft-efp26982_ncsr.htm', 'other-efp26981_ncsr.htm', 'primary_doc.xml', 'pwf-efp22329_ncsrs.htm', 'towf-efp16872_ncsr.htm', 'psfs-efp14037_ncsrs.htm', 'pa-efp8814_ncsr.htm'],
+      primaryDocDescription: ['PABRAI WAGONS ETF - N-CSR', 'SOME OTHER FUND - N-CSR', 'PABRAI WAGONS ETF PROXY VOTING', 'PABRAI WAGONS FUND - N-CSRS', 'PABRAI WAGONS FUND - N-CSR', 'PABRAI WAGONS FUND - N-CSRS', 'PABRAI 6.30.24 ANNUAL - N-CSR'],
+    } },
+  };
+  const reports = selectShareholderReports(submissions, { asOf: '2026-09-04' });
+  assert.equal(reports.ok, true);
+  assert.deepEqual(reports.annual, {
+    form: 'N-CSR', isAmendment: false, filed: '2026-09-03', accepted: '2026-09-03T19:56:52.000Z', accession: '0001133228-26-012211', reportDate: '2026-06-30',
+    primaryDocument: 'pweft-efp26982_ncsr.htm', description: 'PABRAI WAGONS ETF - N-CSR',
+    sourceUrl: 'https://www.sec.gov/Archives/edgar/data/811030/000113322826012211/pweft-efp26982_ncsr.htm',
+    indexUrl: 'https://www.sec.gov/Archives/edgar/data/811030/000113322826012211/0001133228-26-012211-index.html',
+  });
+  assert.equal(reports.semiAnnual.accession, '0001133228-26-003326');
+  assert.equal(reports.semiAnnual.reportDate, '2025-12-31');
+  assert.deepEqual(reports.reports.map(r => r.accession), ['0001133228-26-012211', '0001133228-26-003326', '0001133228-25-009634', '0001133228-25-002338', '0001133228-24-008836'], 'other series and the N-PX are ignored');
+  assert.equal(reports.fiscalYearEnd, '06-30');
+  assert.equal(reports.semiAnnualPeriodEnd, '12-31');
+  assert.equal(reports.annualDueWithinDays, 70);
+  assert.deepEqual([reports.nextAnnualPeriodEnd, reports.nextAnnualDue, reports.nextSemiAnnualPeriodEnd, reports.nextSemiAnnualDue], ['2027-06-30', '2027-09-08', '2026-12-31', '2027-03-11']);
+  assert.equal(reports.holidaysModelled, true, "the due dates roll past weekends and federal holidays");
+  assert.match(reports.indexScope, /^the 7 newest filings of the trust/);
+  // without any report yet, the due date is for the newest period that has ended
+  const none = selectShareholderReports({ cik: '811030', filings: { recent: { form: ['10-K'], accessionNumber: ['x'], filingDate: ['2026-01-01'], reportDate: ['2025-12-31'], primaryDocument: ['a.htm'], primaryDocDescription: ['X'] } } }, { asOf: '2026-09-04' });
+  assert.equal(none.annual, null);
+  assert.deepEqual([none.nextAnnualPeriodEnd, none.nextAnnualDue], ['2026-06-30', '2026-09-08']);
 });
 
 function nportSubmissions() {
   return {
     cik: '0000811030', name: 'PROFESSIONALLY MANAGED PORTFOLIOS',
     filings: { recent: {
-      form: ['NPORT-P', 'NPORT-P/A', 'NPORT-P', 'NPORT-P', 'NPORT-P'],
-      accessionNumber: ['0001193125-26-000010', '0001193125-26-000012', '0001193125-26-000011', '0001193125-26-000009', '0001193125-26-000008'],
-      filingDate: ['2026-07-27', '2026-08-28', '2026-08-27', '2026-08-21', '2026-05-28'],
-      acceptanceDateTime: ['2026-07-27T16:00:00.000Z', '2026-08-28T16:00:00.000Z', '2026-08-27T20:57:25.000Z', '2026-08-21T16:00:00.000Z', '2026-05-28T16:00:00.000Z'],
-      reportDate: ['2026-05-31', '2026-06-30', '2026-06-30', '2026-06-30', '2026-03-31'],
-      primaryDocument: ['xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml'],
+      form: ['N-CSR', 'NPORT-P', 'NPORT-P/A', 'NPORT-P', 'NPORT-P', 'NPORT-P'],
+      accessionNumber: ['0001133228-26-012211', '0001193125-26-000010', '0001193125-26-000012', '0001193125-26-000011', '0001193125-26-000009', '0001193125-26-000008'],
+      filingDate: ['2026-09-03', '2026-07-27', '2026-08-28', '2026-08-27', '2026-08-21', '2026-05-28'],
+      acceptanceDateTime: ['2026-09-03T19:56:52.000Z', '2026-07-27T16:00:00.000Z', '2026-08-28T16:00:00.000Z', '2026-08-27T20:57:25.000Z', '2026-08-21T16:00:00.000Z', '2026-05-28T16:00:00.000Z'],
+      reportDate: ['2026-06-30', '2026-05-31', '2026-06-30', '2026-06-30', '2026-06-30', '2026-03-31'],
+      primaryDocument: ['pweft-efp26982_ncsr.htm', 'xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml', 'xslFormNPORT-P_X01/primary_doc.xml'],
+      primaryDocDescription: ['PABRAI WAGONS ETF - N-CSR', '', '', '', '', ''],
     } },
   };
 }
@@ -629,20 +937,44 @@ test('the newest public Pabrai N-PORT is found among the trust filings, preferri
   assert.equal(result.provenance.primary.url, `${archive}/000119312526000009/primary_doc.xml`);
   assert.equal(result.comparison.comparable, false);
   assert.deepEqual(result.snapshotRange, { first: '2026-08-20', last: '2026-08-20', count: 1 });
-  assert.deepEqual(result.nextOpportunity, { reportDate: '2026-09-30', publicBy: '2026-11-29', snapshotDate: '2026-10-01' });
-  assert.match(result.summary, /no saved FilePoint file dated 2026-07-01/);
+  assert.deepEqual([result.nextOpportunity.reportDate, result.nextOpportunity.dueDate, result.nextOpportunity.filingDeadline, result.nextOpportunity.snapshotDate], ['2026-09-30', '2026-11-29', '2026-11-30', '2026-10-01']);
+  assert.equal(result.nextOpportunity.observedLagDays, 52, 'the displayed report was filed 52 days after its period end');
+  assert.match(result.summary, /no saved holdings file dated 2026-07-01, the next weekday after 2026-06-30, and no official NAV dated 2026-06-30 was available/);
   assert.ok(!JSON.stringify(result).includes('<edgarSubmission'), 'the API result never carries raw XML');
+  // what the check cost and how it identified itself, never the contact value
+  assert.equal(result.documentsOpened, 3);
+  assert.equal(result.provenance.documentsOpened, 3);
+  assert.equal(result.provenance.requests, 4, 'the submissions index plus one request per document opened');
+  assert.equal(result.secContact, 'default');
+  assert.equal(result.candidateCount, 4);
+  assert.equal(result.maxDocuments, 30);
+  assert.match(result.sourceStatusText, /fetched from SEC EDGAR by this build/);
+  assert.equal(result.holdings[0].name, 'Warrior Met Coal Inc');
+  assert.equal(result.holdings[0].secName, 'Warrior Met Coal Inc');
+  assert.match(result.cashLikeRule, /STIV or RA/);
+  // the shareholder reports ride on the same index
+  assert.equal(result.shareholderReports.ok, true);
+  assert.equal(result.shareholderReports.annual.accession, '0001133228-26-012211');
+  assert.equal(result.shareholderReports.annual.sourceUrl, 'https://www.sec.gov/Archives/edgar/data/811030/000113322826012211/pweft-efp26982_ncsr.htm');
+  assert.equal(result.shareholderReports.semiAnnual, null);
 
-  // an amendment of the fund's own report replaces the original for the period
+  // an amendment of the fund's own report replaces the original for the period; with NAV history the file's pricing date is proven
   bodies.set(`${archive}/000119312526000012/primary_doc.xml`, nportXml({ form: 'NPORT-P/A' }));
-  const amended = await fetchLatestPabraiNport(config, { fetchImpl, delayMs: 0, retryDelayMs: 0, snapshots: [nportSnapshot('2026-07-01')], cashLike: ['FXFXX'] });
+  const amended = await fetchLatestPabraiNport(config, { fetchImpl, delayMs: 0, retryDelayMs: 0, snapshots: [nportSnapshot('2026-07-01')], cashLike: ['FXFXX'], navHistory: NAV_HISTORY });
   assert.equal(amended.ok, true, amended.fetchError);
   assert.equal(amended.accession, '0001193125-26-000012');
   assert.equal(amended.isAmendment, true);
   assert.equal(amended.form, 'NPORT-P/A');
   assert.equal(amended.comparison.comparable, true);
   assert.equal(amended.comparison.summary.matched, 3);
-  assert.equal(amended.summary, 'N-PORT as of 2026-06-30 (NPORT-P/A, filed 2026-08-28) vs the FilePoint file dated 2026-07-01: 3 of 5 positions match share counts; 1 differ, 1 only in N-PORT, 1 only in the file, 1 cash-like rows not counted');
+  assert.equal(amended.comparison.snapshotSelection.rule, 'nav-reconciled');
+  assert.equal(amended.navHistoryDates, 3);
+  assert.equal(amended.summary, 'N-PORT as of 2026-06-30 (NPORT-P/A, filed 2026-08-28) vs the FilePoint file dated 2026-07-01 (priced as of 2026-06-30: NetAssets per unit 16.11 equals that day\'s NAV): 3 of 5 positions match share counts; 1 differ, 1 only in N-PORT, 1 only in the file, 1 cash-like rows not counted');
+  // without NAV history the same file is used under the date rule and labelled unproven
+  const unproven = await fetchLatestPabraiNport(config, { fetchImpl, delayMs: 0, retryDelayMs: 0, snapshots: [nportSnapshot('2026-07-01')], cashLike: ['FXFXX'] });
+  assert.equal(unproven.comparison.comparable, true);
+  assert.equal(unproven.comparison.snapshotSelection.rule, 'unproven');
+  assert.match(unproven.summary, /vs the FilePoint file dated 2026-07-01 \(pricing date not proven against a NAV\)/);
 });
 
 test('SEC refusing the N-PORT document is reported as unavailable, never thrown or presented as a finding', async () => {
@@ -660,15 +992,31 @@ test('SEC refusing the N-PORT document is reported as unavailable, never thrown 
   assert.match(result.fetchError, /after 3 attempts/);
   assert.equal(archiveRequests, 3, 'the walk stops at the first document SEC refuses');
   assert.deepEqual(result.candidates.map(candidate => candidate.accession), ['0001193125-26-000012', '0001193125-26-000011', '0001193125-26-000009', '0001193125-26-000008']);
+  assert.equal(result.candidateCount, 4, 'the uncapped number of quarter-end filings the index lists');
+  assert.equal(result.maxDocuments, 30);
   assert.match(result.provenance.submissions.sha256, /^[0-9a-f]{64}$/);
   assert.equal(result.opened.length, 0);
-  // the submissions index itself being unreachable is the same labelled state
+  assert.equal(result.documentsOpened, 0);
+  assert.equal(result.provenance.documentsOpened, 0);
+  assert.equal(result.provenance.requests, 4, 'the index plus three refused attempts');
+  assert.equal(result.secContact, 'default');
+  // the shareholder reports need only the index, so they survive the refused document walk
+  assert.equal(result.shareholderReports.ok, true);
+  assert.equal(result.shareholderReports.annual.accession, '0001133228-26-012211');
+  assert.equal(result.shareholderReports.annual.filed, '2026-09-03');
+  // the submissions index itself being unreachable is the same labelled state, for the reports too
   const offline = await fetchLatestPabraiNport({}, { fetchImpl: async () => { throw new Error('ENOTFOUND'); }, delayMs: 0, retryDelayMs: 0 });
   assert.equal(offline.ok, false);
   assert.match(offline.fetchError, /SEC submissions index: no contact with data\.sec\.gov/);
-  // a walk that never meets the series is also unavailable, with the count opened
+  assert.equal(offline.shareholderReports.ok, false);
+  assert.match(offline.shareholderReports.fetchError, /SEC submissions index/);
+  assert.equal(offline.shareholderReports.annual, null);
+  // a walk that never meets the series is also unavailable, with the counts opened, listed and capped
   const otherSeries = async url => url === submissionsUrl ? response(JSON.stringify(nportSubmissions()), 200) : response(nportXml({ seriesId: 'S000000001', seriesName: 'Another Fund' }), 200);
   const missing = await fetchLatestPabraiNport({ trustCik: '0000811030' }, { fetchImpl: otherSeries, delayMs: 0, retryDelayMs: 0, maxDocuments: 2 });
   assert.equal(missing.ok, false);
-  assert.match(missing.fetchError, /none of the 2 N-PORT primary documents opened \(limit 2\)/);
+  assert.equal(missing.fetchError, `none of the 2 N-PORT primary documents opened (the newest of 4 quarter-end filings within the 6 newest filings of the trust in SEC's submissions index; walk limit 2) names a series containing "Pabrai Wagons"`);
+  assert.equal(missing.candidates.length, 2);
+  assert.equal(missing.candidateCount, 4);
+  assert.equal(missing.documentsOpened, 2);
 });

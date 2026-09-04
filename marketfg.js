@@ -35,9 +35,37 @@ const DEFAULTS = {
 };
 const LABELS = [[0, 24.9, 'Extreme Fear'], [25, 44.9, 'Fear'], [45, 55.9, 'Neutral'], [56, 74.9, 'Greed'], [75, 100, 'Extreme Greed']];
 const LEGACY_LABELS = [[0, 24, 'Extreme Fear'], [25, 44, 'Fear'], [45, 55, 'Neutral'], [56, 74, 'Greed'], [75, 100, 'Extreme Greed']];
+// The same bands as LABELS, published as objects so the page and README quote
+// the edges instead of restating them. A score is rounded to one decimal first
+// and then classified, so 24.95 rounds to 25.0 and is Fear, 24.94 is 24.9 and
+// Extreme Fear; nothing is ever classified from an integer-rounded value.
+const BANDS = Object.freeze(LABELS.map(([min, max, label]) => Object.freeze({ min, max, label })));
+const BANDS_MEANING = 'the published score is the composite rounded to one decimal and the label is the band that one-decimal value falls in; integer rounding is never used for labels';
+// What the code actually needs before a market's first composite row exists
+// (see compMomentum, compStrength, compRelSma, compSafeHaven, compRatioVsSma,
+// expandingPctScores and computeMarket). Published as model.warmup so the page
+// and README quote it instead of guessing.
+const ordinal = n => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ['th', 'st', 'nd', 'rd'][Math.min(n % 10, 4) % 4] || 'th'}`;
+function warmupDescription(strengthWindow, minPts) {
+  // strength: first raw value at observation minPts, then minPts finite raws -> observation 2*minPts-1 (251 for 126)
+  // momentum and credit: first raw value at observation 125, then minPts finite raws -> observation minPts+124 (250 for 126)
+  const strengthFirst = 2 * minPts - 1;
+  const smaFirst = 124 + minPts;
+  return `strength is computed from the ${ordinal(minPts)} benchmark observation onward on a trailing high whose window grows from ${minPts} to ${strengthWindow} observations (a partial window until ${strengthWindow} exist); momentum needs 125 benchmark observations, credit 125 and breadth 63 common observations of its two series, safe-haven 21 common observations, volatility 50 observations of the configured series (60 with realised volatility); each component receives a percentile only once it has ${minPts} finite raw values, so strength is first scored at the benchmark's ${ordinal(strengthFirst)} observation, momentum at its ${ordinal(smaFirst)} and credit at the ${ordinal(smaFirst)} common observation of its two series; the composite starts on the first benchmark date on which all six components have a percentile (each within fillDays), about ${Math.max(strengthFirst, smaFirst)} observations after the latest-starting source series`;
+}
+const WARMUP = Object.freeze({
+  strengthWindow: DEFAULTS.strengthWindow,
+  percentileMinPoints: DEFAULTS.percentileMinPoints,
+  description: warmupDescription(DEFAULTS.strengthWindow, DEFAULTS.percentileMinPoints),
+});
 const PUBLIC_PERCENTILE_SCOPE = 'ALL_FINITE_COMPONENT_RAW_OBSERVATIONS_FROM_CURRENT_PROVIDER_MAX_RESPONSE_THROUGH_EACH_DATE';
 const PUBLIC_SIGNAL_MODEL_ID = 'FG-ONLINE-RIDGE-PREQ-FG3-V1';
 const PUBLIC_SIGNAL_MODEL_VERSION = 1;
+// Suitability codes of each market's learner target. They are asserted
+// verbatim by scripts/build-pages.js. OUTSIDE_SCHEMA5 on ustech means the
+// market was added after the five-market research schema (Crypto, Sweden,
+// USA, Europe, Global): no rule search, replication or lockbox covers it.
+// europe's code records that ^STOXX is a price index (dividends excluded).
 const TARGET_DISCLOSURES = Object.freeze({
   crypto: Object.freeze({ expectedTargetId: 'CRYPTO-BROAD-EW', requiresAdjusted: false, suitability: 'SYNTHETIC_ANALYTICAL_BASKET_NOT_INVESTABLE' }),
   sweden: Object.freeze({ expectedTargetId: '^OMXSBGI', requiresAdjusted: false, suitability: 'GROSS_RETURN_REFERENCE_INDEX_NOT_EXECUTABLE_INSTRUMENT' }),
@@ -45,6 +73,106 @@ const TARGET_DISCLOSURES = Object.freeze({
   ustech: Object.freeze({ expectedTargetId: 'XLK', requiresAdjusted: true, suitability: 'INVESTABLE_ETF_TOTAL_RETURN_PROXY_OUTSIDE_SCHEMA5_ZERO_CASH' }),
   europe: Object.freeze({ expectedTargetId: '^STOXX', requiresAdjusted: false, suitability: 'PRICE_RETURN_INDEX_OMITS_DIVIDENDS_NOT_INVESTABLE_X2_TARGET' }),
   global: Object.freeze({ expectedTargetId: 'ACWI', requiresAdjusted: true, suitability: 'INVESTABLE_ETF_TOTAL_RETURN_PROXY_NOT_EXECUTION_RECORD_ZERO_CASH' }),
+});
+
+// Proper instrument names and types for the 33 configured Yahoo symbols. Yahoo's
+// own meta names are abbreviated or misspelt ("STXE 600 I", "CBOE NASDAQ 100
+// Voltility"); the page shows these instead and keeps Yahoo's name as
+// providerName. The two Stockholm fund NAV series keep Yahoo's name because no
+// second source for their exact share class was checked; their type says so.
+const DISPLAY_NAMES = Object.freeze({
+  '^STOXX': { name: 'STOXX Europe 600', type: 'price index (dividends excluded)' },
+  '^OMXSBGI': { name: 'OMX Stockholm Benchmark GI', type: 'gross total return index' },
+  '^VIX': { name: 'Cboe Volatility Index', type: 'implied volatility index' },
+  '^VXN': { name: 'Cboe Nasdaq-100 Volatility Index', type: 'implied volatility index' },
+  SPY: { name: 'SPDR S&P 500 ETF Trust', type: 'ETF' },
+  XLK: { name: 'State Street Technology Select Sector SPDR ETF', type: 'ETF' },
+  ACWI: { name: 'iShares MSCI ACWI ETF', type: 'ETF' },
+  IEF: { name: 'iShares 7-10 Year Treasury Bond ETF', type: 'ETF' },
+  HYG: { name: 'iShares iBoxx $ High Yield Corporate Bond ETF', type: 'ETF' },
+  LQD: { name: 'iShares iBoxx $ Investment Grade Corporate Bond ETF', type: 'ETF' },
+  IWM: { name: 'iShares Russell 2000 ETF', type: 'ETF' },
+  RSPT: { name: 'Invesco S&P 500 Equal Weight Technology ETF', type: 'ETF' },
+  'SXRQ.DE': { name: 'iShares € Govt Bond 7-10yr UCITS ETF EUR (Acc)', type: 'UCITS ETF, Xetra' },
+  'IHYG.L': { name: 'iShares € High Yield Corp Bond UCITS ETF EUR (Dist)', type: 'UCITS ETF, London' },
+  'IEAC.L': { name: 'iShares Core € Corp Bond UCITS ETF EUR (Dist)', type: 'UCITS ETF, London' },
+  'EXSE.DE': { name: 'iShares STOXX Europe Small 200 UCITS ETF (DE)', type: 'UCITS ETF, Xetra' },
+  'EXSA.DE': { name: 'iShares STOXX Europe 600 UCITS ETF (DE) EUR (Dist)', type: 'UCITS ETF, Xetra' },
+  'HYLD.L': { name: 'iShares Global High Yield Corp Bond UCITS ETF USD (Dist)', type: 'UCITS ETF, London' },
+  'CORP.L': { name: 'iShares Global Corp Bond UCITS ETF USD (Dist)', type: 'UCITS ETF, London' },
+  'WSML.L': { name: 'iShares MSCI World Small Cap UCITS ETF USD (Acc)', type: 'UCITS ETF, London' },
+  'IWDA.L': { name: 'iShares Core MSCI World UCITS ETF USD (Acc)', type: 'UCITS ETF, London' },
+  'XACT-OBLIGATION.ST': { name: 'XACT Obligation (UCITS ETF)', type: 'UCITS ETF, Stockholm' },
+  'XACT-SMABOLAG.ST': { name: 'XACT Svenska Småbolag (UCITS ETF)', type: 'UCITS ETF, Stockholm' },
+  'XACT-SVERIGE.ST': { name: 'XACT Sverige (UCITS ETF)', type: 'UCITS ETF, Stockholm' },
+  '0P0001C87Y.ST': { name: null, type: 'fund NAV series (Yahoo name)' },
+  '0P00000KIW.ST': { name: null, type: 'fund NAV series (Yahoo name)' },
+  'BTC-USD': { name: 'Bitcoin USD', type: 'crypto pair' },
+  'ETH-USD': { name: 'Ethereum USD', type: 'crypto pair' },
+  'SOL-USD': { name: 'Solana USD', type: 'crypto pair' },
+  'XRP-USD': { name: 'XRP USD', type: 'crypto pair' },
+  'ADA-USD': { name: 'Cardano USD', type: 'crypto pair' },
+  'DOGE-USD': { name: 'Dogecoin USD', type: 'crypto pair' },
+  'BNB-USD': { name: 'BNB USD', type: 'crypto pair' },
+});
+
+// Listing venue from the symbol alone (Yahoo's meta carries no exchange
+// calendar). Used by lagDetailFor to say whether a missing bar is shared by
+// every series of that venue in the market (an exchange holiday or a feed gap
+// covering the venue; the model cannot tell which) or by one series only (a
+// feed gap).
+function venueOf(symbol) {
+  const s = String(symbol || '');
+  if (/^0P[0-9A-Z]+\.ST$/.test(s)) return 'Stockholm fund NAV';
+  if (s.endsWith('.L')) return 'London-listed';
+  if (s.endsWith('.DE')) return 'Xetra-listed';
+  if (s.endsWith('.ST')) return 'Stockholm-listed';
+  if (s.endsWith('-USD')) return 'crypto';
+  if (s === '^VIX' || s === '^VXN') return 'US-listed'; // Cboe indices follow the US exchange calendar
+  if (s === '^STOXX') return 'STOXX Europe index';
+  if (s === '^OMXSBGI') return 'Stockholm-listed';
+  if (s.startsWith('^')) return 'index';
+  return 'US-listed';
+}
+
+// What was and was not checked about each market's raw series, dated. The
+// 24 Aug 2026 check covered the 23 non-crypto series configured at the time
+// (identity by ISIN/name, freshness, gaps; 20 of the 23 closes verified to the
+// cent against Nasdaq, Cboe/FRED, Avanza, Carnegie, stoxx.com, Xetra and LSE;
+// see README). The seven crypto pairs and the three US Tech series were not
+// part of it, and no research study in research/ covers US Tech.
+const CHECK_23 = 'among the 23 series whose identity, freshness and gaps were checked on 24 Aug 2026 (20 of the 23 closes verified to the cent against a second source); no later check';
+const MARKET_DISCLOSURES = Object.freeze({
+  crypto: Object.freeze({
+    benchmarkType: 'repository-built daily-rebalanced equal-weight return index of seven Yahoo crypto pairs (not investable, not market-cap weighted)',
+    verified: `IEF, HYG and LQD were ${CHECK_23}; the seven crypto pairs were not among those 23 series`,
+    note: 'volatility is the basket\'s realised 20-observation volatility against its 50-observation average, because no implied-volatility series exists for it; it is backward-looking and behaves differently from a VIX-style measure. IEF and HYG/LQD are external US Treasury and corporate-credit proxies, not crypto-native sentiment; they trade on weekdays only, so weekend composites carry their latest scored values',
+  }),
+  sweden: Object.freeze({
+    benchmarkType: 'gross total return index (OMX Stockholm Benchmark GI, dividends reinvested)',
+    verified: `every series of this market was ${CHECK_23}`,
+    note: 'realised volatility is used because no matching implied-volatility series is configured; the two credit inputs are fund NAV series (Carnegie), not exchange-traded closes',
+  }),
+  usa: Object.freeze({
+    benchmarkType: 'ETF total-return proxy (SPY, dividend-adjusted closes)',
+    verified: `every series of this market was ${CHECK_23}`,
+    note: 'CNN\'s put/call and NYSE breadth inputs have no open data source and are not replicated',
+  }),
+  ustech: Object.freeze({
+    benchmarkType: 'ETF total-return proxy (XLK, dividend-adjusted closes); XLK is the S&P 500 technology sector, not QQQ or the Nasdaq-100',
+    verified: 'XLK, ^VXN and RSPT were added after the 24 Aug 2026 check and have not had it or any other second-source check; IEF, HYG and LQD were among the 23 series checked then',
+    note: 'US Tech was added on 27 Aug 2026, after the retrospective rule searches, the replication test, the diagnostic battery and the Europe lockbox activation, none of which covers it; the only research/ records that include it are FG-X2-FITTED-V1 (28 Aug 2026), a deliberately overfit fitted lookup that its own document calls neither a strategy nor evidence of predictive value, and the PLS1 pre-registration draft, which is not activated. The volatility input is Nasdaq-100 implied volatility (^VXN) applied to a sector ETF, and the bond/credit inputs are general US proxies',
+  }),
+  europe: Object.freeze({
+    benchmarkType: 'price index (STOXX Europe 600, dividends excluded), unlike Sweden\'s gross total return benchmark',
+    verified: `every series of this market was ${CHECK_23}`,
+    note: 'every ex-dividend drop lowers the price index, so momentum, strength and safe-haven read lower than they would on a total-return benchmark; European dividends cluster in spring; realised volatility is used because no matching implied-volatility series is configured',
+  }),
+  global: Object.freeze({
+    benchmarkType: 'ETF total-return proxy (ACWI, dividend-adjusted closes)',
+    verified: `every series of this market was ${CHECK_23}`,
+    note: 'HYLD.L and CORP.L are thinly traded, so the credit indicator is noisier; the volatility input is the US ^VIX, not a global implied-volatility index',
+  }),
 });
 
 const COMPONENTS = {
@@ -72,14 +200,70 @@ const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDa
 const round1 = v => v == null ? null : Math.round(v * 10) / 10;
 
 // ---------- Yahoo ----------
+// Request pattern (what one getMarketFearGreed call actually sends):
+//   * each of the 33 unique configured symbols = one full-history chart
+//     request (period1=0&interval=1d) to query1.finance.yahoo.com;
+//   * every getMarketFearGreed caller — the local server's /api/marketfg, the
+//     public build and the research replays in research/ that call it — adds one
+//     3-month top-up request per symbol after each successful full-history
+//     request (topUpRecentBars), so 66 chart requests; only the lockbox
+//     collectors, which call getMarketFearGreedResearchHistory, send the 33
+//     full-history requests alone, as their frozen capture contracts expect;
+//   * a request that fails for any reason is retried once on the other chart
+//     host (query2, or query1 when query2 failed); an HTTP 429 or 5xx answer
+//     first waits Retry-After seconds when the header is present, else 2 s,
+//     and is allowed one further host swap, so at most three attempts;
+//   * series are cached for 15 minutes; a forced re-fetch (server.js
+//     /api/refresh?force=1, which scripts/build-pages.js can trigger when a
+//     component was carried forward) clears the cache and repeats all of it.
+// Every request is counted in the fetchStats object threaded through
+// getSeries → fetchSeries → fetchYahooChart and published on the result root.
 function makeExchangeDateFormatter(timeZone) {
   return new Intl.DateTimeFormat('sv-SE', {
     timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
   });
 }
 
-async function fetchYahooChart(host, symbol, query, signal) {
+const YAHOO_HOSTS = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+const RETRY_DEFAULT_MS = 2000;
+const RETRY_MAX_MS = 10000; // longer Retry-After values would exceed the shared 25 s deadline anyway
+
+function newFetchStats() {
+  return {
+    requests: 0,                                              // chart requests actually sent (full history + top-ups + retries)
+    byHost: Object.fromEntries(YAHOO_HOSTS.map(h => [h, 0])), // requests per chart host
+    retries: 0,                                               // requests sent after a failed attempt for the same symbol and range
+    http429: 0,                                               // answers with HTTP 429 (rate limited)
+    http5xx: 0,                                               // answers with HTTP 500-599
+    retryWaitMs: 0,                                           // total time waited before retrying after a 429/5xx
+    topUpRequests: 0,                                         // 3mo top-up requests (every getMarketFearGreed caller)
+    fullHistoryRequests: 0,                                   // period1=0 full-history requests
+    cacheHits: 0,                                             // series served from the 15-minute cache without any request
+  };
+}
+
+function retryAfterMs(response) {
+  const header = response && typeof response.headers?.get === 'function' ? response.headers.get('retry-after') : null;
+  if (!header) return RETRY_DEFAULT_MS;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(RETRY_MAX_MS, Math.round(seconds * 1000));
+  const at = Date.parse(header);
+  if (Number.isFinite(at)) return Math.min(RETRY_MAX_MS, Math.max(0, at - Date.now()));
+  return RETRY_DEFAULT_MS;
+}
+
+function abortableDelay(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal && signal.aborted) return reject(signal.reason || new Error('aborted'));
+    const timer = setTimeout(() => { if (signal) signal.removeEventListener('abort', onAbort); resolve(); }, ms);
+    function onAbort() { clearTimeout(timer); reject(signal.reason || new Error('aborted')); }
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+async function fetchYahooChart(host, symbol, query, signal, stats = null) {
   const url = `https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}?${query}`;
+  if (stats) { stats.requests++; stats.byHost[host] = (stats.byHost[host] || 0) + 1; }
   const attemptController = new AbortController();
   const relayAbort = () => attemptController.abort(signal && signal.reason);
   if (signal) {
@@ -100,7 +284,16 @@ async function fetchYahooChart(host, symbol, query, signal) {
   }
   if (!response.ok) {
     const description = json && json.chart && json.chart.error && json.chart.error.description;
-    throw new Error(`${host} HTTP ${response.status}${description ? ` ${description}` : ''} (${symbol})`);
+    const status = Number(response.status);
+    const error = new Error(`${host} HTTP ${status}${description ? ` ${description}` : ''} (${symbol})`);
+    error.status = status;
+    // 429 (rate limited) and 5xx (provider trouble) are worth one delayed retry on the other host; a 4xx is not.
+    if (status === 429 || (status >= 500 && status <= 599)) {
+      error.retryable = true;
+      error.retryAfterMs = retryAfterMs(response);
+      if (stats) { if (status === 429) stats.http429++; else stats.http5xx++; }
+    }
+    throw error;
   }
   const result = json && json.chart && json.chart.result && json.chart.result[0];
   if (!result) throw new Error(`${host} returned no chart result (${symbol})`);
@@ -111,18 +304,30 @@ async function fetchYahooChart(host, symbol, query, signal) {
   return { result, host };
 }
 
-async function fetchSeries(symbol, range, signal) {
+async function fetchSeries(symbol, range, signal, stats = null) {
   // 'max' must be requested as an explicit period: range=max makes Yahoo downgrade to monthly bars, period1=0 keeps daily ones
   const q = range === 'max' ? `period1=0&period2=${Math.floor(Date.now() / 1000) + 86400}&interval=1d` : `range=${encodeURIComponent(range)}&interval=1d`;
+  if (stats) { if (range === 'max') stats.fullHistoryRequests++; }
   const failures = [];
   let acquired = null;
-  for (const host of ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']) {
+  // query1, then query2 on any failure; after a 429/5xx (see fetchYahooChart) wait
+  // first, and allow one more swap back to the other host — never more than three attempts.
+  const hosts = [...YAHOO_HOSTS];
+  for (let attempt = 0; attempt < hosts.length; attempt++) {
+    const host = hosts[attempt];
     try {
-      acquired = await fetchYahooChart(host, symbol, q, signal);
+      if (attempt > 0 && stats) stats.retries++;
+      acquired = await fetchYahooChart(host, symbol, q, signal, stats);
       break;
     } catch (error) {
       failures.push(String(error && error.message || error));
       if (signal && signal.aborted) break;
+      if (error && error.retryable) {
+        if (hosts.length < 3) hosts.push(YAHOO_HOSTS.find(h => h !== (hosts[attempt + 1] || host)));
+        const wait = Number(error.retryAfterMs) || RETRY_DEFAULT_MS;
+        if (stats) stats.retryWaitMs += wait;
+        try { await abortableDelay(wait, signal); } catch { break; }
+      }
     }
   }
   if (!acquired) throw new Error(`Yahoo chart unavailable: ${failures.join('; ')}`);
@@ -153,8 +358,16 @@ async function fetchSeries(symbol, range, signal) {
   if (rows.length < 30) throw new Error(`too little history from Yahoo (${symbol}: ${rows.length} days)`);
   const reg = (meta.currentTradingPeriod || {}).regular || null;
   const now = Date.now() / 1000;
+  const providerName = String(meta.longName || meta.shortName || symbol).replace(/\s+/g, ' ').trim();
+  const display = DISPLAY_NAMES[symbol] || null;
   return {
-    symbol, name: String(meta.longName || meta.shortName || symbol).replace(/\s+/g, ' ').trim(), currency: meta.currency || null, tz, rows, adjusted,
+    symbol,
+    // curated instrument name (DISPLAY_NAMES) where one exists, else Yahoo's; Yahoo's is always kept as providerName
+    name: display && display.name ? display.name : providerName,
+    providerName,
+    type: display ? display.type : null,
+    venue: venueOf(symbol),
+    currency: meta.currency || null, tz, rows, adjusted,
     missingCloseDates,
     lastDate: rows[rows.length - 1].date,
     intraday: !!(reg && Number.isFinite(reg.start) && now >= reg.start && now <= reg.end),
@@ -168,12 +381,15 @@ async function fetchSeries(symbol, range, signal) {
 // after the full history's last date, and only when the short response agrees
 // with the full history on their last shared bar, so differently adjusted
 // series are never mixed. The full-history request itself is unchanged; the
-// top-up is recorded on the series so the page and build.json can say so.
+// top-up is one extra chart request per symbol (so a public build sends two
+// per symbol, 66 in all) and is recorded on the series so the page and
+// build.json can say so.
 const TOP_UP_RANGE = '3mo'; // fetchSeries wants at least 30 rows; one month of trading days is fewer
-async function topUpRecentBars(series, signal) {
+async function topUpRecentBars(series, signal, stats = null) {
   if (!series || !Array.isArray(series.rows) || !series.rows.length) return series;
   let recent;
-  try { recent = await fetchSeries(series.symbol, TOP_UP_RANGE, signal); }
+  if (stats) stats.topUpRequests++;
+  try { recent = await fetchSeries(series.symbol, TOP_UP_RANGE, signal, stats); }
   catch (error) { return { ...series, topUp: { appended: 0, reason: `short-range request failed: ${String(error && error.message || error)}` } }; }
   if (recent.adjusted !== series.adjusted) return { ...series, topUp: { appended: 0, reason: 'adjustment basis differs' } };
   const last = series.rows[series.rows.length - 1];
@@ -185,17 +401,19 @@ async function topUpRecentBars(series, signal) {
   return { ...series, rows, lastDate: rows[rows.length - 1].date, topUp: { appended: extra.length, from: extra[0].date, to: extra[extra.length - 1].date, host: recent.sourceHost, range: TOP_UP_RANGE } };
 }
 
-// topUp is opt-in: the public site asks for it; research replays and the
-// lockbox collectors keep the exact single full-history request their frozen
-// capture contracts expect.
-function getSeries(symbol, range, signal, topUp = false) {
+// topUp is opt-in: every getMarketFearGreed caller asks for it (the local
+// server, the public build and the research replays that call it); only the
+// lockbox collectors, through getMarketFearGreedResearchHistory, keep the exact
+// single full-history request their frozen capture contracts expect.
+// A cache hit sends nothing and is counted as such.
+function getSeries(symbol, range, signal, topUp = false, stats = null) {
   const withTopUp = range === 'max' && topUp;
   const cacheKey = `${symbol}\u0000${range}${withTopUp ? '\u0000topup' : ''}`;
   const hit = seriesCache.get(cacheKey);
-  if (hit && Date.now() - hit.t < SERIES_TTL_MS) return hit.p;
+  if (hit && Date.now() - hit.t < SERIES_TTL_MS) { if (stats) stats.cacheHits++; return hit.p; }
   const acquire = withTopUp
-    ? fetchSeries(symbol, range, signal).then(s => topUpRecentBars(s, signal))
-    : fetchSeries(symbol, range, signal);
+    ? fetchSeries(symbol, range, signal, stats).then(s => topUpRecentBars(s, signal, stats))
+    : fetchSeries(symbol, range, signal, stats);
   const p = acquire.then(s => { lastGood.set(cacheKey, s); return s; }, e => {
     seriesCache.delete(cacheKey);
     const g = lastGood.get(cacheKey);
@@ -526,20 +744,46 @@ function buildPublicExpandingSignal(key, idx, history, marketSources, symbols, a
 }
 
 // Explains a carried-forward component: for each benchmark date the component
-// missed, which of its source series lacked that date and how — Yahoo listed
-// the bar without a close (a feed gap) or listed no bar at all (exchange
-// closed, or not yet published).
-function lagDetailFor(gapDates, symbols, sources) {
+// missed, which of its source series lacked that date and how. Each case is
+// stated as what the data shows and no more:
+//   * Yahoo listed the bar without a close — a feed gap;
+//   * a weekend date — the source has no weekend bars;
+//   * no series of the same listing venue in this market (venueOf) has the bar
+//     — an exchange holiday or a feed gap covering the venue; the model cannot
+//     tell which without an exchange calendar, and a holiday leaves no bar
+//     that a later build could find;
+//   * this series alone lacks a bar that other same-venue series have — a feed gap.
+// marketSymbols limits the same-venue comparison to the market's own series;
+// without it every series in `sources` is compared.
+function lagDetailFor(gapDates, symbols, sources, marketSymbols = null) {
+  const rowsOf = s => { const x = sources.get(s); return x && Array.isArray(x.rows) ? x.rows : null; };
+  const universe = (marketSymbols || [...sources.keys()]).filter(s => rowsOf(s));
   const parts = [];
   for (const symbol of symbols) {
-    const series = sources.get(symbol);
-    if (!series || !Array.isArray(series.rows)) continue;
-    const have = new Set(series.rows.map(row => row.date));
-    const missing = new Set(series.missingCloseDates || []);
+    const rows = rowsOf(symbol);
+    if (!rows) continue;
+    const have = new Set(rows.map(row => row.date));
+    const missing = new Set(sources.get(symbol).missingCloseDates || []);
     const noClose = gapDates.filter(date => !have.has(date) && missing.has(date));
     const noBar = gapDates.filter(date => !have.has(date) && !missing.has(date));
-    if (noClose.length) parts.push(`${symbol}: Yahoo returned no close for ${noClose.join(', ')}`);
-    if (noBar.length) parts.push(`${symbol}: Yahoo has no bar for ${noBar.join(', ')}`);
+    if (noClose.length) parts.push(`${symbol}: Yahoo listed ${noClose.join(', ')} with no close (feed gap)`);
+    if (!noBar.length) continue;
+    const venue = venueOf(symbol);
+    const peerDates = universe.filter(s => s !== symbol && venueOf(s) === venue).map(s => new Set(rowsOf(s).map(row => row.date)));
+    const groups = { weekend: [], venue: [], single: [] };
+    for (const date of noBar) {
+      const day = new Date(`${date}T00:00:00Z`).getUTCDay();
+      if (day === 0 || day === 6) groups.weekend.push(date);
+      else if (peerDates.some(set => set.has(date))) groups.single.push(date);
+      else groups.venue.push(date);
+    }
+    const bar = dates => `${dates.join(', ')} bar${dates.length > 1 ? 's' : ''}`;
+    const venueCount = peerDates.length + 1;
+    if (groups.weekend.length) parts.push(`${symbol}: no ${bar(groups.weekend)} (weekend; the source has no weekend bars)`);
+    if (groups.venue.length) {
+      parts.push(`${symbol}: no ${bar(groups.venue)} on ${venueCount > 1 ? `any of the ${venueCount}` : 'the only'} ${venue} series (exchange holiday or feed gap; the model cannot tell which)`);
+    }
+    if (groups.single.length) parts.push(`${symbol}: no ${bar(groups.single)} for ${symbol} while other ${venue} series have one (feed gap)`);
   }
   return parts.length ? parts.join('; ') : null;
 }
@@ -592,7 +836,15 @@ function computeMarket(key, m, S, opt) {
       ? expandingPctScores(c.raw, percentileMinPoints)
       : pctScores(c.raw, Number(opt.window ?? strengthWindow), percentileMinPoints);
     if (definitions[k].dir < 0) for (let i = 0; i < score.length; i++) if (score[i] != null) score[i] = 100 - score[i];
-    comps[k] = { ...c, score, symbols: series.map(s => s.symbol), names: series.map(s => s.name), stale: series.some(s => s.stale), note: note || null };
+    comps[k] = {
+      ...c, score, symbols: series.map(s => s.symbol), names: series.map(s => s.name), stale: series.some(s => s.stale), note: note || null,
+      // proper instrument name and type per source series (DISPLAY_NAMES), Yahoo's own name kept alongside
+      seriesNames: series.map(s => ({
+        symbol: s.symbol, name: s.name,
+        type: s.type || (s.construction ? `repository-built ${s.construction}` : null),
+        providerName: s.providerName || null,
+      })),
+    };
     for (const s of series) if (s.stale && !staleSeen.has(s.symbol)) { // fallback series (last successful fetch) — say why, once per symbol
       staleSeen.add(s.symbol);
       warnings.push(`${s.symbol}: ${s.fetchError || 'Yahoo did not respond'} — showing series fetched ${String(s.fetchedAt || '').slice(0, 16).replace('T', ' ')}`);
@@ -633,19 +885,33 @@ function computeMarket(key, m, S, opt) {
   const prevClose = history.length > 1 ? history[history.length - 2] : null;
   const week = atOrBefore(addDays(last.date, -7)), month = atOrBefore(addDays(last.date, -30)), year = atOrBefore(addDays(last.date, -365));
   const components = {};
+  const marketSymbolList = [...new Set(Object.values(sym).flatMap(spec => collectSpecSymbols(spec)))];
+  const carriedComponents = [];
   for (const [k, c] of Object.entries(comps)) {
     const p = last.parts[k] || null;
+    const lag = !!(p && p.asOf !== last.date);
+    const gapDates = lag ? idx.rows.filter(row => row.date > p.asOf && row.date <= last.date).map(row => row.date) : [];
+    const lagDetail = lag ? lagDetailFor(gapDates, c.symbols, marketSources, marketSymbolList) : null;
     components[k] = {
       key: k, name: definitions[k].name, desc: definitions[k].desc, unit: definitions[k].unit, dir: definitions[k].dir,
       score: p ? round1(p.score) : null, label: p ? scoreLabel(p.score) : null, raw: p ? round1(p.raw) : null, asOf: p ? p.asOf : null,
-      symbols: c.symbols, names: c.names, note: c.note,
+      symbols: c.symbols, names: c.names, seriesNames: c.seriesNames, note: c.note,
       stale: !!c.stale,                         // fallback series: Yahoo did not respond at the last fetch
-      lag: !!(p && p.asOf !== last.date),       // older date than the index (other exchange closed, or a feed gap) — not an error
-      lagDetail: p && p.asOf !== last.date
-        ? lagDetailFor(idx.rows.filter(row => row.date > p.asOf && row.date <= last.date).map(row => row.date), c.symbols, marketSources)
-        : null,
+      lag,                                      // older date than the index (other exchange closed, or a feed gap) — not an error
+      lagDetail,
     };
+    if (lag) {
+      // the source series that actually lack a gap date (a two-series component may lag because of one of them)
+      const lagging = c.symbols.filter(s => {
+        const src = marketSources.get(s);
+        if (!src || !Array.isArray(src.rows)) return false;
+        const have = new Set(src.rows.map(row => row.date));
+        return gapDates.some(date => !have.has(date));
+      });
+      carriedComponents.push({ component: k, symbol: (lagging.length ? lagging : c.symbols).join(', '), asOf: p.asOf, benchmarkDate: last.date, detail: lagDetail });
+    }
   }
+  const componentAsOfs = Object.values(components).map(c => c.asOf).filter(Boolean).sort();
   const expandingSignal = opt.includeExpandingSignal
     ? buildPublicExpandingSignal(
       key, idx, history, marketSources, sym,
@@ -668,6 +934,19 @@ function computeMarket(key, m, S, opt) {
       week: week ? round1(week.score) : null, weekDate: week ? week.date : null, month: month ? round1(month.score) : null, monthDate: month ? month.date : null,
       year: year ? round1(year.score) : null, yearDate: year ? year.date : null },
     components, warnings,
+    // asOf above is the benchmark's last completed bar. Components whose source
+    // had no bar for that date are carried from an earlier bar (lag=true); they
+    // are listed here with why, and oldestComponentAsOf is the oldest of them.
+    asOfMeaning: 'last completed benchmark bar; carried components are older',
+    carriedComponents,
+    // the distinct as-of dates of the carried components, oldest first: one
+    // date means the stamp can name it, several mean the page must list them
+    // rather than date them all to the oldest
+    carriedDates: [...new Set(carriedComponents.map(c => c.asOf))].sort(),
+    oldestComponentAsOf: componentAsOfs.length ? componentAsOfs[0] : null,
+    firstScoredDate: history[0].date, // first date on which all six components had a percentile (see model.warmup)
+    // What was and was not verified about this market's raw series, dated (MARKET_DISCLOSURES).
+    disclosure: MARKET_DISCLOSURES[key] || { benchmarkType: null, verified: 'no dated verification is recorded for this market', note: null },
     // Which of this market's raw series had newer bars appended from a short-range request (see topUpRecentBars).
     recentBarTopUps: Object.fromEntries([...new Set(Object.values(sym).flatMap(spec => collectSpecSymbols(spec)))]
       .map(symbol => [symbol, marketSources.get(symbol)])
@@ -724,10 +1003,14 @@ async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
   const deadlineError = new Error(`Yahoo did not respond within ${Math.round(opt.timeoutMs / 1000)} s`);
   let deadline;
   let fetched;
+  // Every getMarketFearGreed caller tops up trailing full histories (see
+  // topUpRecentBars): one full-history request per symbol, plus one 3mo request
+  // per symbol whenever the top-up is on, plus any 429/5xx or host-swap
+  // retries; fetchStats counts the requests of this call alone.
+  const topUp = !!includeExpandingSignal && opt.topUpRecentBars !== false;
+  const stats = newFetchStats();
   try {
-    // Only the public snapshot tops up trailing full histories (see topUpRecentBars).
-    const topUp = !!includeExpandingSignal && opt.topUpRecentBars !== false;
-    const fetchWork = mapLimit(symbols, opt.concurrency, s => getSeries(s, opt.range, ac.signal, topUp).then(v => ({ ok: true, v }), e => ({ ok: false, e: String(e.message || e) })));
+    const fetchWork = mapLimit(symbols, opt.concurrency, s => getSeries(s, opt.range, ac.signal, topUp, stats).then(v => ({ ok: true, v }), e => ({ ok: false, e: String(e.message || e) })));
     const hardDeadline = new Promise((_, reject) => {
       deadline = setTimeout(() => {
         ac.abort(deadlineError);
@@ -770,6 +1053,24 @@ async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
       range: opt.range,
       minComponents: opt.minComponents, fillDays: opt.fillDays,
       labels: opt.percentileMode === 'expanding' ? LABELS : LEGACY_LABELS,
+      // the same bands as objects, with how a label is derived (one-decimal score, never integer rounding)
+      bands: opt.percentileMode === 'expanding' ? BANDS : LEGACY_LABELS.map(([min, max, label]) => ({ min, max, label })),
+      bandsMeaning: opt.percentileMode === 'expanding' ? BANDS_MEANING : 'legacy v2: the score is rounded to an integer and classified on integer bands',
+      // The history is not a record of what this page showed: every point is
+      // recomputed from the provider's current full response at each build.
+      // publishedSince is the repository's first commit (the dashboard went up
+      // that week); scoringSince is the commit that adopted this expanding
+      // percentile definition. Both are constants: a build cannot read them
+      // from git, because the published artefact carries no repository.
+      publishedSince: '2026-08-23',
+      scoringSince: opt.percentileMode === 'expanding' ? '2026-08-30' : null,
+      historyNote: 'every point is recomputed by the current model from the full history the provider returns at each build; no point is a score this page displayed on that date',
+      // what the code needs before a market's first composite row (see WARMUP); each market's firstScoredDate says where that fell
+      warmup: {
+        strengthWindow: Number(opt.strengthWindow ?? opt.window),
+        percentileMinPoints: Number(opt.percentileMinPoints ?? opt.minWindowPoints),
+        description: warmupDescription(Number(opt.strengthWindow ?? opt.window), Number(opt.percentileMinPoints ?? opt.minWindowPoints)),
+      },
       components: COMPONENTS,
       ...(includeExpandingSignal ? { expandingSignal: {
         id: PUBLIC_SIGNAL_MODEL_ID,
@@ -784,6 +1085,13 @@ async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
       } } : {}),
     },
     markets: out, failed, symbolErrors: errors,
+    // What this call actually sent to Yahoo (see the request-pattern comment above fetchYahooChart).
+    fetchStats: {
+      ...stats,
+      symbols: symbols.length,
+      topUpEnabled: topUp,
+      meaning: 'chart requests sent by this call: one full-history request per symbol, one 3mo top-up per symbol when topUpEnabled, plus retries; cacheHits were served without a request',
+    },
   };
 }
 
@@ -800,7 +1108,9 @@ async function getMarketFearGreedResearchHistory(cfg) {
 
 module.exports = {
   getMarketFearGreed, getMarketFearGreedResearchHistory, clearCache,
-  LABELS, COMPONENTS, labelOf, pctScores, expandingPctScores, computeMarket, fetchSeries, topUpRecentBars, lagDetailFor,
+  LABELS, BANDS, WARMUP, DISPLAY_NAMES, MARKET_DISCLOSURES, venueOf, warmupDescription, newFetchStats,
+  compStrength, compMomentum,
+  COMPONENTS, labelOf, pctScores, expandingPctScores, computeMarket, fetchSeries, topUpRecentBars, lagDetailFor,
   hashPublicDecision, hashPublishedScoreHistory, makeExchangeDateFormatter,
   collectSpecSymbols, equalWeightReturnSeries, resolveSeriesSpec, beforeUtcDate, beforeRetrievalLocalDate,
   buildPublicExpandingSignal,
