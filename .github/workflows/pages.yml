@@ -7,10 +7,12 @@ name: Deploy GitHub Pages
   workflow_dispatch:
     inputs:
       skip_tests:
-        # The page's owner-only "Update (rebuild)" button dispatches this
-        # workflow with skip_tests=true: the suite already ran on the push that
-        # deployed the code, and a live update should finish in minutes.
-        description: 'Skip the test suite (live update from the page; the tests ran on push)'
+        # The page's owner-only "Update (rebuild)" button and the external
+        # cron dispatch this workflow with skip_tests=true. The request is
+        # honoured only when a completed, successful run of this workflow for
+        # the same commit already ran the test step (the gate step checks
+        # GitHub's API); otherwise the suite runs anyway, about four minutes.
+        description: 'Skip the test suite when a successful tested run of this commit already exists'
         type: boolean
         default: false
       reason:
@@ -18,19 +20,24 @@ name: Deploy GitHub Pages
         type: string
         default: ''
   schedule:
-    # WAGN's holdings file is normally published just after 00:00 UTC (dated the
-    # next weekday) and the matching NAV file around 08:40 UTC. GitHub starts
-    # scheduled runs late (5 to 11 hours after the cron time was observed in
-    # August 2026), so the public snapshot keeps itself fresh with a slot every
-    # 30 minutes on weekdays (05:20 to 22:50 UTC): even a late start lands
-    # within the half hour, and a transient upstream failure costs half an
-    # hour, not a day. The 09:20 slot runs every day (Crypto trades on
-    # weekends) and is the one that also runs the test suite; every other slot
-    # skips it, because the suite already ran on the push that deployed the
-    # code. Fear & Greed bars for a trading day enter the first build after
-    # that exchange's local midnight, because only completed source-local
-    # dates are scored. Every build also detects a newly filed Dalal Street 13F
-    # without a code commit.
+    # WAGN's holdings file is normally published just after 00:00 UTC (dated
+    # the next weekday; observed at about 00:02 UTC on 1-4 Sep 2026) and the
+    # matching NAV file around 08:40 UTC. The slots below ask GitHub for a build
+    # every 30 minutes on weekdays (05:20 to 22:50 UTC) and once a day at 09:20
+    # UTC (Crypto trades on weekends). GitHub does not honour them reliably: it
+    # starts scheduled runs late and skips most slots (on Thu 3 Sep 2026 it
+    # started 7 of the 36 weekday slots, at 09:51, 13:36, 13:54, 14:35, 18:05,
+    # 21:02 and 23:17 UTC; on Fri 4 Sep 2026 none of the first 8 slots had
+    # started by 08:57 UTC, so the site still showed the previous day's file
+    # although the fund had published the new one at 00:02 UTC). So a slot is
+    # an opportunity, not a promise: the page states the snapshot's age and
+    # api/build.json publishes the cron lines and this observation
+    # (schedules, scheduleNote). The 09:20 slot is the one that always runs
+    # the test suite (TESTED_SCHEDULE below); every other slot skips it only
+    # when a successful tested run of the same commit exists. Fear & Greed
+    # bars for a trading day enter the first build after that exchange's local
+    # midnight, because only completed source-local dates are scored. Every
+    # build also detects a newly filed Dalal Street 13F without a code commit.
     - cron: '20 9 * * *'
     - cron: '20,50 5-8,10-22 * * 1-5'
     - cron: '50 9 * * 1-5'
@@ -45,12 +52,21 @@ jobs:
   build:
     name: Build public snapshot
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    # Observed: the test step takes 4 to 5 minutes and a build without it about
+    # one minute. The snapshot step's retry budget (scripts/build-pages.js
+    # captureSnapshot) is up to 3 attempts with a 120 s timeout per endpoint
+    # fetch plus waits of 20 s and 40 s, so a tested build on a slow upstream
+    # day needs about 12 minutes to reach the labelled-fallback path.
+    timeout-minutes: 15
     permissions:
       contents: read
+      # The gate step reads this repository's run history to learn whether the
+      # commit already passed the suite.
+      actions: read
       # Artifact attestation: GitHub signs a provenance statement binding the
       # published files (by SHA-256) to this workflow run and commit. Anyone
-      # can verify a downloaded file with: gh attestation verify <file> --owner netic123
+      # with a GitHub account can verify a downloaded file after gh auth login:
+      # gh attestation verify <file> --owner netic123
       id-token: write
       attestations: write
     steps:
@@ -80,13 +96,24 @@ jobs:
             exit 1
           fi
 
+      - name: Decide whether this commit still needs the test suite
+        id: gate
+        # run_tests is true on a push, on the daily tested slot, on a dispatch
+        # that did not ask to skip the suite, when no completed successful run
+        # of this workflow for this commit executed the test step, or when
+        # GitHub's API cannot be read (fail safe). Otherwise it is false and
+        # tests_verified_by names the run that proved the commit.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+          TESTED_SCHEDULE: '20 9 * * *'
+          SKIP_TESTS: ${{ inputs.skip_tests }}
+          TEST_STEP_NAME: Test repository-owned market models
+        run: node scripts/tests-gate.js
+
       - name: Test repository-owned market models
-        # Runs on every push, on the daily 09:20 UTC slot, and on a manual
-        # dispatch that did not ask to skip it. The half-hourly refresh slots
-        # and the page's live update skip it: the code did not change since the
-        # push that already ran it, and the snapshot validation in
-        # build-pages.js is what protects the published data.
-        if: ${{ github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule == '20 9 * * *') || (github.event_name == 'workflow_dispatch' && !(inputs.skip_tests == true || inputs.skip_tests == 'true')) }}
+        id: tests
+        if: steps.gate.outputs.run_tests == 'true'
         # Three research suites are machine-anchored by their frozen chains and
         # cannot pass on a fresh runner: the proxy-v2 suites byte-verify frozen
         # inputs under gitignored research/local-artifacts/, and the
@@ -108,13 +135,19 @@ jobs:
           INVESTMENTS_BUILD_TRIGGER: ${{ github.event_name }}
           INVESTMENTS_BUILD_REASON: ${{ inputs.reason }}
           INVESTMENTS_BUILD_SCHEDULE: ${{ github.event.schedule }}
-          INVESTMENTS_BUILD_TESTS_SKIPPED: ${{ !(github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule == '20 9 * * *') || (github.event_name == 'workflow_dispatch' && !(inputs.skip_tests == true || inputs.skip_tests == 'true'))) }}
-          # Optional repository variable: a declared User-Agent with a real
-          # e-mail contact for SEC EDGAR, e.g. "netic123-investments/1.0 (you@example.com)".
+          # Derived from what the test step actually did, never from the trigger.
+          INVESTMENTS_BUILD_TESTS_SKIPPED: ${{ steps.tests.outcome == 'skipped' }}
+          INVESTMENTS_BUILD_TESTS_VERIFIED_BY: ${{ steps.gate.outputs.tests_verified_by }}
+          # Optional repository variable: a declared User-Agent with a contact
+          # address for SEC EDGAR, e.g. "netic123-investments/1.0 (you@example.com)".
           # It must not mention github.com or github.io, which SEC's edge
-          # rejects. Without it the built-in default is accepted by data.sec.gov
-          # but not reliably by www.sec.gov, so the 13F usually falls back to
-          # the labelled manual copy.
+          # rejects. It is not set for this repository: every build since
+          # 2 Sep 2026 fetched and verified the 13F and the N-PORT with the
+          # built-in default (data.sec.gov accepts a declared User-Agent without
+          # an e-mail address; www.sec.gov has answered 403 to the default from
+          # other networks). api/build.json records which contact was used
+          # (secContact) and how each SEC request ended (dalalVerification,
+          # nportCheck), never the value.
           SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
         run: node scripts/build-pages.js
 
@@ -149,3 +182,77 @@ jobs:
       - name: Deploy Pages artifact
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+
+  record:
+    # The WAGN receipt history otherwise lives only in the chain of Pages
+    # deployments (each build imports the previously published holdings.json).
+    # After a push build and after the daily tested slot, this job copies the
+    # provenance-bearing receipts of the build just published into
+    # data/snapshots.json and commits them with [skip ci], so the repository
+    # holds a durable copy that the next build reads as a seed. This is the
+    # only job that may write to the repository.
+    name: Record WAGN holdings history
+    needs: deploy
+    if: github.event_name == 'push' || github.event.schedule == '20 9 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22.19.0'
+          package-manager-cache: false
+
+      - name: Wait for the CDN to serve this build, then import its receipts
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+          PUBLISHED_API: https://netic123.github.io/investments/api
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The Pages CDN can serve the previous deployment for a few minutes
+          # after deploy-pages reports success; wait until build.json names
+          # this commit (up to 10 tries, 30 s apart) before reading holdings.json.
+          served=""
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            served=$(curl -fsS -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$PUBLISHED_API/build.json" \
+              | node -e "let t='';process.stdin.on('data',c=>t+=c).on('end',()=>{try{process.stdout.write(String(JSON.parse(t).commit||''))}catch{}})" || true)
+            if [ "$served" = "$EXPECTED_COMMIT" ]; then
+              echo "the CDN serves build $served (attempt $attempt)"
+              break
+            fi
+            if [ "$attempt" = 10 ]; then
+              echo "::warning::the CDN still serves build ${served:-unknown}, not $EXPECTED_COMMIT, after 5 minutes; importing the receipts it serves (they carry their own provenance)"
+            else
+              sleep 30
+            fi
+          done
+          curl -fsS -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' -o published-holdings.json "$PUBLISHED_API/holdings.json"
+          node scripts/record-holdings-history.js published-holdings.json --target data/snapshots.json
+          rm -f published-holdings.json
+
+      - name: Commit and push new receipts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/snapshots.json
+          if git diff --cached --quiet; then
+            echo "no new receipts (data/snapshots.json already carries the published history)"
+            exit 0
+          fi
+          git commit -m "Record WAGN holdings history $(date -u +%F) [skip ci]"
+          for attempt in 1 2 3; do
+            if git push origin main; then exit 0; fi
+            git pull --rebase origin main
+          done
+          echo "::error::could not push the holdings history after 3 attempts"
+          exit 1

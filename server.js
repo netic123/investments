@@ -8,13 +8,16 @@ const path = require('path');
 const { exec } = require('child_process');
 const marketfg = require('./marketfg'); // one six-component Fear & Greed model for Crypto/Sweden/USA/US Tech/Europe/Global
 const {
+  classify13fChange,
   fetchDalalStreet13f,
   fetchLatestPabraiNport,
   fetchResource: fetchSourceResource,
   diffWagnSnapshots,
   isOlderSameDateRevision,
   normalizeWagnHoldings,
+  secContactKindSafe,
   selectWagnNavObservation,
+  THIRTEEN_F_DE_MINIMIS,
   validateWagnHoldingsFreshness,
 } = require('./pabrai');
 
@@ -155,6 +158,22 @@ function saveSnapshots(list) {
 // ---------- holdings ----------
 let holdingsInFlight = null;
 
+// Two different times are reported for the displayed file and must not be
+// confused: latest.source.capturedAt is when this exact file (by SHA-256) was
+// first saved; upstreamCheckedAt is when this call fetched the upstream file,
+// with upstreamCheckOutcome saying what that fetch established:
+//   'accepted new file'    a file not saved before (new date, or a newer
+//                          revision of a saved date) was saved now;
+//   'confirmed unchanged'  the upstream bytes equal the saved receipt
+//                          (same SHA-256), so the saved file is confirmed
+//                          current as of upstreamCheckedAt;
+//   'rejected'             upstream served a file that parsed but failed
+//                          validation (stale, future-dated, regressed, older
+//                          revision); the saved file is shown, unconfirmed;
+//   'fetch failed'         no usable response; the saved file is shown,
+//                          unconfirmed.
+// latest.source.lastConfirmedAt (API copy only, never written to the
+// snapshot file) is upstreamCheckedAt for the first two outcomes, else null.
 async function getHoldingsOnce() {
   const cashSet = new Set(config.cashTickers || []);
   const snaps = loadSnapshots();
@@ -162,8 +181,10 @@ async function getHoldingsOnce() {
   const savedLatestBeforeFetch = snaps[snaps.length - 1] || null;
   let live = null, fetchError = null;
   let source = { status: 'unavailable', url: config.sources.holdings, officialPage: config.sources.holdingsPage || null };
+  const upstreamCheckedAt = new Date().toISOString();
+  let upstreamCheckOutcome = 'fetch failed', upstreamCheckDetail = null;
   try {
-    const retrievedAt = new Date().toISOString();
+    const retrievedAt = upstreamCheckedAt;
     const receipt = await fetchSourceResource(config.sources.holdings, { userAgent: UA, timeoutMs: 20000 });
     live = normalizeWagnHoldings(receipt.text, {
       cashTickers: [...cashSet],
@@ -199,7 +220,13 @@ async function getHoldingsOnce() {
     if (live) {
       source = { ...source, status: 'rejected', rejection: fetchError };
       live = null;
+      upstreamCheckOutcome = 'rejected';
     }
+    // 'fetch failed' covers both no usable response and a response that did not
+    // parse as a holdings file; say which, because the page prints this detail.
+    upstreamCheckDetail = upstreamCheckOutcome === 'fetch failed'
+      ? `the fund's server did not return a usable holdings file: ${fetchError}`
+      : fetchError;
   }
 
   if (live) {
@@ -212,6 +239,10 @@ async function getHoldingsOnce() {
       Object.values(existing.rows || {}).some(row => !row || !row.cusip)
     ));
     const changed = i === -1 || !sameReceipt || needsMetadataUpgrade;
+    upstreamCheckOutcome = sameReceipt ? 'confirmed unchanged' : 'accepted new file';
+    upstreamCheckDetail = sameReceipt
+      ? `the file dated ${live.date} served now has the same SHA-256 as the copy first saved ${existing.source.capturedAt || 'earlier'}${needsMetadataUpgrade ? ' (saved metadata upgraded)' : ''}`
+      : existing ? `a revision of the file dated ${live.date} replaced the copy saved earlier` : `the file dated ${live.date} was saved for the first time`;
     if (i === -1) snaps.push(live);
     else if (sameReceipt && !needsMetadataUpgrade) live = existing;
     else if (sameReceipt) {
@@ -236,7 +267,7 @@ async function getHoldingsOnce() {
     }
   }
   snaps.sort((a, b) => a.date.localeCompare(b.date));
-  const latest = snaps[snaps.length - 1] || null;
+  const savedLatest = snaps[snaps.length - 1] || null;
   const previous = snaps.length > 1 ? snaps[snaps.length - 2] : null;
   const first = snaps[0] || null;
 
@@ -244,14 +275,39 @@ async function getHoldingsOnce() {
   for (let k = 1; k < snaps.length; k++) log.push(...diff(snaps[k - 1], snaps[k]));
   log.sort((a, b) => b.to.localeCompare(a.to) || b.absValue - a.absValue);
 
+  // The displayed file is confirmed by this fetch only when upstream served
+  // the same bytes (or this fetch saved it). A confirmation stamp goes on the
+  // API copy of the latest receipt; the snapshot file itself is not changed.
+  const confirmed = !!(live && savedLatest && live.date === savedLatest.date && ['accepted new file', 'confirmed unchanged'].includes(upstreamCheckOutcome));
+  const latest = savedLatest && savedLatest.source
+    ? { ...savedLatest, source: { ...savedLatest.source, lastConfirmedAt: confirmed ? upstreamCheckedAt : null } }
+    : savedLatest;
+  // Per saved file: whether its unit count is known. Receipts saved before
+  // 2026-08-25 carry no SharesOutstanding; a count for them can only be
+  // implied from NetAssets / NAV of the pricing date (impliedUnitsFromNav)
+  // and must be labelled as implied wherever it is shown.
+  const snapshotSummaries = snaps.map(s => ({
+    date: s.date,
+    netAssets: Number.isFinite(s.netAssets) ? s.netAssets : null,
+    sharesOutstanding: Number.isFinite(s.sharesOutstanding) && s.sharesOutstanding > 0 ? s.sharesOutstanding : null,
+    unitsKnown: Number.isFinite(s.sharesOutstanding) && s.sharesOutstanding > 0,
+    capturedAt: (s.source && s.source.capturedAt) || null,
+    sha256: (s.source && s.source.sha256) || null,
+  }));
+  const firstWithUnits = snapshotSummaries.find(s => s.unitsKnown) || null;
+
   return {
     ok: !!live, fetchError, fetchedAt: new Date().toISOString(),
     source: { ...source, status: live ? 'verified' : source.status === 'verified' ? 'rejected' : source.status },
+    upstreamCheckedAt, upstreamCheckOutcome, upstreamCheckDetail,
     latest, previous, first,
     changesVsPrevious: previous && latest ? diff(previous, latest) : [],
-    changesVsFirst: first && latest && first !== latest ? diff(first, latest) : [],
+    changesVsFirst: first && latest && first !== savedLatest ? diff(first, latest) : [],
     snapshotDates: snaps.map(s => s.date),
     snapshots: snaps,
+    snapshotSummaries,
+    unitsKnownFrom: firstWithUnits ? firstWithUnits.date : null,
+    unitsUnknownDates: snapshotSummaries.filter(s => !s.unitsKnown).map(s => s.date),
     log,
   };
 }
@@ -276,13 +332,23 @@ async function getNav() {
   const history = hist.map(r => ({
     date: isoFromUs(r['Rate Date']), nav: num(r.NAV), price: num(r['Market Price']), premium: num(r['Premium/Discount Percentage']),
   })).filter(r => r.date && r.nav != null).sort((a, b) => a.date.localeCompare(b.date));
-  const current = selectWagnNavObservation({
+  // DailyNAV alone carries the fund's own net assets and unit count (the
+  // historical file has NAV, price and premium only); the history row of the
+  // same date gets them so consumers of nav.history can see them there too.
+  const dailyRow = {
     date: isoFromUs(d['Rate Date']), nav: num(d.NAV), navChgPct: num(d['NAV Change Percentage']),
     price: num(d['Market Price']), premium: num(d['Premium/Discount Percentage']),
     netAssets: num(d['Net Assets']), sharesOut: num(d['Shares Outstanding']), spread: num(d['Median 30 Day Spread Percentage']),
-  }, history);
+  };
+  for (const row of history) {
+    if (row.date === dailyRow.date && row.nav === dailyRow.nav) { row.netAssets = dailyRow.netAssets; row.sharesOut = dailyRow.sharesOut; }
+  }
+  const current = selectWagnNavObservation(dailyRow, history);
   if (!current) throw new Error('official WAGN NAV files contain no usable observation');
-  return { ...current, history }; // full daily series since inception (29 Sep 2023) — price only, no distributions
+  // netAssets/sharesOut are the DailyNAV file's own figures for `date` (null
+  // when the newer historical rate has no DailyNAV row yet); the holdings
+  // file's NetAssets is a different figure, rounded NAV x units.
+  return { ...current, netAssetsSource: current.netAssets == null ? null : 'DailyNAV file (the fund\'s own net assets figure, not NAV x units)', history }; // full daily series since inception (29 Sep 2023) — price only, no distributions
 }
 async function getPerf() {
   const [m, q] = await Promise.all([
@@ -302,15 +368,34 @@ async function getDalalStreet() {
   try {
     return await fetchDalalStreet13f(config.dalalStreet, { timeoutMs: 30000 });
   } catch (error) {
-    // SEC sometimes rate-limits or blocks shared cloud IPs. Keep the last
-    // manually verified filing visible locally, but label it unambiguously as
-    // a fallback. The Pages build accepts only the exact dated fallback through
-    // its stated filing deadline and never labels it as newly verified data.
+    // SEC's archive host answers 403 to the default User-Agent from some
+    // networks (not from GitHub's runners since 2 Sep 2026) and rate-limits
+    // heavy clients. Keep the last manually verified filing visible, but label
+    // it unambiguously as a fallback: its next-filing deadline is the
+    // hand-typed config value (nextFilingSource 'configured'), and the
+    // quarter-on-quarter classification is derived from the copy's own
+    // shares/prevShares (changeByCusip; the copy carries no prior values, so
+    // a vanished row's prior size is unknown). The Pages build accepts only
+    // the exact dated fallback through its stated filing deadline and never
+    // labels it as newly verified data; its holdings list stays byte-for-byte
+    // the configured one.
+    const manual = config.dalalStreet || {};
     return {
-      ...config.dalalStreet,
+      ...manual,
       ok: false,
       fallback: true,
       sourceStatus: 'manual fallback — SEC verification unavailable',
+      sourceStatusText: `manual copy of the filing, verified by hand on ${manual.manualVerifiedAt || 'an unrecorded date'}; this build could not fetch SEC EDGAR`,
+      // never throws: a SEC_USER_AGENT that is rejected is itself a SEC-access
+      // problem, and must produce this labelled fallback rather than an error page
+      secContact: secContactKindSafe(process.env.SEC_USER_AGENT),
+      nextFilingSource: 'configured',
+      nextFilingHolidaysModelled: null,
+      deMinimisRule: { ...THIRTEEN_F_DE_MINIMIS, text: 'a 13F may omit any holding under 10,000 shares and under $200,000, so a row appearing or vanishing between quarters is not proof of a trade' },
+      changeByCusip: Object.fromEntries((manual.holdings || []).filter(row => row && row.cusip).map(row => {
+        const c = classify13fChange(row);
+        return [row.cusip, { deMinimis: c.deMinimis, prevDeMinimis: c.prevDeMinimis, change: c.change, changeText: c.changeText, changeNote: c.changeNote }];
+      })),
       fetchError: String(error && error.message || error),
       fetchedAt: new Date().toISOString(),
     };
@@ -320,9 +405,16 @@ async function getDalalStreet() {
 // ---------- Pabrai Wagons N-PORT (the fund's own quarterly portfolio report to SEC) ----------
 async function getNport() {
   try {
-    // The saved snapshots are the FilePoint side of the comparison: the file
-    // dated the next weekday after the report date is priced as of that date.
-    return await fetchLatestPabraiNport(config.nport, { timeoutMs: 30000, snapshots: loadSnapshots(), cashLike: config.cashLike || [] });
+    // The saved snapshots are the FilePoint side of the comparison: the saved
+    // file priced as of the report date, proven by its NetAssets per unit
+    // against the official NAV of that date (nav.history), is the one the
+    // N-PORT is held against; normally that is the file dated the next
+    // weekday, after a market holiday a later one. Without NAV history the
+    // check still runs, but says the pricing date is unproven.
+    let navHistory = [];
+    try { navHistory = (await cached('nav', getNav)).history || []; }
+    catch (error) { console.error('N-PORT check: NAV history unavailable, pricing date cannot be proven:', error.message || error); }
+    return await fetchLatestPabraiNport(config.nport, { timeoutMs: 30000, snapshots: loadSnapshots(), cashLike: config.cashLike || [], navHistory });
   } catch (error) {
     // fetchLatestPabraiNport reports SEC failures as ok:false itself; this
     // catches anything unexpected so the page can still say what happened.
@@ -348,8 +440,12 @@ async function yahooQuote(symbol) {
     exchange: m.exchangeName || null,
   };
 }
+// One Yahoo chart request per symbol: the watchlist tickers, the FX pairs and
+// the ETF itself (WAGN on NYSE Arca), so the page can show Yahoo's exchange
+// quote next to the fund's own closing market price from the DailyNAV file.
+const FUND_YAHOO_SYMBOL = 'WAGN';
 async function getQuotes() {
-  const symbols = [...new Set([...config.myPositions.map(p => p.yahoo), ...Object.values(config.fx || {})].filter(Boolean))];
+  const symbols = [...new Set([...config.myPositions.map(p => p.yahoo), ...Object.values(config.fx || {}), FUND_YAHOO_SYMBOL].filter(Boolean))];
   const out = {};
   await Promise.all(symbols.map(async s => {
     try { out[s] = await yahooQuote(s); } catch (e) { out[s] = { symbol: s, error: String(e.message || e) }; }
@@ -370,7 +466,8 @@ const routes = {
   '/api/perf': () => cached('perf', getPerf),
   '/api/quotes': () => cached('quotes', getQuotes, v => Object.values(v).some(q => !q.error)),
   // All six market tabs come from this one model response. Yahoo series are cached for 15 minutes inside the module;
-  // a plain /api/refresh recomputes, while /api/refresh?force=1 re-fetches every configured daily series.
+  // a plain /api/refresh clears the route cache (fund files, both SEC filings, quotes are fetched again on the next
+  // request), while /api/refresh?force=1 also drops every cached Yahoo series so all 33 are fetched again too.
   '/api/marketfg': () => cached('marketfg', () => marketfg.getMarketFearGreed(config.marketFearGreed), v => {
     const expected = Object.keys((config.marketFearGreed && config.marketFearGreed.markets) || {}).sort();
     const actual = Object.keys((v && v.markets) || {}).sort();
@@ -423,7 +520,8 @@ server.on('error', e => {
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`Investments running at ${ADDR}  (Ctrl+C or close the window to stop)`);
   if (process.platform === 'win32' && !process.env.NO_OPEN) exec(`start "" "${ADDR}"`);
-  // capture the fund's holdings file every 30 minutes while the server runs, so a file day is not missed when the page is closed
-  // (the fund republishes ~20:05 ET; a missed day merges multiple days into one net quantity change)
+  // capture the fund's holdings file every 30 minutes while the local server runs, so a file day is not missed when the page is
+  // closed (FilePoint publishes the next weekday's file at about 00:02 UTC, i.e. about 20:02 ET; a missed day merges multiple
+  // days into one net quantity change). The public site has no such loop: it captures once per Pages build.
   setInterval(() => getHoldings().catch(e => console.error('snapshot capture:', e.message || e)), 30 * 60 * 1000).unref();
 });

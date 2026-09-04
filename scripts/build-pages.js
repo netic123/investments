@@ -40,24 +40,44 @@ const PUBLIC_EXPANDING_SIGNAL_KEYS = [
 ].sort();
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
-// The published page may be older than a visitor expects when a scheduled build
-// fails; index.html warns once the snapshot is older than this (a daily build
-// was missed).
-const SNAPSHOT_STALE_AFTER_HOURS = 30;
+// Snapshot staleness, as published in api/build.json and applied by index.html.
+// The workflow schedules a build every 30 minutes on weekdays (05:20-22:50 UTC,
+// see .github/workflows/pages.yml) and once a day at 09:20 UTC, but GitHub
+// starts scheduled runs late and skips most slots, so the snapshot's age is
+// the only honest freshness statement. While the weekday schedule is active
+// (SCHEDULE_WINDOW_UTC) a snapshot older than SNAPSHOT_STALE_AFTER_HOURS means
+// no slot since has run; outside that window (weekends and nights, when only
+// the daily slot exists) the threshold is SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE,
+// so a warning there means the daily build has also been missed.
+const SNAPSHOT_STALE_AFTER_HOURS = 3;
+const SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE = 30;
+const SCHEDULE_WINDOW_UTC = Object.freeze({ days: 'Mon-Fri', from: '05:20', to: '23:20' });
+// The fund's FilePoint holdings file for a weekday is normally live by this
+// UTC time (observed at about 00:02 UTC on 1-4 Sep 2026); index.html can say
+// that the day's file has not been captured when the snapshot is older.
+const HOLDINGS_FILE_EXPECTED_BY_UTC = '00:30';
+// A dated observation of how GitHub honours the schedules; keep it literal.
+const SCHEDULE_NOTE = 'GitHub starts scheduled runs late and skips most slots: on Thu 3 Sep 2026 it started 7 of the 36 weekday slots, and on Fri 4 Sep 2026 none of the first 8 slots had started by 08:57 UTC';
+const WORKFLOW_PATH = path.join(ROOT, '.github', 'workflows', 'pages.yml');
 const LOCAL_MODE_MARKER = '<meta name="investments-mode" content="local">';
 const STATIC_MODE_MARKER = '<meta name="investments-mode" content="static">';
 // Everything the public page is allowed to load or contact. Scripts are
 // limited to the one inline block by hash; styles include inline style
-// attributes; connections are the same-origin JSON snapshot plus SEC's
-// EDGAR submissions index, which the page asks (from the visitor's browser)
-// whether a newer 13F exists.
+// attributes; connections are the same-origin JSON snapshot, SEC's EDGAR
+// submissions index (data.sec.gov, which the page asks from the visitor's
+// browser whether a newer 13F exists, only when the build could not verify
+// the 13F itself) and GitHub's public Actions API (see below).
 const STATIC_CSP_DIRECTIVES = [
   "default-src 'none'",
   "script-src 'sha256-__SCRIPT_HASH__'",
   "style-src 'unsafe-inline' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
-  // api.github.com only serves the owner's optional live update (dispatching a
-  // rebuild with a token stored in that browser); visitors never contact it.
+  // api.github.com is contacted by a visitor's browser when the Build history
+  // section is opened (an unauthenticated read of the last 20 runs of
+  // pages.yml; GitHub sees an ordinary web request and nothing about the
+  // visitor is sent) and by the owner's optional live update (dispatching a
+  // rebuild with a token stored in that browser, then polling the run; after
+  // the new build.json is live the page reloads itself).
   "connect-src 'self' https://data.sec.gov https://api.github.com",
   "img-src 'self' data:",
   "base-uri 'none'",
@@ -87,15 +107,32 @@ function staticCsp(html) {
   return STATIC_CSP_DIRECTIVES.join('; ').replace('__SCRIPT_HASH__', hash);
 }
 
-function staticPageHtml(sourceHtml) {
+// The commit is stamped into the page so a visitor's browser can tell whether
+// the HTML the CDN served and the api/*.json it served come from the same
+// build: index.html and each JSON expire independently, so a reload after a
+// deployment can pair new data with the previous page code. build.json's own
+// digest list cannot catch that, because a page cannot hash itself.
+// Publish LF line endings whatever the checkout used. A browser normalises CRLF
+// to LF before it hashes an inline script for the Content-Security-Policy, so a
+// CRLF page would declare a hash the browser never computes and would block its
+// own script; normalising here also makes the published bytes, and the digests
+// in api/build.json, identical from a Windows and a Linux checkout.
+function staticPageHtml(rawHtml, commit) {
+  const sourceHtml = rawHtml.split('\r\n').join('\n');
   assert(sourceHtml.split(LOCAL_MODE_MARKER).length === 2, 'index.html must contain exactly one local-mode marker');
   assert(!sourceHtml.includes('http-equiv="Content-Security-Policy"'), 'index.html must not carry its own Content-Security-Policy; the build adds one');
+  assert(!/<meta name="investments-build-commit"/.test(sourceHtml), 'index.html must not carry a build-commit marker; the build adds one');
   checkInlineScript(sourceHtml);
-  return sourceHtml.replace(LOCAL_MODE_MARKER, `${STATIC_MODE_MARKER}\n<meta http-equiv="Content-Security-Policy" content="${staticCsp(sourceHtml)}">`);
+  const stamp = commit ? `\n<meta name="investments-build-commit" content="${String(commit).replace(/[^0-9a-zA-Z._-]/g, '')}">` : '';
+  return sourceHtml.replace(LOCAL_MODE_MARKER, `${STATIC_MODE_MARKER}${stamp}\n<meta http-equiv="Content-Security-Policy" content="${staticCsp(sourceHtml)}">`);
 }
 
-function verifyStaticPage(html) {
+function verifyStaticPage(html, commit) {
   assert(html.includes(STATIC_MODE_MARKER) && !html.includes(LOCAL_MODE_MARKER), 'published page is not in static mode');
+  if (commit) {
+    const stamp = /<meta name="investments-build-commit" content="([^"]*)">/.exec(html);
+    assert(stamp && stamp[1] === commit, 'published page does not carry this build\'s commit');
+  }
   const match = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html);
   assert(match, 'published page has no Content-Security-Policy');
   assert(match[1] === staticCsp(html), 'published Content-Security-Policy does not match the inline script');
@@ -103,6 +140,44 @@ function verifyStaticPage(html) {
   checkInlineScript(html);
 }
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// The schedule the page describes is read from the workflow file at build time,
+// so api/build.json cannot drift from pages.yml.
+function workflowSchedules(workflowText) {
+  return [...workflowText.matchAll(/^\s*- cron: '([^']+)'\s*$/gm)].map(match => match[1]);
+}
+
+// The one schedule slot whose runs must execute the test suite (the gate step
+// in pages.yml names it); null when the workflow has no such condition.
+function testedScheduleSlot(workflowText) {
+  const match = /TESTED_SCHEDULE: '([^']+)'/.exec(workflowText);
+  return match ? match[1] : null;
+}
+
+// Plain-English rendering of the cron shapes this workflow uses; anything else
+// is printed verbatim so the sentence never claims a time the cron does not.
+function describeCron(cron) {
+  const parts = String(cron).trim().split(/\s+/);
+  const pad = value => value.padStart(2, '0');
+  if (parts.length !== 5 || parts[2] !== '*' || parts[3] !== '*') return `cron '${cron}' (UTC)`;
+  const [minute, hour, , , dow] = parts;
+  const days = dow === '*' ? 'every day' : dow === '1-5' ? 'Mon-Fri' : null;
+  if (!days) return `cron '${cron}' (UTC)`;
+  if (/^\d{1,2}$/.test(minute) && /^\d{1,2}$/.test(hour)) return `${pad(hour)}:${pad(minute)} UTC ${days}`;
+  if (/^\d{1,2}(,\d{1,2})*$/.test(minute) && /^\d{1,2}(-\d{1,2})?(,\d{1,2}(-\d{1,2})?)*$/.test(hour)) {
+    const minutes = minute.split(',').map(m => `:${pad(m)}`).join(' and ');
+    const hours = hour.split(',').map(h => h.split('-').map(pad).join('-')).join(' and ');
+    return `${minutes} past ${hours} UTC ${days}`;
+  }
+  return `cron '${cron}' (UTC)`;
+}
+
+function refreshTriggerSentence(schedules, testedSlot) {
+  const slots = schedules.map(cron => `${describeCron(cron)}${cron === testedSlot ? ' (with the test suite)' : ''}`);
+  const scheduled = slots.length ? `, or one of the scheduled slots: ${slots.join('; ')}` : '';
+  return `push to main, a dispatch (manual or the page's live update)${scheduled}. Scheduled slots other than the tested one skip the suite only when a successful tested run of the same commit exists. ${SCHEDULE_NOTE}.`;
+}
+
 const EXPECTED_MARKET_SYMBOLS = {
   crypto: {
     index: { id: 'CRYPTO-BROAD-EW', method: 'equalWeightReturns', symbols: ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'BNB-USD'] },
@@ -401,6 +476,15 @@ function carriedForwardComponents(marketfg) {
   return out.sort();
 }
 
+// Which series had newer bars appended by the 3-month top-up request
+// (marketfg.js topUpRecentBars). Who asks for that top-up, exactly: every
+// getMarketFearGreed caller — the local server's /api/marketfg, this public
+// build, and the research replays in research/ that call it — unless the
+// config sets topUpRecentBars to false. Only the lockbox collectors, which go
+// through getMarketFearGreedResearchHistory (includeExpandingSignal false),
+// keep the single full-history request their frozen capture contracts expect.
+// So it is the public contract, not the public build alone, that doubles the
+// Yahoo chart requests.
 function recentBarTopUps(marketfg) {
   const out = new Map();
   for (const value of Object.values((marketfg && marketfg.markets) || {})) {
@@ -411,9 +495,19 @@ function recentBarTopUps(marketfg) {
   return [...out.values()].sort();
 }
 
+// Snapshot retry budget (the build job's timeout-minutes in pages.yml must
+// leave room for it after the test suite): up to 3 attempts, all eight
+// endpoints fetched in parallel with a 120 s timeout each (fetchJson), and
+// waits of 20 s after attempt 1 and 40 s after attempt 2.
 async function captureSnapshot(base, publicPositions) {
   let lastError;
+  // marketfg.js counts chart requests per model computation. A retried build
+  // computes the model again from an empty cache, so the published count is
+  // only the last attempt's; these totals keep the discarded ones visible.
+  let discardedYahooRequests = 0;
+  let attemptsMade = 0;
   for (let attempt = 1; attempt <= 3; attempt++) {
+    attemptsMade = attempt;
     try {
       const pairs = await Promise.all(ENDPOINTS.map(async name => [name, await fetchJson(`${base}/api/${name}`)]));
       const data = Object.fromEntries(pairs);
@@ -424,15 +518,26 @@ async function captureSnapshot(base, publicPositions) {
       }
       // Yahoo's full-history responses sometimes lag a source's newest completed
       // bars by a day or two, in which case the model carries the affected
-      // component forward (up to fillDays) and the page labels it. A forced
-      // re-fetch sometimes returns the missing bars, so try that once; an
-      // exchange holiday produces the same lag legitimately, which is why this
-      // is a single retry and never a failure.
+      // component forward (up to fillDays) and the page labels it. An exchange
+      // holiday (31 Aug 2026, a UK bank holiday, left the London-listed series
+      // without a bar) produces exactly the same lagDetail as a feed gap, and
+      // without an exchange calendar the build cannot tell the two apart. So
+      // the retry below is a guess, not a fix: it is made once, never fails
+      // the build, and when the gap was a holiday it changes nothing. The
+      // retry is not cheap: /api/refresh?force=1 clears the server's route
+      // cache and the whole Yahoo series cache, so attempt 2 repeats every
+      // upstream fetch (the fund's files, the 13F and N-PORT requests to SEC,
+      // the position and FX quotes, and each Yahoo series with its 3-month
+      // top-up), and any attempt 3 does so again.
       const carried = carriedForwardComponents(data.marketfg);
       if (attempt === 1 && carried.length) {
-        throw new Error(`Fear & Greed components carried forward from earlier bars: ${carried.join(', ')}`);
+        const retry = new Error(`Fear & Greed components carried forward from earlier bars: ${carried.join(', ')}`);
+        retry.fetchStats = data.marketfg && data.marketfg.fetchStats;
+        throw retry;
       }
       data.carriedForwardComponents = carried;
+      data.snapshotAttempts = attemptsMade;
+      data.discardedYahooRequests = discardedYahooRequests;
       data.recentBarTopUps = recentBarTopUps(data.marketfg);
       if (data.recentBarTopUps.length) process.stderr.write(`NOTE: recent bars appended from short-range requests: ${data.recentBarTopUps.join(', ')}\n`);
       if (carried.length) process.stderr.write(`WARNING: publishing with carried-forward Fear & Greed components: ${carried.join(', ')}\n`);
@@ -440,6 +545,10 @@ async function captureSnapshot(base, publicPositions) {
       return data;
     } catch (error) {
       lastError = error;
+      // Whatever this attempt fetched is thrown away, but Yahoo was asked for
+      // it: keep the count so build.json can report what the build really sent.
+      const attemptStats = error && error.fetchStats;
+      discardedYahooRequests += Number(attemptStats && attemptStats.requests) || 0;
       if (attempt === 3) break;
       process.stderr.write(`Snapshot attempt ${attempt} failed: ${error.message}. Retrying…\n`);
       try { await fetchJson(`${base}/api/refresh?force=1`, { method: 'POST' }); } catch {}
@@ -472,15 +581,52 @@ function mergeSnapshots(...lists) {
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-async function loadPreviousPublishedSnapshots() {
-  const url = process.env.INVESTMENTS_PREVIOUS_PUBLIC_HOLDINGS_URL;
-  if (!url) return [];
+const PUBLISHED_HOLDINGS_URL = 'https://netic123.github.io/investments/api/holdings.json';
+
+function assertPublishedHoldingsUrl(url) {
   const parsed = new URL(url);
   assert(parsed.protocol === 'https:' && parsed.hostname === 'netic123.github.io' && parsed.pathname === '/investments/api/holdings.json', 'previous public holdings URL is not the approved GitHub Pages endpoint');
-  const value = await fetchJson(url);
+  return parsed;
+}
+
+// The published history is one input of the next build (the other is the
+// committed data/snapshots.json, which the workflow's record job refreshes
+// from the published file, so the repository holds a durable copy). A
+// transient CDN failure is retried before it fails the build.
+async function fetchPublishedJson(url, attempts = 3) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try { return await fetchJson(url, { headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } }); }
+    catch (error) {
+      lastError = error;
+      if (attempt < attempts) await delay(5000 * attempt);
+    }
+  }
+  throw lastError;
+}
+
+async function loadPreviousPublishedSnapshots() {
+  const url = process.env.INVESTMENTS_PREVIOUS_PUBLIC_HOLDINGS_URL;
+  if (!url) {
+    // A GitHub build without the published history would republish only the
+    // committed copy and shorten the public log; refuse rather than do so silently.
+    assert(!process.env.GITHUB_ACTIONS, 'INVESTMENTS_PREVIOUS_PUBLIC_HOLDINGS_URL must be set for a GitHub build');
+    return { snapshots: [], previousCount: 0 };
+  }
+  const parsed = assertPublishedHoldingsUrl(url);
+  const value = await fetchPublishedJson(url);
   const snapshots = usableSnapshots(value, { requireProvenance: true });
   assert(snapshots.length > 0, 'previous public holdings endpoint contains no reusable snapshots');
-  return snapshots;
+  // The previous build.json says how many receipts the last build carried; a
+  // shorter list now would mean history was lost somewhere upstream.
+  let previousCount = 0;
+  try {
+    const previousBuild = await fetchPublishedJson(`${parsed.origin}/investments/api/build.json`, 1);
+    if (previousBuild && Number.isInteger(previousBuild.carriedSnapshotCount)) previousCount = previousBuild.carriedSnapshotCount;
+  } catch (error) {
+    process.stderr.write(`NOTE: previous api/build.json could not be read (${error.message}); the history lower bound is not checked.\n`);
+  }
+  return { snapshots, previousCount };
 }
 
 function prepareOutput() {
@@ -505,13 +651,21 @@ function artifactFiles(dir, prefix = '') {
   return files.sort();
 }
 
-function verifyArtifact(forbiddenSecrets) {
+const DIGESTED_FILES = ['index.html', ...ENDPOINTS.map(name => `api/${name}.json`)];
+
+function artifactDigests(dir, relatives) {
+  return Object.fromEntries(relatives.map(relative => [
+    relative, crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, relative))).digest('hex'),
+  ]));
+}
+
+function verifyArtifact(forbiddenSecrets, commit) {
   const actual = artifactFiles(OUT);
   assert(JSON.stringify(actual) === JSON.stringify(EXPECTED_FILES), `unexpected Pages artifact manifest:\n${actual.join('\n')}`);
   for (const relative of actual.filter(name => name.endsWith('.json'))) {
     JSON.parse(fs.readFileSync(path.join(OUT, relative), 'utf8'));
   }
-  verifyStaticPage(fs.readFileSync(path.join(OUT, 'index.html'), 'utf8'));
+  verifyStaticPage(fs.readFileSync(path.join(OUT, 'index.html'), 'utf8'), commit);
   for (const secret of forbiddenSecrets) {
     for (const relative of actual) {
       const bytes = fs.readFileSync(path.join(OUT, relative));
@@ -563,9 +717,11 @@ async function main() {
   const committedSnapshots = fs.existsSync(path.join(ROOT, 'data', 'snapshots.json'))
     ? usableSnapshots({ snapshots: JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'snapshots.json'), 'utf8')) })
     : [];
-  const previousPublishedSnapshots = await loadPreviousPublishedSnapshots();
-  const carriedSnapshots = mergeSnapshots(committedSnapshots, previousPublishedSnapshots);
+  const previousPublished = await loadPreviousPublishedSnapshots();
+  const carriedSnapshots = mergeSnapshots(committedSnapshots, previousPublished.snapshots);
   assert(carriedSnapshots.length > 0, 'no seed holdings snapshots are available');
+  assert(carriedSnapshots.length >= previousPublished.previousCount || process.env.INVESTMENTS_ALLOW_SNAPSHOT_HISTORY_SHRINK === '1',
+    `refusing to publish ${carriedSnapshots.length} holdings receipts when the previous build carried ${previousPublished.previousCount} (set INVESTMENTS_ALLOW_SNAPSHOT_HISTORY_SHRINK=1 to accept a shorter history)`);
 
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'investments-pages-'));
   const snapshotPath = path.join(temp, 'snapshots.json');
@@ -582,10 +738,22 @@ async function main() {
     for (const name of ['PATH', 'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL', 'TZ', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'NODE_EXTRA_CA_CERTS']) {
       if (process.env[name]) childEnv[name] = process.env[name];
     }
-    // SEC asks automated clients to identify themselves; an optional repository
-    // variable supplies a real contact. It is validated here so a rejected
-    // value (anything mentioning github.com/github.io) fails loudly instead of
-    // silently degrading every build to the manual 13F fallback.
+    // SEC asks automated clients to identify themselves. The optional
+    // repository variable SEC_USER_AGENT supplies a declared User-Agent with a
+    // contact address; it is not set for this repository, and every GitHub
+    // build since 2 Sep 2026 fetched and verified the 13F, and the N-PORT once
+    // that check existed, with the built-in default. www.sec.gov has answered
+    // 403 to that default to a bare curl from the owner's own connection,
+    // while this application's own client (Node fetch, with Accept and
+    // User-Agent) received 200 from the same connection on 4 Sep 2026; what
+    // exactly triggers the 403 has not been established. A value is validated here so a rejected one
+    // (anything mentioning github.com/github.io) fails loudly instead of
+    // silently degrading every build to the manual 13F fallback. Which
+    // contact was used is recorded in api/build.json (secContact), never the
+    // value.
+    const secContact = process.env.SEC_USER_AGENT && process.env.SEC_USER_AGENT.trim()
+      ? 'repository variable SEC_USER_AGENT'
+      : 'built-in default (no e-mail contact)';
     if (process.env.SEC_USER_AGENT && process.env.SEC_USER_AGENT.trim()) childEnv.SEC_USER_AGENT = secUserAgent(process.env.SEC_USER_AGENT);
     child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
       cwd: ROOT,
@@ -605,6 +773,15 @@ async function main() {
 
     await waitForServer(base, child, logs);
     const data = await captureSnapshot(base, publicWatchlist.myPositions);
+    if (secContact.startsWith('built-in default') && (!data.dalal.ok || !data.nport.ok)) {
+      process.stderr.write('WARNING: an SEC request failed while the built-in default User-Agent was in use (no SEC_USER_AGENT variable); see dalalVerification and nportCheck in api/build.json.\n');
+    }
+    const workflowText = fs.existsSync(WORKFLOW_PATH) ? fs.readFileSync(WORKFLOW_PATH, 'utf8') : '';
+    const schedules = workflowSchedules(workflowText);
+    const testedSlot = testedScheduleSlot(workflowText);
+    const testsVerifiedBy = /^https:\/\/github\.com\/[^\s]+\/actions\/runs\/\d+$/.test(process.env.INVESTMENTS_BUILD_TESTS_VERIFIED_BY || '')
+      ? process.env.INVESTMENTS_BUILD_TESTS_VERIFIED_BY
+      : null;
     const generatedAt = new Date().toISOString();
     const build = {
       generatedAt,
@@ -619,18 +796,44 @@ async function main() {
       runUrl: process.env.GITHUB_RUN_ID && process.env.GITHUB_REPOSITORY
         ? `${process.env.GITHUB_SERVER_URL || 'https://github.com'}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
         : null,
-      attestation: process.env.GITHUB_RUN_ID ? 'GitHub artifact attestation; verify a downloaded file with: gh attestation verify <file> --owner netic123' : null,
+      attestation: process.env.GITHUB_RUN_ID ? 'GitHub artifact attestation (SLSA provenance) signed for this run; with a GitHub account: gh attestation verify <file> --owner netic123' : null,
       schedule: process.env.INVESTMENTS_BUILD_SCHEDULE || null,
       reason: process.env.INVESTMENTS_BUILD_REASON || null,
+      // Derived by the workflow from the test step's real outcome, not from
+      // the trigger; when the suite was skipped, testsVerifiedBy is the earlier
+      // successful run of this workflow for the same commit whose test step
+      // passed (the gate step only allows the skip when such a run exists).
       testsSkipped: process.env.INVESTMENTS_BUILD_TESTS_SKIPPED === 'true',
+      testsVerifiedBy,
       dataMode: 'build-time snapshot',
       watchlist: 'public-no-entry-prices',
-      refreshTrigger: 'push to main, a dispatch (manual or the page\'s live update), or the schedules: 09:20 UTC daily with the test suite and every 30 minutes 05:20-22:50 UTC Mon-Fri without it (GitHub may start scheduled runs late)',
+      // Read from pages.yml at build time so the description cannot drift from
+      // the workflow; the cron strings are published as written there.
+      refreshTrigger: refreshTriggerSentence(schedules, testedSlot),
+      schedules,
+      testedSchedule: testedSlot,
+      scheduleNote: SCHEDULE_NOTE,
       snapshotStaleAfterHours: SNAPSHOT_STALE_AFTER_HOURS,
+      snapshotStaleAfterHoursOffSchedule: SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE,
+      scheduleWindowUtc: { ...SCHEDULE_WINDOW_UTC },
+      holdingsFileExpectedByUtc: HOLDINGS_FILE_EXPECTED_BY_UTC,
       carriedSnapshotCount: carriedSnapshots.length,
+      historyDurability: 'push builds and the daily 09:20 UTC slot (when GitHub runs it) commit new receipts to data/snapshots.json; every build also imports the previously published history',
       holdingsSource: data.holdingsSource,
       carriedForwardComponents: data.carriedForwardComponents,
       recentBarTopUps: data.recentBarTopUps,
+      // What the published model computation asked Yahoo for (marketfg.js
+      // counts per call). A retried build computed the model more than once
+      // from an empty cache, so snapshotAttempts and yahooRequestsAllAttempts
+      // say what the whole build sent; the page shows both.
+      yahooRequests: (data.marketfg && data.marketfg.fetchStats) ?? null,
+      snapshotAttempts: data.snapshotAttempts ?? null,
+      yahooRequestsAllAttempts: data.marketfg && data.marketfg.fetchStats
+        ? (Number(data.marketfg.fetchStats.requests) || 0) + (data.discardedYahooRequests || 0)
+        : null,
+      // Which SEC contact the build used, never its value: the repository
+      // variable SEC_USER_AGENT when set, else the built-in default.
+      secContact,
       dalalVerification: data.dalal.ok
         ? 'official SEC fetched and validated'
         : `labelled manual fallback verified ${data.dalal.manualVerifiedAt}; live SEC check failed (${data.dalal.fetchError})${data.dalal.pastFilingDeadline ? '; past the next filing deadline, a newer filing may exist' : ''}`,
@@ -647,17 +850,19 @@ async function main() {
 
     prepareOutput();
     const sourceHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-    fs.writeFileSync(path.join(OUT, 'index.html'), staticPageHtml(sourceHtml), 'utf8');
+    fs.writeFileSync(path.join(OUT, 'index.html'), staticPageHtml(sourceHtml, build.commit), 'utf8');
     fs.writeFileSync(path.join(OUT, '.nojekyll'), '', 'utf8');
     for (const name of ENDPOINTS) writeJson(path.join(API_OUT, `${name}.json`), data[name]);
-    // Digests of every published file except build.json itself, so a reader can
-    // check that what the CDN serves is what this run produced; the workflow's
-    // attestation step signs the same files.
-    build.files = Object.fromEntries(['index.html', ...ENDPOINTS.map(name => `api/${name}.json`)].map(relative => [
-      relative, crypto.createHash('sha256').update(fs.readFileSync(path.join(OUT, relative))).digest('hex'),
-    ]));
+    // SHA-256 of the exact bytes just written for index.html and every
+    // api/*.json except build.json itself, which cannot carry its own digest
+    // (the empty .nojekyll marker is the only other published file and is not
+    // hashed). A reader can check that what the CDN serves is what this run
+    // produced, and index.html can tell whether the JSON files it fetched all
+    // come from this build; the workflow's attestation step signs these files
+    // and build.json as well.
+    build.files = artifactDigests(OUT, DIGESTED_FILES);
     writeJson(path.join(API_OUT, 'build.json'), build);
-    verifyArtifact(forbiddenSecrets);
+    verifyArtifact(forbiddenSecrets, build.commit);
 
     const totalBytes = artifactFiles(OUT).reduce((sum, file) => sum + fs.statSync(path.join(OUT, file)).size, 0);
     process.stdout.write(`${JSON.stringify({ ok: true, output: '_site', fileCount: EXPECTED_FILES.length, bytes: totalBytes, ...build })}\n`);
@@ -670,7 +875,12 @@ async function main() {
   }
 }
 
-module.exports = { STATIC_CSP_DIRECTIVES, SNAPSHOT_STALE_AFTER_HOURS, checkInlineScript, inlineScript, mergeSnapshots, staticCsp, staticPageHtml, usableSnapshots, verifyStaticPage };
+module.exports = {
+  DIGESTED_FILES, ENDPOINTS, HOLDINGS_FILE_EXPECTED_BY_UTC, PUBLISHED_HOLDINGS_URL, SCHEDULE_NOTE, SCHEDULE_WINDOW_UTC,
+  SNAPSHOT_STALE_AFTER_HOURS, SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE, STATIC_CSP_DIRECTIVES,
+  artifactDigests, assertPublishedHoldingsUrl, checkInlineScript, describeCron, inlineScript, mergeSnapshots,
+  refreshTriggerSentence, staticCsp, staticPageHtml, testedScheduleSlot, usableSnapshots, verifyStaticPage, workflowSchedules,
+};
 
 if (require.main === module) main().catch(error => {
   process.stderr.write(`Pages build failed: ${error.stack || error.message || error}\n`);
