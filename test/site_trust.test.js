@@ -411,14 +411,14 @@ test('the page shows its provenance and reads the build history from GitHub only
   assert.match(html, /<a href="\$\{esc\(B\.testsVerifiedBy\)\}" target="_blank" rel="noopener">/);
   assert.match(html, /String\(B\.reason\)\.slice\(0,80\)/);
   // the contact disclosure names every connect-src host of the CSP and says when each is contacted
-  const disclosure = /<p><b>Not investment advice\.<\/b>([\s\S]*?)<\/p>/.exec(html)[1];
+  const disclosure = /<p id="contacts"><b>Not investment advice\.<\/b>([\s\S]*?)<\/p>/.exec(html)[1];
   const connect = build.STATIC_CSP_DIRECTIVES.find(d => d.startsWith('connect-src ')).split(/\s+/).slice(1).filter(h => h !== "'self'");
   assert.deepEqual(connect, ['https://data.sec.gov', 'https://api.github.com']);
   for (const host of connect) assert.ok(disclosure.includes(host.replace('https://', '')), `${host} must be named in the disclosure`);
   assert.match(disclosure, /this site’s own JSON files/);
   assert.match(disclosure, /Google Fonts/);
   // the SEC check runs on every load while the fallback is published, whichever tab is open
-  assert.match(disclosure, /data\.sec\.gov \(SEC’s EDGAR submissions index\), on each page load and re-check while the published snapshot carries the manually verified 13F fallback — whichever tab you have open/);
+  assert.match(disclosure, /data\.sec\.gov \(SEC’s EDGAR submissions index\), on a page load and, at most once an hour, on a re-check that loads a newer snapshot, while the published snapshot carries the manually verified 13F fallback — whichever tab you have open/);
   // the owner's token and interval are the exception to "nothing you type is sent"
   assert.match(disclosure, /Nothing you type on this page is sent anywhere, except the owner’s token and rebuild interval, which the live update sends to api\.github\.com/);
   assert.match(disclosure, /automatic rebuilds, by itself on load and on the 10-minute re-check/);
@@ -485,7 +485,7 @@ const fgMarket = key => ({
     credit: fgComponent('credit', 'Credit appetite', ['IHYG.L', 'IEAC.L'], { asOf: '2026-08-28', lag: true, lagDetail: 'IHYG.L: no 2026-08-31 bar on any of the 4 London-listed series (exchange holiday or feed gap; the model cannot tell which)' }),
     breadth: fgComponent('breadth', 'Breadth', ['EXSE.DE', 'EXSA.DE']),
   },
-  asOfMeaning: 'last completed benchmark bar; carried components are older',
+  asOfMeaning: 'last benchmark bar dated before the retrieval date at the exchange (a same-day close is excluded until the next day); carried components are older',
   carriedComponents: [
     { component: 'safeHaven', symbol: 'SXRQ.DE', asOf: '2026-09-02', benchmarkDate: '2026-09-03', detail: 'SXRQ.DE: Yahoo listed 2026-09-03 with no close (feed gap)' },
     { component: 'credit', symbol: 'IHYG.L', asOf: '2026-08-28', benchmarkDate: '2026-09-03', detail: 'IHYG.L: no 2026-08-31 bar on any of the 4 London-listed series (exchange holiday or feed gap; the model cannot tell which)' },
@@ -500,7 +500,7 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   const N = ctx.normMarket(fgMarket('europe'), fgModel(), '2026-09-04T09:31:19Z');
   // as-of stamps name the benchmark bar and the carried indicators, with the oldest component date
   // two carried components with different dates are listed with both dates, not dated to the older one
-  const stamp = 'as of 2026-09-03 — composite of the last completed benchmark bar; 2 of 6 indicators carried from 2026-08-28 / 2026-09-02';
+  const stamp = 'as of 2026-09-03 — composite of the benchmark’s last bar dated before the build day; 2 of 6 indicators carried from 2026-08-28 / 2026-09-02';
   assert.equal(N.kpiSub, 'Fear · ' + stamp);
   assert.equal(N.compnote, '6 of 6 indicators scored · ' + stamp);
   assert.ok(strip(N.note).includes(stamp));
@@ -566,7 +566,7 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   for (const c of Object.values(old.components)) delete c.seriesNames;
   const oldModel = fgModel(); delete oldModel.bands; delete oldModel.warmup;
   const L = ctx.normMarket(old, oldModel, null);
-  assert.equal(L.kpiSub, 'Fear · as of 2026-09-03 — composite of the last completed benchmark bar; 2 of 6 indicators carried from 2026-08-28 / 2026-09-02');
+  assert.equal(L.kpiSub, 'Fear · as of 2026-09-03 — composite of the benchmark’s last bar dated before the build day; 2 of 6 indicators carried from 2026-08-28 / 2026-09-02');
   assert.match(strip(L.callouts[0]), /2 of 6 indicators are carried .* IHYG\.L: no D31 bar/);
   assert.doesNotMatch(strip(L.explain), /What was checked|Benchmark:|first scored date|Warm-up:/);
   assert.equal(L.bands[1][1], 44.9, 'model.labels still supplies the bands');
@@ -584,7 +584,7 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   assert.match(html, /Fear &amp; Greed · latest close/);
   assert.doesNotMatch(html, /Fear &amp; Greed now/);
   assert.doesNotMatch(html, /one shared six-component repository model/);
-  assert.match(html, /the score is that of the last completed daily bar, not live/);
+  assert.match(html, /the score is that of the benchmark’s last daily bar dated before the build day at its exchange/);
   for (const stale of ['seven rule families', 'under prospective test', 'learner below', 'a later build picks the bars up', 'Yahoo has no bar', '252-observation high for strength and 126 scored', 'apart from CNN', 'about 2–4 minutes', 'about two minutes', 'found no reliable timing edge in this score']) {
     assert.ok(!html.includes(stale), `index.html still says "${stale}"`);
   }

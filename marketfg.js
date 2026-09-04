@@ -937,7 +937,7 @@ function computeMarket(key, m, S, opt) {
     // asOf above is the benchmark's last completed bar. Components whose source
     // had no bar for that date are carried from an earlier bar (lag=true); they
     // are listed here with why, and oldestComponentAsOf is the oldest of them.
-    asOfMeaning: 'last completed benchmark bar; carried components are older',
+    asOfMeaning: 'last benchmark bar dated before the retrieval date at the exchange (a same-day close is excluded until the next day); carried components are older',
     carriedComponents,
     // the distinct as-of dates of the carried components, oldest first: one
     // date means the stamp can name it, several mean the page must list them
