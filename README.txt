@@ -89,11 +89,13 @@ build; a new snapshot appears after a push, after a requested build, or when Git
 slots, and it skips most of them" and, once Build history has been read, how many runs GitHub started in the
 last 24 hours ("at least N" when every listed run falls inside them, since only 20 are read). Holdings file: build.json publishes holdingsFileExpectedByUtc = 00:30
 (the fund's file for a weekday was live at about 00:02 UTC on 1–4 Sep 2026); when the snapshot's file is
-older than the newest weekday file that should exist (Friday's on a weekend; US market holidays are not
-modelled) the status line says "the fund's file dated <D> is normally published by 00:30 UTC; this snapshot
-was built before it and shows the <F> file", or, for a build made after that time, "… still shows the <F>
-file: the fund had not published a newer one when the build fetched (a US market holiday would explain that
-and is not modelled here) or the fetch failed". The About line states the rule with the published numbers.
+older than the newest weekday file that should exist (Friday's on a weekend) the status line says "the fund's
+file dated <D> is normally published by 00:30 UTC; this snapshot was built before it and shows the <F> file",
+or, for a build made after that time, "… still shows the <F> file: the fund had not published a newer one when
+the build fetched, or the fetch failed". US market holidays come from a fixed NYSE list for 2026–2027 in
+index.html (US_MARKET_HOLIDAYS): on a holiday, and on the day after it (whose file would carry the holiday's
+close), the line instead says which holiday it is and that how FilePoint dates its file around one has not
+been observed, so no file is expected with confidence. The About line states the rule with the published numbers.
 Mixed set: when a JSON file's bytes do not match the digest build.json publishes for it (normally the CDN still
 serving an earlier build's file) the status line says so on every tab. Build stamp: the build writes its commit
 into index.html as a meta tag; when that differs from build.json's commit, the CDN paired one build's page with
@@ -624,7 +626,8 @@ IF SOMETHING GOES WRONG
   started; nothing on the page can trigger a build except the owner's live update.
 - "the fund's file dated <D> is normally published by 00:30 UTC; this snapshot …" (public site, every tab) = the
   newest weekday file is not in the snapshot: either the build predates the file, or the fund had not published
-  it when the build fetched (a US market holiday is not modelled), or the fetch failed. Not an error in itself.
+  it when the build fetched, or the fetch failed. Not an error in itself. On a US market holiday and the day
+  after it the line says so instead (see GITHUB PAGES).
 - "a file's bytes do not match the SHA-256 that build.json publishes for it …; figures may not match" = the first
   load got a mixed set even
   after one retry; Reload snapshot a few minutes later.
