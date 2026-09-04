@@ -12,12 +12,14 @@ Public site: https://netic123.github.io/investments/
 Every push to main — including a merged pull request, but not commits marked [skip ci] such as the lockbox
 records and the holdings-history commits described below — plus a manual dispatch and the schedules run
 .github/workflows/pages.yml. The schedules ask GitHub for a build at 09:20 UTC every day (the tested slot: it
-always runs the test suite) and every 30 minutes, at :20 and :50, from 05:20 to 22:50 UTC Monday–Friday. A
-slot is an opportunity, not a promise: GitHub starts scheduled runs late and skips most of them. Observed:
+always runs the test suite) and every 15 minutes, at :05, :20, :35 and :50, from 05:05 to 22:50 UTC Monday–Friday
+(half-hourly until 4 Sep 2026; doubled because GitHub started about one slot in six, and a slot that runs costs about
+a minute of free runner time and one round of upstream fetches). A slot is an opportunity, not a promise: GitHub starts scheduled runs late and skips most of them. Observed:
 between 28 Aug and 1 Sep 2026 the then single daily run started 4.9 to 11.6 hours after its cron time; on
-Thu 3 Sep 2026 GitHub started 7 of the 36 weekday slots (at 09:51, 13:36, 13:54, 14:35, 18:05, 21:02 and
+Thu 3 Sep 2026 GitHub started 7 of the 36 half-hourly slots then configured (at 09:51, 13:36, 13:54, 14:35, 18:05, 21:02 and
 23:17 UTC); on Fri 4 Sep 2026 none of the first 8 slots (05:20 to 08:50 UTC) had started by 08:57 UTC, so the
-site still showed the 3 Sep holdings file although the fund had published the 4 Sep file at about 00:02 UTC.
+site still showed the 3 Sep holdings file although the fund had published the 4 Sep file at about 00:02 UTC; by
+21:30 UTC that day 6 of the first 34 slots had run.
 The build reads the cron lines from pages.yml at build time and publishes them in api/build.json (schedules,
 testedSchedule, refreshTrigger, and which slot fired in `schedule`) together with that dated observation
 (scheduleNote, a constant in scripts/build-pages.js — update it when a newer one is measured); the page's About
@@ -27,7 +29,7 @@ build after that exchange's local midnight, because only completed source-local 
 
 The test suite (about four minutes; three research suites that are pinned to the freeze machine are excluded)
 runs on every push, on the 09:20 slot and on a dispatch that did not ask to skip it. Every other trigger — the
-half-hourly slots, the page's live update, an external dispatch with skip_tests=true — may skip it only when
+quarter-hourly slots, the page's live update, an external dispatch with skip_tests=true — may skip it only when
 scripts/tests-gate.js finds, through GitHub's API (the build job has actions: read), a completed successful
 run of pages.yml for the same commit whose test step ran and passed; when there is none, or the API cannot be
 read, the suite runs. api/build.json records testsSkipped from what the test step actually did (never from the
@@ -80,7 +82,7 @@ Every public figure is as of the build time in the status line — "snapshot bui
 N s old · page loaded <time>[ · checked <time>]", in the visitor's local time with the zone abbreviation that
 applied at each instant — and changes only on the next successful deployment. Three warnings come from the
 snapshot alone and show on every tab, and a fourth from the page's own build stamp. Age: api/build.json publishes snapshotStaleAfterHours = 3, applied while
-the weekday schedule is active (scheduleWindowUtc: Mon–Fri 05:20–23:20 UTC), and
+the weekday schedule is active (scheduleWindowUtc: Mon–Fri 05:05–23:20 UTC), and
 snapshotStaleAfterHoursOffSchedule = 30 for weekends and nights; past the applicable threshold the status line
 says "this snapshot is N h old, older than the T h expected [while the weekday schedule is active | outside the
 weekday schedule]: no newer build has been served to this page since <time> (the CDN can keep the previous
@@ -622,7 +624,7 @@ IF SOMETHING GOES WRONG
   shown when the CDN served a mixed set; the mixed-build warning covers that case.)
 - "this snapshot is N h old, older than the T h expected … no newer build has been served to this page since
   <time>" (public site,
-  every tab) = the published snapshot is older than the applicable threshold (3 h Mon–Fri 05:20–23:20 UTC, 30 h
+  every tab) = the published snapshot is older than the applicable threshold (3 h Mon–Fri 05:05–23:20 UTC, 30 h
   otherwise); every figure on the page is as of that build. Press "Show build history" to see what GitHub
   started; nothing on the page can trigger a build except the owner's live update.
 - "the fund's file dated <D> is normally published by 00:30 UTC; this snapshot …" (public site, every tab) = the
@@ -663,7 +665,8 @@ IF SOMETHING GOES WRONG
 DATED OBSERVATIONS THAT WILL AGE
 Nothing below is derived from a live source; each is true as of the date it carries and must be re-measured by
 hand. Where to change it when it is:
-- GitHub's schedule reliability (7 of 36 slots on 3 Sep 2026; none of the first 8 on 4 Sep): SCHEDULE_NOTE in
+- GitHub's schedule reliability (7 of 36 half-hourly slots on 3 Sep 2026; 6 of the first 34 by 21:30 UTC on 4 Sep,
+  when the schedule was doubled to 72 weekday slots): SCHEDULE_NOTE in
   scripts/build-pages.js (the About line prints it), the GITHUB PAGES section above, and the comment block over
   the cron lines in .github/workflows/pages.yml.
 - Runner times (build 31–61 s / 224–317 s, deploy 8–63 s, test step 183–261 s over 2–4 Sep 2026): GITHUB PAGES

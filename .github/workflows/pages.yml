@@ -24,10 +24,14 @@ name: Deploy GitHub Pages
     # WAGN's holdings file is normally published just after 00:00 UTC (dated
     # the next weekday; observed at about 00:02 UTC on 1-4 Sep 2026) and the
     # matching NAV file around 08:40 UTC. The slots below ask GitHub for a build
-    # every 30 minutes on weekdays (05:20 to 22:50 UTC) and once a day at 09:20
-    # UTC (Crypto trades on weekends). GitHub does not honour them reliably: it
+    # every 15 minutes on weekdays (:05, :20, :35 and :50 past each hour from
+    # 05:05 to 22:50 UTC) and once a day at 09:20 UTC (Crypto trades on
+    # weekends). The weekday series was half-hourly until 4 Sep 2026 and was
+    # doubled because GitHub started about one slot in six; each slot that does
+    # run costs about a minute of free runner time and one round of upstream
+    # fetches. GitHub does not honour them reliably: it
     # starts scheduled runs late and skips most slots (on Thu 3 Sep 2026 it
-    # started 7 of the 36 weekday slots, at 09:51, 13:36, 13:54, 14:35, 18:05,
+    # started 7 of the 36 half-hourly slots then configured, at 09:51, 13:36, 13:54, 14:35, 18:05,
     # 21:02 and 23:17 UTC; on Fri 4 Sep 2026 none of the first 8 slots had
     # started by 08:57 UTC, so the site still showed the previous day's file
     # although the fund had published the new one at 00:02 UTC). So a slot is
@@ -42,6 +46,7 @@ name: Deploy GitHub Pages
     - cron: '20 9 * * *'
     - cron: '20,50 5-8,10-22 * * 1-5'
     - cron: '50 9 * * 1-5'
+    - cron: '5,35 5-22 * * 1-5'
 
 permissions: {}
 
