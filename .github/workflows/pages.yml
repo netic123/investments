@@ -7,8 +7,9 @@ name: Deploy GitHub Pages
   workflow_dispatch:
     inputs:
       skip_tests:
-        # The page's owner-only "Update (rebuild)" button and the external
-        # cron dispatch this workflow with skip_tests=true. The request is
+        # The page's owner-only "Update (rebuild)" button dispatches this
+        # workflow with skip_tests=true (scripts/dispatch-build.js can send the
+        # same request from an external cron; none is in use). The request is
         # honoured only when a completed, successful run of this workflow for
         # the same commit already ran the test step (the gate step checks
         # GitHub's API); otherwise the suite runs anyway, about four minutes.
@@ -52,8 +53,9 @@ jobs:
   build:
     name: Build public snapshot
     runs-on: ubuntu-latest
-    # Observed: the test step takes 4 to 5 minutes and a build without it about
-    # one minute. The snapshot step's retry budget (scripts/build-pages.js
+    # Observed over the 27 runs of 2-4 Sep 2026: the test step takes 3 to 4.5
+    # minutes (183-261 s); the build job takes 31-61 s without the suite and
+    # 224-317 s with it. The snapshot step's retry budget (scripts/build-pages.js
     # captureSnapshot) is up to 3 attempts with a 120 s timeout per endpoint
     # fetch plus waits of 20 s and 40 s, so a tested build on a slow upstream
     # day needs about 12 minutes to reach the labelled-fallback path.
@@ -144,8 +146,9 @@ jobs:
           # rejects. It is not set for this repository: every build since
           # 2 Sep 2026 fetched and verified the 13F and the N-PORT with the
           # built-in default (data.sec.gov accepts a declared User-Agent without
-          # an e-mail address; www.sec.gov has answered 403 to the default from
-          # other networks). api/build.json records which contact was used
+          # an e-mail address; www.sec.gov has answered 403 to a bare curl with
+          # the default from the owner's connection, while this application's
+          # own client received 200 there with it). api/build.json records which contact was used
           # (secContact) and how each SEC request ended (dalalVerification,
           # nportCheck), never the value.
           SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
@@ -190,7 +193,8 @@ jobs:
     # provenance-bearing receipts of the build just published into
     # data/snapshots.json and commits them with [skip ci], so the repository
     # holds a durable copy that the next build reads as a seed. This is the
-    # only job that may write to the repository.
+    # only job in this workflow that may write to the repository (the lockbox
+    # workflow has its own writer).
     name: Record WAGN holdings history
     needs: deploy
     if: github.event_name == 'push' || github.event.schedule == '20 9 * * *'

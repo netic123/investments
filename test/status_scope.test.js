@@ -60,7 +60,7 @@ test('dashboard has one research-labelled expanding binary signal and no conflic
 test('the Fear & Greed header and notes describe the last completed bar, one decimal, and the studied score versions', () => {
   assert.match(html, /Fear &amp; Greed · latest close/);
   assert.doesNotMatch(html, /Fear &amp; Greed now/);
-  assert.match(html, /composite of the last completed benchmark bar; \$\{carried\.length\} of \$\{total\} indicators carried from \$\{fmtDate\(oldest\)\}/);
+  assert.match(html, /composite of the last completed benchmark bar; \$\{carried\.length\} of \$\{total\} indicators carried from \$\{carriedDates\.length>1\?carriedDates\.map\(fmtDate\)\.join\(" \/ "\):fmtDate\(oldest\)\}/);
   assert.match(html, /all \$\{total\} indicators as of that date/);
   assert.match(html, /0–100, one decimal/);
   assert.match(html, /has had no rule search and no prospective test, so no buy\/sell signal is shown here/);
