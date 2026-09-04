@@ -41,7 +41,7 @@ const PUBLIC_EXPANDING_SIGNAL_KEYS = [
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 // Snapshot staleness, as published in api/build.json and applied by index.html.
-// The workflow schedules a build every 30 minutes on weekdays (05:20-22:50 UTC,
+// The workflow schedules a build every 15 minutes on weekdays (05:05-22:50 UTC,
 // see .github/workflows/pages.yml) and once a day at 09:20 UTC, but GitHub
 // starts scheduled runs late and skips most slots, so the snapshot's age is
 // the only honest freshness statement. While the weekday schedule is active
@@ -51,13 +51,13 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 // so a warning there means the daily build has also been missed.
 const SNAPSHOT_STALE_AFTER_HOURS = 3;
 const SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE = 30;
-const SCHEDULE_WINDOW_UTC = Object.freeze({ days: 'Mon-Fri', from: '05:20', to: '23:20' });
+const SCHEDULE_WINDOW_UTC = Object.freeze({ days: 'Mon-Fri', from: '05:05', to: '23:20' });
 // The fund's FilePoint holdings file for a weekday is normally live by this
 // UTC time (observed at about 00:02 UTC on 1-4 Sep 2026); index.html can say
 // that the day's file has not been captured when the snapshot is older.
 const HOLDINGS_FILE_EXPECTED_BY_UTC = '00:30';
 // A dated observation of how GitHub honours the schedules; keep it literal.
-const SCHEDULE_NOTE = 'GitHub starts scheduled runs late and skips most slots: on Thu 3 Sep 2026 it started 7 of the 36 weekday slots, and on Fri 4 Sep 2026 none of the first 8 slots had started by 08:57 UTC';
+const SCHEDULE_NOTE = 'GitHub starts scheduled runs late and skips most slots: on Thu 3 Sep 2026 it started 7 of the 36 half-hourly weekday slots then configured, and on Fri 4 Sep 2026 6 of the first 34 by 21:30 UTC; the weekday schedule was doubled to 72 slots on 4 Sep 2026 to raise the number of attempts';
 const WORKFLOW_PATH = path.join(ROOT, '.github', 'workflows', 'pages.yml');
 const LOCAL_MODE_MARKER = '<meta name="investments-mode" content="local">';
 const STATIC_MODE_MARKER = '<meta name="investments-mode" content="static">';
