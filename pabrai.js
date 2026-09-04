@@ -974,7 +974,7 @@ async function fetchDalalStreet13f(config = {}, options = {}) {
     nextFilingWindow: `by ${formatDayMonthYear(deadline.nextFilingDeadline)}`,
     nextFilingSource: 'computed',
     nextFilingNote: deadline.note,
-    nextFilingHolidaysModelled: false,
+    nextFilingHolidaysModelled: deadline.holidaysModelled,
     deMinimisRule: { ...THIRTEEN_F_DE_MINIMIS, text: 'a 13F may omit any holding under 10,000 shares and under $200,000, so a row appearing or vanishing between quarters is not proof of a trade' },
     source: `SEC EDGAR ${current.filing.form}, accession ${current.filing.accession} (${current.primary.managerName}, CIK ${cik}); previous quarter ${previous.filing.accession}`,
     sourceUrl: current.sourceUrl,
@@ -1442,7 +1442,8 @@ function summarizeNportCheck(result) {
 // primaryDocDescription ("PABRAI WAGONS ETF - N-CSR"). The annual report is
 // due within 70 days after the fiscal year end (30 June), the semi-annual
 // within 70 days after the half-year end (31 December); a due date on a
-// weekend rolls to Monday, federal holidays are not modelled. Nothing here is
+// weekend or federal holiday rolls to the next business day (the eleven federal
+// holidays are modelled, with their observed days). Nothing here is
 // about when the fund's own website published the report.
 function selectShareholderReports(submissions, options = {}) {
   const descriptionMatch = options.descriptionMatch instanceof RegExp ? options.descriptionMatch : new RegExp(String(options.descriptionMatch || 'PABRAI'), 'i');
@@ -1520,7 +1521,7 @@ function selectShareholderReports(submissions, options = {}) {
     nextSemiAnnualDue: nextSemiAnnual.due,
     nextSemiAnnualDueOnOrBefore: nextSemiAnnual.dueOnOrBefore,
     holidaysModelled: true,
-    note: `Form N-CSR (annual, fiscal year end ${fiscalYearEnd}) and N-CSRS (semi-annual) are due on EDGAR within ${dueWithinDays} days after the period end; a due date on a weekend rolls to Monday, federal holidays are not modelled; the fund's own website may publish the report before the EDGAR filing`,
+    note: `Form N-CSR (annual, fiscal year end ${fiscalYearEnd}) and N-CSRS (semi-annual) are due on EDGAR within ${dueWithinDays} days after the period end; a due date on a weekend or federal holiday rolls to the next business day; the fund's own website may publish the report before the EDGAR filing`,
   };
 }
 
