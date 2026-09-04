@@ -506,6 +506,7 @@ async function captureSnapshot(base, publicPositions) {
   // only the last attempt's; these totals keep the discarded ones visible.
   let discardedYahooRequests = 0;
   let attemptsMade = 0;
+  const retryReasons = [];
   for (let attempt = 1; attempt <= 3; attempt++) {
     attemptsMade = attempt;
     try {
@@ -514,7 +515,9 @@ async function captureSnapshot(base, publicPositions) {
       // Prefer a live official holdings file: retry a failed fetch before
       // settling for the labelled last accepted receipt on the final attempt.
       if (attempt < 3 && !(data.holdings && data.holdings.ok === true)) {
-        throw new Error(`official holdings source was not accepted: ${data.holdings && data.holdings.fetchError || 'unknown source failure'}`);
+        const retry = new Error(`official holdings source was not accepted: ${data.holdings && data.holdings.fetchError || 'unknown source failure'}`);
+        retry.fetchStats = data.marketfg && data.marketfg.fetchStats;
+        throw retry;
       }
       // Yahoo's full-history responses sometimes lag a source's newest completed
       // bars by a day or two, in which case the model carries the affected
@@ -538,10 +541,12 @@ async function captureSnapshot(base, publicPositions) {
       data.carriedForwardComponents = carried;
       data.snapshotAttempts = attemptsMade;
       data.discardedYahooRequests = discardedYahooRequests;
+      data.snapshotRetryReasons = retryReasons;
       data.recentBarTopUps = recentBarTopUps(data.marketfg);
       if (data.recentBarTopUps.length) process.stderr.write(`NOTE: recent bars appended from short-range requests: ${data.recentBarTopUps.join(', ')}\n`);
       if (carried.length) process.stderr.write(`WARNING: publishing with carried-forward Fear & Greed components: ${carried.join(', ')}\n`);
-      validateSnapshot(data, publicPositions);
+      try { validateSnapshot(data, publicPositions); }
+      catch (error) { if (error && typeof error === 'object') error.fetchStats = data.marketfg && data.marketfg.fetchStats; throw error; }
       return data;
     } catch (error) {
       lastError = error;
@@ -549,6 +554,7 @@ async function captureSnapshot(base, publicPositions) {
       // it: keep the count so build.json can report what the build really sent.
       const attemptStats = error && error.fetchStats;
       discardedYahooRequests += Number(attemptStats && attemptStats.requests) || 0;
+      retryReasons.push(`attempt ${attempt}: ${String(error && error.message || error).slice(0, 160)}`);
       if (attempt === 3) break;
       process.stderr.write(`Snapshot attempt ${attempt} failed: ${error.message}. Retrying…\n`);
       try { await fetchJson(`${base}/api/refresh?force=1`, { method: 'POST' }); } catch {}
@@ -828,6 +834,8 @@ async function main() {
       // say what the whole build sent; the page shows both.
       yahooRequests: (data.marketfg && data.marketfg.fetchStats) ?? null,
       snapshotAttempts: data.snapshotAttempts ?? null,
+      // why each earlier attempt was discarded (its model computation, and its requests, were repeated)
+      snapshotRetryReasons: data.snapshotRetryReasons || [],
       yahooRequestsAllAttempts: data.marketfg && data.marketfg.fetchStats
         ? (Number(data.marketfg.fetchStats.requests) || 0) + (data.discardedYahooRequests || 0)
         : null,

@@ -765,7 +765,8 @@ async function renderSet(set){
   renderNport(NPORT);
   renderDates(NPORT); // the shareholder-report lines come from the same SEC index the N-PORT check reads
   if(!DALAL.ok){
-    const secCheck=await checkLatestSecAccession(DALAL);
+    // the static site has no server to ask, so the browser checks SEC itself; locally the server already did
+    const secCheck=STATIC_BUILD ? await checkLatestSecAccession(DALAL) : {checked:false};
     if(secCheck.checked&&secCheck.newer){
       $('#dalalCall').insertAdjacentHTML('afterbegin',`<b>NEW SEC FILING DETECTED:</b> ${esc(secCheck.latest.form)} ${esc(secCheck.latest.accession)}, filed ${fmtDate(secCheck.latest.filed)}. The holdings below are older and must not be treated as current.<br>`);
       pabraiErrs.push('new Dalal Street SEC filing detected — holdings import pending');
@@ -792,7 +793,7 @@ function renderAbout(set){
   if(!STATIC_BUILD){
     $('#aboutBuild').textContent='Running locally from the repository; figures are fetched live by the local server.';
     // the static paragraph describes the public site; locally the browser talks only to the local server
-    $('#contacts').innerHTML='<b>Not investment advice.</b> Locally your browser contacts only the local server at 127.0.0.1 and Google Fonts for the typefaces; the server fetches the fund’s files, Yahoo Finance and SEC EDGAR on Update and every 10 minutes. Nothing you type on this page is sent anywhere.';
+    $('#contacts').innerHTML='<b>Not investment advice.</b> Locally your browser contacts only the local server at 127.0.0.1 and Google Fonts for the typefaces; the server re-fetches the fund’s files, both SEC filings and the quotes when this page asks it to (on Update, and on its 10-minute re-check while the tab is open) and the 33 Yahoo series behind the Fear &amp; Greed tabs on Update or once their 15-minute cache has expired. Nothing you type on this page is sent anywhere.';
     $('#aboutVerify').innerHTML=''; $('#aboutFreshness').textContent='Locally every figure is as of the update time in the status line.'; return;
   }
   if(!B||!B.commit){ $('#aboutBuild').textContent='Build identity unavailable.'; $('#aboutVerify').innerHTML=''; return; }
@@ -1545,7 +1546,7 @@ function normMarket(M,model,fetchedAt){
   const attempts = typeof BUILD_META!=='undefined'&&BUILD_META&&Number(BUILD_META.snapshotAttempts)>1 ? Number(BUILD_META.snapshotAttempts) : null;
   const allAttempts = typeof BUILD_META!=='undefined'&&BUILD_META&&Number.isFinite(Number(BUILD_META.yahooRequestsAllAttempts)) ? Number(BUILD_META.yahooRequestsAllAttempts) : null;
   // marketfg.js counts per model computation; a build that discarded an attempt sent that many again, so say both
-  const requests = Y&&Number.isFinite(Y.requests) ? ` The model computation behind this snapshot sent ${fmt(Y.requests)} Yahoo chart requests for ${Number.isFinite(Y.symbols)?fmt(Y.symbols)+' ':''}series${Number.isFinite(Y.fullHistoryRequests)&&Number.isFinite(Y.topUpRequests)?` (${fmt(Y.fullHistoryRequests)} full-history, ${fmt(Y.topUpRequests)} top-up${Number.isFinite(Y.retries)?', '+fmt(Y.retries)+' retries':''})`:''}${attempts&&allAttempts?`; the build itself made ${fmt(attempts)} attempts and sent ${fmt(allAttempts)} requests in all, because an attempt whose components were carried forward is discarded and repeated`:''}.` : '';
+  const requests = Y&&Number.isFinite(Y.requests) ? ` The model computation behind this snapshot sent ${fmt(Y.requests)} Yahoo chart requests for ${Number.isFinite(Y.symbols)?fmt(Y.symbols)+' ':''}series${Number.isFinite(Y.fullHistoryRequests)&&Number.isFinite(Y.topUpRequests)?` (${fmt(Y.fullHistoryRequests)} full-history, ${fmt(Y.topUpRequests)} top-up${Number.isFinite(Y.retries)?', '+fmt(Y.retries)+' retries':''})`:''}${attempts&&allAttempts?`; the build itself made ${fmt(attempts)} attempts and sent ${fmt(allAttempts)} requests in all, because an earlier attempt was discarded and repeated (build.json lists why)`:''}.` : '';
   const footer=`<p><b>Who calculates this:</b> the repository’s own code (<span class="mono">marketfg.js</span>) from daily Yahoo Finance price histories; Yahoo supplies prices, not a score, and no third-party Fear &amp; Greed score (CoinMarketCap, Alternative.me, CNN) enters the calculation. Yahoo’s chart feed has no public API guarantee.${requests}</p><p><b>Descriptive indicator only.</b> ${SHOW_RESEARCH_SIGNAL?'The BUY/SELL research card above is an unvalidated research model shown in the local app and to the owner only.':studied+'This v3 score (expanding percentiles) has had no rule search and no prospective test, so no buy/sell signal is shown here; a separate research learner’s output is published in api/marketfg.json for auditing only.'}</p>`;
   return { bands, value:v, label:M.label, title:`Fear & Greed — ${M.name} (own model)`, note:`${esc(M.indexName)} · ${esc(asOfText)} · ${fetchedStr(fetchedAt)}`,
     sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous observation · `:'')+'last bar before the build day, as of '+when,

@@ -400,9 +400,10 @@ HOW IT WORKS
   top-up (recentBarTopUps). That top-up is made by every getMarketFearGreed caller — the local server's
   /api/marketfg and the public build alike — so the public model computation sends two chart requests per
   symbol, 66 in all (api/marketfg.json fetchStats, copied to build.json yahooRequests) — and that count is per
-  model computation: a build whose first attempt carried a component forward discards it and computes again, so
-  build.json also publishes snapshotAttempts and yahooRequestsAllAttempts (132 requests over two attempts on
-  4 Sep 2026). The research replays in research/ call getMarketFearGreed too and therefore also top up; only the
+  model computation: a build that discards an attempt (a carried-forward component on the first try, a holdings
+  file that was not accepted, or a snapshot that failed validation) computes the model again, so build.json also
+  publishes snapshotAttempts, yahooRequestsAllAttempts and snapshotRetryReasons (132 requests over two attempts
+  on 4 Sep 2026, the first discarded for carried-forward components). The research replays in research/ call getMarketFearGreed too and therefore also top up; only the
   lockbox collectors, which call getMarketFearGreedResearchHistory, send the 33 full-history requests alone and
   never top up, keeping the exact single request their frozen capture contracts expect. A request that fails is
   retried once on Yahoo's other chart host (query2, or query1); an HTTP 429 or 5xx answer first waits
@@ -673,8 +674,8 @@ hand. Where to change it when it is:
 - The N-PORT quarter dates (next report 30 Sep 2026, due 30 Nov 2026) and candidateCount 228: SOURCES above;
   the page computes both from SEC's index at each build.
 - The Yahoo gap observations of 2 and 4 Sep 2026: HOW IT WORKS above.
-- The 24 Aug 2026 series check (20 of 23 closes) and the 23 Aug 2026 CNN comparison: SOURCES above and
-  MARKET_DISCLOSURES in marketfg.js.
+- The 24 Aug 2026 series check (20 of 23 closes): SOURCES above and CHECK_23 / MARKET_DISCLOSURES in marketfg.js.
+- The 23 Aug 2026 CNN comparison (0.88 correlation, 8.9-point mean gap): SOURCES above only.
 - The Avanza column, the flags and the sec13f notes in data/config.json: hand notes; the flags follow the fund's
   30 Jun 2026 N-PORT and should be re-read against each new one.
 
