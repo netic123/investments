@@ -59,8 +59,9 @@ fonts.gstatic.com; connect-src the site itself, https://data.sec.gov and https:/
 site and data: URIs; base-uri, form-action and object-src 'none'. What a visitor's browser actually contacts
 (the page footer says the same, and test/site_trust.test.js checks that every connect-src host is named
 there): the site's own JSON files on every page load, on Reload snapshot and on the 10-minute re-check;
-Google Fonts for the typefaces; data.sec.gov (SEC's EDGAR submissions index) on every page load and 10-minute
-re-check while the published snapshot carries the manually verified 13F fallback — whichever tab the visitor
+Google Fonts for the typefaces; data.sec.gov (SEC's EDGAR submissions index) on a page load and, at most once an
+hour, on a 10-minute re-check that loads a newer snapshot, while the published snapshot carries the manually
+verified 13F fallback — whichever tab the visitor
 opened, because the Pabrai section is rendered either way — to check whether a newer filing exists; and
 api.github.com only when the visitor presses "Show build history" (an unauthenticated read of the last 20 runs)
 or when the owner's live update runs with a stored token, which happens on the Update button and, with
@@ -81,10 +82,12 @@ applied at each instant — and changes only on the next successful deployment. 
 snapshot alone and show on every tab, and a fourth from the page's own build stamp. Age: api/build.json publishes snapshotStaleAfterHours = 3, applied while
 the weekday schedule is active (scheduleWindowUtc: Mon–Fri 05:20–23:20 UTC), and
 snapshotStaleAfterHoursOffSchedule = 30 for weekends and nights; past the applicable threshold the status line
-says "this snapshot is N h old, older than the T h expected while the weekday schedule is active | outside
-the weekday schedule: no build has published since <time>, so every figure on this page is as of that build;
-builds happen only when GitHub starts a scheduled run" and, once Build history has been read, how many runs
-GitHub started in the last 24 hours. Holdings file: build.json publishes holdingsFileExpectedByUtc = 00:30
+says "this snapshot is N h old, older than the T h expected [while the weekday schedule is active | outside the
+weekday schedule]: no newer build has been served to this page since <time> (the CDN can keep the previous
+build.json for up to 10 min), so every figure on this page is as of that build. Nothing on this page can start a
+build; a new snapshot appears after a push, after a requested build, or when GitHub starts one of the scheduled
+slots, and it skips most of them" and, once Build history has been read, how many runs GitHub started in the
+last 24 hours ("at least N" when every listed run falls inside them, since only 20 are read). Holdings file: build.json publishes holdingsFileExpectedByUtc = 00:30
 (the fund's file for a weekday was live at about 00:02 UTC on 1–4 Sep 2026); when the snapshot's file is
 older than the newest weekday file that should exist (Friday's on a weekend; US market holidays are not
 modelled) the status line says "the fund's file dated <D> is normally published by 00:30 UTC; this snapshot
@@ -105,8 +108,9 @@ an older snapshot (built …) than the one already loaded; kept the loaded one" 
 two different builds; kept the consistent set already loaded". Consistency is checked, not assumed: the page
 hashes every api/*.json it loads (SHA-256 of the bytes) against build.json's files map, re-fetches build.json
 and the disagreeing files once, keeps a previously loaded consistent set over a mixed one, never replaces the
-loaded set with an older build.json, and on a first load that is still mixed warns "the CDN served files from
-two different builds; figures may not match". index.html cannot check its own hash from inside the page. The
+loaded set with an older build.json, and on a first load that is still mixed warns "a file's bytes do not match the
+SHA-256 that build.json publishes for it, normally the CDN still serving a file from an earlier build; figures may
+not match". index.html cannot check its own hash from inside the page. The
 automatic 10-minute re-check reads the JSON files the same way, never index.html, and does not run while the
 owner's live update is running.
 
@@ -148,10 +152,10 @@ About line links the run, the tested run when the suite was skipped, and explain
 section sits below the tabs, so every tab shows it. It loads only when the visitor presses "Show build history
 — contacts api.github.com": one unauthenticated request for the last 20 runs of pages.yml (GitHub allows 60
 such requests per hour per address; a 403 or 429 is reported as that), re-read at most every 5 minutes. The
-table shows Queued (when GitHub created the run), Trigger, Result and Duration. GitHub reports run_started_at
-equal to created_at for every run in this list, so there is no execution start to show: the duration is
-measured from the queue time to the run's last update and includes any wait behind a running deploy, because
-the workflow's concurrency group serialises deployments (job-level times are not fetched) and a link to each log, including runs that
+table shows Queued (when GitHub created the run), Trigger, Result and Duration. For a first attempt GitHub's
+run_started_at equals created_at, so Duration is measured from the queue time to the run's last update (a re-run's
+row counts from its original queue time too) and includes any wait behind a running deploy, because the
+workflow's concurrency group serialises deployments (job-level times are not fetched) and a link to each log, including runs that
 failed and therefore published nothing; the note counts published, failed and started-in-the-last-24-hours
 runs, and the callout says when a newer build has finished that the CDN had not served at the page's last
 check. That is the reliability record behind the status line's age warning.
@@ -267,9 +271,11 @@ TABS (top of the page)
             government bonds over 20 common observations), credit appetite (high yield vs investment grade relative
             to SMA125), and breadth (configured non-core/smaller series vs core/larger series relative to SMA63).
             Yahoo supplies raw histories only; no third-party sentiment score or fitted weight enters the model.
-            The header KPI is "Fear & Greed · latest close": the score of the last completed daily bar, never
-            intraday, stamped "as of <date> — all 6 indicators as of that date" or "… composite of the last
-            completed benchmark bar; N of 6 indicators carried from <oldest date>" (the same stamp is in the tab's
+            The header KPI is "Fear & Greed · latest close": the score of the benchmark's last daily bar dated before
+            the build day at its exchange (a bar dated the build day is left out until the next day, even after the
+            close, because the provider may still revise it), never intraday, stamped "as of <date> — all 6 indicators
+            as of that date" or "… composite of the benchmark's last bar dated before the build day; N of 6 indicators
+            carried from <the distinct dates of the carried ones>" (the same stamp is in the tab's
             section note and the Indicators note). The Series list shows curated instrument names and types from
             marketfg.js (e.g. "STOXX Europe 600 (^STOXX) — price index (dividends excluded)", "Cboe Nasdaq-100
             Volatility Index (^VXN)"), keeping Yahoo's own name ("STXE 600 I", "CBOE NASDAQ 100 Voltility") in a
@@ -284,7 +290,8 @@ TABS (top of the page)
             BUY/SELL reads as a recommendation. Each Fear & Greed tab's own footer block attributes the research honestly
             (US Tech prints its own variant, naming the one fitted study that includes it): the owner's
             back-tests of the earlier v1 and v2 scores (trailing-window percentiles) found no reliable timing rule —
-            seven kinds of rule across Crypto, Sweden, USA, Europe and Global rejected after costs; one Europe
+            seven kinds of rule on those scores, their components and benchmark prices across Crypto, Sweden, USA, Europe
+            and Global rejected after costs; one Europe
             candidate on v2 failed replication and is still tracked in real time, on v2 — and this v3 score has had
             no rule search and no prospective test.
             Open directly: /#crypto /#sweden /#usa /#ustech /#europe /#global
@@ -476,8 +483,9 @@ dates, 13F fallback and N-PORT note re-checked 4 Sep 2026)
   one), opens primary_doc.xml one document at a time about a second apart (each document retried up to three
   times, 3 s apart) until one names a series containing "Pabrai Wagons", and records the SHA-256 of both
   responses, every accession it opened, the request count and how many quarter-end filings the index lists
-  (candidateCount, 228 on 4 Sep 2026, within the 1002 newest filings that submissions index page carries —
-  candidateScope says so; SEC paginates the older ones, which this walk does not read) against the walk limit
+  (candidateCount, 228 on 4 Sep 2026, within the roughly one thousand newest filings that submissions index page
+  carries — candidateScope publishes the exact count at build time; SEC paginates the older ones, which this walk
+  does not read) against the walk limit
   of 30 documents. Verified 2 Sep and 4 Sep 2026:
   accession 0001193125-26-360389, filed 21 Aug 2026, series S000098509 "Pabrai Wagons ETF" (a new series ID;
   the mutual fund it replaced in February 2026 was S000081831), report period 30 Jun 2026, 19 positions
@@ -609,14 +617,16 @@ IF SOMETHING GOES WRONG
   is one of: the newest NAV date is not within the four days before the file date, NetAssets ÷ units is not
   that NAV (both values are printed), or the required fields are missing. The file itself is still shown. (Not
   shown when the CDN served a mixed set; the mixed-build warning covers that case.)
-- "this snapshot is N h old, older than the T h expected … no build has published since <time>" (public site,
+- "this snapshot is N h old, older than the T h expected … no newer build has been served to this page since
+  <time>" (public site,
   every tab) = the published snapshot is older than the applicable threshold (3 h Mon–Fri 05:20–23:20 UTC, 30 h
   otherwise); every figure on the page is as of that build. Press "Show build history" to see what GitHub
   started; nothing on the page can trigger a build except the owner's live update.
 - "the fund's file dated <D> is normally published by 00:30 UTC; this snapshot …" (public site, every tab) = the
   newest weekday file is not in the snapshot: either the build predates the file, or the fund had not published
   it when the build fetched (a US market holiday is not modelled), or the fetch failed. Not an error in itself.
-- "the CDN served files from two different builds; figures may not match" = the first load got a mixed set even
+- "a file's bytes do not match the SHA-256 that build.json publishes for it …; figures may not match" = the first
+  load got a mixed set even
   after one retry; Reload snapshot a few minutes later.
 - "SEC automatic refresh unavailable at build/update time (<reason>) — official filing manually verified <date>"
   = the SEC request or XML validation failed; the reason names the failed request, and api/build.json
@@ -645,6 +655,25 @@ IF SOMETHING GOES WRONG
 - "live update: …" messages belong to the owner's live update; they end with the page reloading or with the
   GitHub answer explained (see LIVE UPDATE).
 - If snapshots.json breaks, a copy is saved (snapshots.json.broken-<time>) and the history starts over.
+
+DATED OBSERVATIONS THAT WILL AGE
+Nothing below is derived from a live source; each is true as of the date it carries and must be re-measured by
+hand. Where to change it when it is:
+- GitHub's schedule reliability (7 of 36 slots on 3 Sep 2026; none of the first 8 on 4 Sep): SCHEDULE_NOTE in
+  scripts/build-pages.js (the About line prints it), the GITHUB PAGES section above, and the comment block over
+  the cron lines in .github/workflows/pages.yml.
+- Runner times (build 31–61 s / 224–317 s, deploy 8–63 s, test step 183–261 s over 2–4 Sep 2026): GITHUB PAGES
+  above and the timeout comment on the build job in pages.yml.
+- "Every GitHub build since 2 Sep 2026 verified the SEC filings with the built-in default User-Agent": GITHUB
+  PAGES and SOURCES above, the header comment of pabrai.js, the SEC_USER_AGENT comment in pages.yml and in
+  scripts/build-pages.js. api/build.json dalalVerification, nportCheck and secContact are the live record.
+- The N-PORT quarter dates (next report 30 Sep 2026, due 30 Nov 2026) and candidateCount 228: SOURCES above;
+  the page computes both from SEC's index at each build.
+- The Yahoo gap observations of 2 and 4 Sep 2026: HOW IT WORKS above.
+- The 24 Aug 2026 series check (20 of 23 closes) and the 23 Aug 2026 CNN comparison: SOURCES above and
+  MARKET_DISCLOSURES in marketfg.js.
+- The Avanza column, the flags and the sec13f notes in data/config.json: hand notes; the flags follow the fund's
+  30 Jun 2026 N-PORT and should be re-read against each new one.
 
 Not investment advice.
 

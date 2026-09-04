@@ -517,7 +517,7 @@ test('automatic SEC ingestion selects the latest two quarters and validates tota
   assert.equal(result.nextFilingDeadline, '2026-11-16');
   assert.equal(result.nextFilingWindow, 'by 16 Nov 2026');
   assert.equal(result.nextFilingSource, 'computed');
-  assert.equal(result.nextFilingHolidaysModelled, false);
+  assert.equal(result.nextFilingHolidaysModelled, true, 'the computed deadline rolls past weekends and federal holidays');
   assert.equal(result.provenance.requests, 5, 'submissions index plus primary document and information table of two filings');
   assert.match(result.provenance.previousInformationTable.sha256, /^[0-9a-f]{64}$/);
   assert.equal(result.deMinimisRule.shares, 10000);
