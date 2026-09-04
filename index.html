@@ -46,6 +46,7 @@ button:disabled{opacity:.5;cursor:wait}
 button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 #status{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right}
 #status.err{color:var(--neg)}
+#status.warn{color:var(--warn)}
 
 section{padding-top:38px}
 .sec-head{border-top:1px solid var(--rule-strong);padding-top:14px;margin-bottom:15px;display:flex;align-items:center;column-gap:14px;row-gap:9px;flex-wrap:wrap}
@@ -76,6 +77,7 @@ tr.mine td{background:var(--accent-soft)}
 tr.chg-buy td:first-child{box-shadow:inset 3px 0 0 var(--pos)}
 tr.chg-sell td:first-child{box-shadow:inset 3px 0 0 var(--neg)}
 tr.cashrow td{color:var(--muted);font-style:italic}
+td .s{font-size:.74rem;color:var(--muted);font-family:var(--f-body);font-style:normal;white-space:normal;line-height:1.3}
 .tick{font-family:var(--f-mono);font-weight:600;font-size:.82rem}
 .pill{display:inline-block;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;border:1px solid var(--rule-strong);color:var(--muted)}
 .pill.ok{color:var(--pos);border-color:var(--pos)} .pill.tel{color:var(--warn);border-color:var(--warn)} .pill.no{color:var(--neg);border-color:var(--neg)}
@@ -228,13 +230,13 @@ footer p{margin:0 0 .5em}
     <div class="kpi"><div class="l">WAGN market price</div><div class="v mono" id="kPx">—</div><div class="s" id="kPxSub">&nbsp;</div></div>
   </div>
   <div class="kpis fg-only" data-header-tabs="crypto sweden usa ustech europe global" hidden>
-    <div class="kpi"><div class="l">Fear &amp; Greed now</div><div class="v mono" id="kFg">—</div><div class="s" id="kFgSub">&nbsp;</div></div>
+    <div class="kpi"><div class="l" title="The score of the last completed daily bar of the benchmark; the model never moves intraday">Fear &amp; Greed · latest close</div><div class="v mono" id="kFg">—</div><div class="s" id="kFgSub">&nbsp;</div></div>
     <div class="kpi"><div class="l" id="kFgPrevL">Previous observation</div><div class="v mono" id="kFgPrev">—</div><div class="s" id="kFgPrevSub">&nbsp;</div></div>
   </div>
   <div class="actions">
     <span id="status">loading…</span>
     <button id="btnRefresh">Update</button>
-    <button id="btnLive" hidden title="Owner: start a fresh build on GitHub and reload this page when it is deployed">Live update…</button>
+    <button id="btnLive" hidden title="Owner: start a fresh build on GitHub, wait until its snapshot is served, then reload this page">Live update…</button>
     <button id="btnLiveSettings" hidden title="Manage the stored live-update token" aria-label="Manage the stored live-update token">⚙</button>
   </div>
 </header>
@@ -259,7 +261,7 @@ footer p{margin:0 0 .5em}
 </section>
 
 <section>
-  <div class="sec-head"><h2>Changes between the two latest files</h2><span class="note" id="chgNote">—</span></div>
+  <div class="sec-head"><h2>Changes between the two latest saved files</h2><span class="note" id="chgNote">—</span></div>
   <div id="changes"></div>
   <details><summary>Full change log</summary><div id="log"></div></details>
 </section>
@@ -267,7 +269,7 @@ footer p{margin:0 0 .5em}
 <section>
   <div class="sec-head"><h2>Full ETF portfolio</h2><span class="note" id="allNote">—</span></div>
   <div class="tablewrap"><table id="tblAll"><thead><tr>
-    <th>#</th><th title="Flag = the company’s home market, not necessarily the listing">Holding</th><th class="num">Weight</th><th class="num">Shares</th><th class="num">Δ shares vs previous file</th><th class="num" id="thFirst">Δ shares since first file</th><th class="num">Price (local)</th><th class="num">Value USD</th><th>Avanza</th>
+    <th>#</th><th title="Flag = the investment country the fund’s own Form N-PORT assigns to the holding, kept in the configuration; for the two lines that filing does not cover it is the country of the listing.">Holding</th><th class="num">Weight</th><th class="num">Shares</th><th class="num" id="thPrev">Δ shares vs previous saved file</th><th class="num" id="thFirst">Δ shares since first saved file</th><th class="num" title="The price in the currency of the listing named by the file’s ticker suffix (TI Borsa Istanbul TRY, IN India INR, CN Canada CAD, PW Warsaw PLN, NO Oslo NOK; no suffix = a US listing in USD). Value USD is the file’s own USD conversion.">Price (listing currency)</th><th class="num">Value USD</th><th title="Whether the line can be bought through the Swedish retail broker Avanza: online, by phone, or not available. A note checked by hand in the configuration, not fetched live.">Avanza (SE broker)</th>
   </tr></thead><tbody></tbody></table></div>
 </section>
 
@@ -276,7 +278,7 @@ footer p{margin:0 0 .5em}
   <div class="cards perf-grid">
     <div class="card">
       <div class="tablewrap" style="border:none"><table id="tblPerf"><thead><tr>
-        <th></th><th class="num">1 mo</th><th class="num">3 mo</th><th class="num">6 mo</th><th class="num">YTD</th><th class="num">1 yr</th><th class="num">Since inception (ann.)</th><th class="num">Since inception (cum.)</th>
+        <th></th><th class="num">1 mo</th><th class="num">3 mo</th><th class="num">6 mo</th><th class="num">YTD</th><th class="num">1 yr</th><th class="num" title="The file’s “Since Inception Annualized” column; the inception date is stated in the section note">Since inception (ann.)</th><th class="num" title="The file’s “Since Inception Cumulative” column; the inception date is stated in the section note">Since inception (cum.)</th>
       </tr></thead><tbody></tbody></table></div>
     </div>
     <div class="card">
@@ -294,7 +296,7 @@ footer p{margin:0 0 .5em}
 <section>
   <div class="sec-head"><h2>Dalal Street — reported 13F holdings</h2><span class="note" id="dalalNote">—</span></div>
   <div class="callout" id="dalalCall"></div>
-  <div class="tablewrap"><table id="tblDalal"><thead><tr><th>Holding</th><th class="num">Weight</th><th class="num">Shares</th><th>Change in quarter</th></tr></thead><tbody></tbody></table></div>
+  <div class="tablewrap"><table id="tblDalal"><thead><tr><th>Holding</th><th class="num">Weight</th><th class="num">Shares</th><th id="thDalalChange">Change in quarter</th></tr></thead><tbody></tbody></table></div>
 </section>
 
 <section>
@@ -304,27 +306,31 @@ footer p{margin:0 0 .5em}
 </section>
 
 <section>
-  <div class="sec-head"><h2>Dates</h2><span class="note">Upcoming</span></div>
+  <div class="sec-head"><h2>Dates</h2><span class="note">upcoming · a configured entry stays listed until three days after its date; a filed shareholder report stays for 45 days after its filing date, and a due date appears up to 120 days ahead · the fund’s shareholder reports as SEC’s index lists them</span></div>
   <ul class="dates" id="dates"></ul>
 </section>
 
-<section id="buildsSection" hidden>
-  <div class="sec-head"><h2>Build history</h2><span class="note" id="buildsNote">—</span></div>
-  <div class="callout" id="buildsCall"></div>
-  <div class="tablewrap"><table id="tblBuilds"><thead><tr><th>Started</th><th>Trigger</th><th>Result</th><th class="num">Duration</th><th>Run</th></tr></thead><tbody></tbody></table></div>
-</section>
-
 <footer>
-  <p>Primary sources: <a href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">WAGN’s official fund page and daily FilePoint files</a> · Yahoo Finance for quotes · SEC EDGAR for Dalal Street LLC’s manager-aggregated 13F and for WAGN’s own quarterly Form N-PORT, which is used only as a lagged cross-check of the daily file (its section says what was compared, as of when, and what could not be). Source status is shown in the page; a 13F is delayed and incomplete, and an N-PORT becomes public about 60 days after its quarter end. Times are shown in your local time zone (the zone is printed); on the public site every figure is as of the snapshot build time in the status line, and the page warns when that snapshot is more than 30 hours old.</p>
-  <p><b>Changes</b> are differences in the number of shares held between two official files. A holding whose share count did not change is not listed, even when a cash creation diluted its share per WAGN unit; a change that is merely proportional to a change in units outstanding (an in-kind basket) is not listed either. Where units changed, “vs pro-rata” restates the trade relative to deploying the flow in proportion to the previous portfolio. Neither number is proof of Pabrai’s exact trade time, execution price or motive.</p>
-  <p>The holdings file is dated the next weekday and priced at the previous NAV date. Its pricing date is asserted only when NetAssets divided by the file’s own unit count equals the official NAV (within half a cent per unit); if units were created or redeemed after the NAV file, the page says so. Snapshots are saved whenever a new official file day is detected; if a file day is missed, only the net change over the displayed interval is knowable.</p>
-  <p id="about"><b>About this page.</b> An independent, unofficial dashboard published by the repository owner; it is not affiliated with Pabrai Wagons ETF, Dalal Street LLC, Yahoo or the SEC. Source code and every build: <a href="https://github.com/netic123/investments" target="_blank" rel="noopener">github.com/netic123/investments</a>. <span id="aboutBuild">—</span> <span id="aboutVerify"></span> Raw inputs: <a id="srcHoldings" href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">fund holdings CSV</a> · <a id="srcNav" href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">daily NAV CSV</a> · <a id="srcJson" href="./api/holdings.json" target="_blank" rel="noopener">this page’s holdings JSON</a>.</p>
-  <p><b>Not investment advice.</b> What your browser contacts: this site’s own JSON files, Google Fonts for the typefaces and — only when the build could not verify the 13F itself — SEC’s EDGAR submissions index, to check whether a newer filing exists; and, only if you have stored a GitHub token for the owner’s live update, api.github.com. Nothing else you do on this page is sent anywhere.</p>
+  <p>Primary sources: <a href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">WAGN’s official fund page and daily FilePoint files</a> · Yahoo Finance for quotes · SEC EDGAR for Dalal Street LLC’s manager-aggregated 13F and for WAGN’s own quarterly Form N-PORT, which is used only as a lagged cross-check of the daily file (its section says what was compared, as of when, and what could not be). Source status is shown in the page; a 13F is delayed and incomplete, and only the N-PORT for the last month of each fiscal quarter is public — it appears on EDGAR when the trust files it, which must be within 60 days of that quarter end.</p>
+  <p><b>Changes</b> are differences in the number of shares held between two official files. A holding whose share count did not change is not listed, even when a cash creation diluted its share per WAGN unit; a change that is merely proportional to a change in units outstanding (an in-kind basket) is not listed either. Cash-like rows (the money-market fund FXFXX, per the configuration) appear in the full table but are not listed as trades; a line under the table states their change. Where units changed, “vs pro-rata” restates the trade relative to deploying the flow in proportion to the previous portfolio. Neither number is proof of Pabrai’s exact trade time, execution price or motive.</p>
+  <p>The holdings file is dated the next weekday and priced at the previous NAV date. Its pricing date is asserted only when NetAssets divided by the file’s own unit count equals the official NAV (within half a cent per unit); if units were created or redeemed after the NAV file, the page says so. The file’s NetAssets is that rounded NAV × its unit count — a pricing-date proof, not an independent asset total; the fund’s NAV file carries its own net assets figure, shown next to it. Files saved before 25 Aug 2026 report no unit count; a count shown for them is implied from NetAssets ÷ NAV and labelled so. Snapshots are saved whenever a new official file day is detected; if a file day is missed, only the net change over the displayed interval is knowable.</p>
 </footer>
 
 </div><!-- /panel-pabrai -->
 
 <div id="fgPanels"></div><!-- the Fear & Greed tabs (crypto + markets) are built by JS, see fgPanelHtml() -->
+
+<!-- Site-level disclosures sit outside the tab panels so every tab, also one opened by a direct link, carries them. -->
+<section id="buildsSection">
+  <div class="sec-head"><h2>Build history</h2><span class="note" id="buildsNote">not loaded</span></div>
+  <div class="callout" id="buildsCall">The builds of this page as GitHub Actions records them, including the ones that failed and therefore published nothing. They are read from GitHub only when you ask: your browser then contacts api.github.com once for the last 20 runs of the build workflow, without any credential (no credential and nothing you have done on this page are sent; GitHub sees the request as any web server does — your IP address, your browser’s user agent, and that it came from this site). <button type="button" id="btnBuilds">Show build history — contacts api.github.com</button></div>
+  <div class="tablewrap" id="buildsWrap" hidden><table id="tblBuilds"><thead><tr><th>Queued</th><th>Trigger</th><th>Result</th><th class="num">Duration</th><th>Run</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<footer id="siteFooter">
+  <p id="about"><b>About this page.</b> An independent, unofficial dashboard published by the repository owner; it is not affiliated with Pabrai Wagons ETF, Dalal Street LLC, Yahoo or the SEC. Source code and every build: <a href="https://github.com/netic123/investments" target="_blank" rel="noopener">github.com/netic123/investments</a>. <span id="aboutBuild">—</span> <span id="aboutVerify"></span> Raw inputs: <a id="srcHoldings" href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">fund holdings CSV</a> · <a id="srcNav" href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">daily NAV CSV</a> · <a id="srcJson" href="./api/holdings.json" target="_blank" rel="noopener">this page’s holdings JSON</a>. Times are shown in your local time zone, each with the zone abbreviation that applied at that instant. <span id="aboutFreshness">On the public site every figure is as of the snapshot build time in the status line, which also shows the snapshot’s age.</span></p>
+  <p><b>Not investment advice.</b> What your browser contacts: this site’s own JSON files (on every page load, on Reload snapshot and on the 10-minute re-check); Google Fonts for the typefaces; data.sec.gov (SEC’s EDGAR submissions index), on each page load and re-check while the published snapshot carries the manually verified 13F fallback — whichever tab you have open — to check whether a newer filing exists; api.github.com, only when you open Build history (an unauthenticated read of the last 20 runs) or when the owner’s live update runs with a stored token, which it does on the Update button and, if the owner switched on automatic rebuilds, by itself on load and on the 10-minute re-check. Nothing you type on this page is sent anywhere, except the owner’s token and rebuild interval, which the live update sends to api.github.com — the interval is also published in the build’s reason.</p>
+</footer>
 </div>
 
 <script>
@@ -335,41 +341,125 @@ const pct = (n,d=1,sign=true)=> n==null||!isFinite(n) ? '—' : (sign&&n>0?'+':'
 const cls = n => n==null||!isFinite(n)||Math.abs(n)<1e-9 ? 'flat' : n>0 ? 'up' : 'down';
 const ratio = (a,b)=> a==null||b==null||!b ? null : (a/b-1)*100;   // null in → null out, never -100 %
 const div = (a,k)=> a==null ? null : a/k;
-const money = (n,cur='USD')=> n==null ? '—' : (cur==='USD'?'$':cur==='CAD'?'C$':'')+fmt(n,2)+(cur!=='USD'&&cur!=='CAD'?' '+cur:'');
+const money = (n,cur='USD')=> n==null ? '—' : fmt(n,2)+' '+cur; // always with the ISO currency code: "3,041.38 CAD"
 const fmtDate = iso => iso ? new Date(iso+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
-// Every timestamp is the visitor's local time; the zone is printed so a snapshot built hours ago cannot read as "now".
-const TZ_SHORT=(()=>{ try{ return (new Intl.DateTimeFormat('en-GB',{timeZoneName:'short'}).formatToParts(new Date()).find(p=>p.type==='timeZoneName')||{}).value||''; }catch{ return ''; } })();
-const zone = ()=> TZ_SHORT?' '+TZ_SHORT:'';
-const timeStr = ()=> new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+zone();
-const whenFull = iso=>{ const d=iso?new Date(iso):null; return d&&!isNaN(d) ? d.toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+zone() : '—'; };
-const ageStr = iso=>{ const d=iso?new Date(iso):null; if(!d||isNaN(d)) return ''; const m=Math.round((Date.now()-d.getTime())/60000); if(m<0) return ''; if(m<60) return m+' min ago'; const h=m/60; if(h<48) return (h<10?h.toFixed(1).replace(/\.0$/,''):String(Math.round(h)))+' h ago'; return Math.round(h/24)+' days ago'; };
-const SNAPSHOT_STALE_AFTER_HOURS=30; // older than this means a daily build was missed
+// Every timestamp is the visitor's local time. The zone abbreviation is formatted per instant (not copied from "now"),
+// so a snapshot built before a clock change keeps its own zone, and a snapshot built hours ago cannot read as "now".
+const fmtInstant=(d,opts)=>{ try{ return new Intl.DateTimeFormat('en-GB',{...opts,timeZoneName:'short'}).format(d); }catch{ return d.toLocaleString('en-GB',opts); } };
+const timeStr = ()=> fmtInstant(new Date(),{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const whenFull = iso=>{ const d=iso?new Date(iso):null; return d&&!isNaN(d) ? fmtInstant(d,{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'; };
+const ageStr = iso=>{ const d=iso?new Date(iso):null; if(!d||isNaN(d)) return ''; const m=Math.round((Date.now()-d.getTime())/60000); if(m<0) return 'later than your clock’s current time'; if(m<60) return m+' min ago'; const h=m/60; if(h<48) return (h<10?h.toFixed(1).replace(/\.0$/,''):String(Math.round(h)))+' h ago'; return Math.floor(h/24)+' days ago'; };
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const today0 = ()=>{ const t=new Date(); t.setHours(0,0,0,0); return t; };
+const hhmmUtc=d=>String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');
+
+// ---- pure helpers (extracted and run by test/site_trust.test.js; keep them free of DOM and globals)
+// Which snapshot-age threshold applies at `now`: build.json publishes one for the weekday schedule window (UTC) and one for
+// weekends and nights, when only the daily slot exists. A build.json without the second threshold or window gets its single one.
+function staleThreshold(build,now){
+  const on=Number(build&&build.snapshotStaleAfterHours), off=Number(build&&build.snapshotStaleAfterHoursOffSchedule), w=build&&build.scheduleWindowUtc;
+  if(!(on>0)) return {hours:off>0?off:null,inWindow:false,window:null};
+  // no second threshold or no window published: the one threshold applies at every hour, and nothing is claimed about a schedule
+  if(!(off>0)||!w||w.days!=='Mon-Fri'||!/^\d\d:\d\d$/.test(String(w.from||''))||!/^\d\d:\d\d$/.test(String(w.to||''))) return {hours:on,inWindow:null,window:null};
+  const d=new Date(now), hm=hhmmUtc(d), weekday=d.getUTCDay()>=1&&d.getUTCDay()<=5, inWindow=weekday&&hm>=w.from&&hm<w.to;
+  return {hours:inWindow?on:off,inWindow,window:w};
+}
+// The newest weekday holdings file that should exist at `now`: the fund publishes the file dated a weekday by
+// holdingsFileExpectedByUtc on that day; before that time the previous weekday's file is the newest, and on a weekend the
+// Friday file is (FilePoint sometimes publishes Monday's file on Saturday, which only makes a saved file newer, never older).
+// US market holidays are not modelled: on a holiday the expected file may legitimately not exist.
+function expectedHoldingsFileDate(build,now){
+  const by=build&&build.holdingsFileExpectedByUtc; if(!/^\d\d:\d\d$/.test(String(by||''))) return null;
+  const d=new Date(now);
+  if(d.getUTCDay()>=1&&d.getUTCDay()<=5&&hhmmUtc(d)<by) d.setUTCDate(d.getUTCDate()-1);
+  while(d.getUTCDay()===0||d.getUTCDay()===6) d.setUTCDate(d.getUTCDate()-1);
+  return d.toISOString().slice(0,10);
+}
+// build.json.files maps 'api/<name>.json' to the SHA-256 of the bytes the build wrote. 'unknown' when there is no map, no
+// entry for the file, or no digest could be computed (crypto.subtle needs a secure context; a plain-http local open has none).
+function filesMatch(files,relative,hex){
+  if(!files||typeof files!=='object'||typeof hex!=='string'||!/^[0-9a-f]{64}$/.test(hex)) return 'unknown';
+  const want=files[relative]; if(typeof want!=='string'||!/^[0-9a-f]{64}$/.test(want)) return 'unknown';
+  return want===hex?'match':'mismatch';
+}
+// Readable text for build.json.schedules (the cron lines of pages.yml, verbatim). Only the shapes the workflow uses are
+// described; anything else is printed as the cron expression so the sentence never claims a time the cron does not.
+const CRON_LABELS={'20 9 * * *':'09:20 UTC daily, with the test suite','20,50 5-8,10-22 * * 1-5':':20 and :50 past 05–08 and 10–22 UTC Mon–Fri','50 9 * * 1-5':'09:50 UTC Mon–Fri'};
+function describeSchedules(list){
+  const rest=(Array.isArray(list)?list:[]).filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim());
+  if(!rest.length) return '';
+  const parts=[], take=c=>{ const i=rest.indexOf(c); if(i>=0) rest.splice(i,1); return i>=0; };
+  // together the three crons are one half-hourly weekday series (:20/:50 past every hour 05-22, the 09:20 slot being the daily one)
+  if(rest.includes('20,50 5-8,10-22 * * 1-5')&&rest.includes('50 9 * * 1-5')&&rest.includes('20 9 * * *')){ take('20,50 5-8,10-22 * * 1-5'); take('50 9 * * 1-5'); take('20 9 * * *'); parts.push('every 30 min 05:20–22:50 UTC Mon–Fri','09:20 UTC daily, with the test suite'); }
+  for(const c of rest) parts.push(CRON_LABELS[c]||"cron '"+c+"' (UTC)");
+  return parts.join('; ');
+}
+// ---- end pure helpers
 
 const APP_MODE=document.querySelector('meta[name="investments-mode"]')?.content||'local';
 const STATIC_BUILD=APP_MODE==='static';
 let CFG=null, TR_WEIGHT=null, BUILD_META=null, DALAL=null, NPORT=null;
 let STATUS_RENDER=()=>{};
-let STATIC_BUST=''; // set for a manual reload: a query string bypasses the Pages CDN cache (max-age 600) so the newest deployment is really seen
 const apiUrl=u=>{
   if(!STATIC_BUILD||!u.startsWith('/api/')) return u;
   const name=u.slice('/api/'.length).split('?')[0];
   if(!/^[a-z0-9_-]+$/.test(name)) throw new Error('invalid static API path');
-  return './api/'+name+'.json'+STATIC_BUST;
+  return './api/'+name+'.json';
 };
-async function getJson(u,opt={}){
+async function sha256Hex(buf){
+  try{ if(!(crypto&&crypto.subtle)) return null; const h=await crypto.subtle.digest('SHA-256',buf); return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join(''); }catch{ return null; }
+}
+// GitHub Pages' CDN keeps each file for up to 10 minutes (Cache-Control max-age=600) and ignores query strings, so no fetch from
+// here can force a fresh copy; cache:'no-store' only skips the browser cache. The same-origin Age header says how old the served
+// copy is; null when it is absent. The Date header is not a fallback: this CDN rewrites it to the time of the request, so it
+// would measure the round trip and always report a fresh copy.
+function cdnAgeSeconds(r){
+  try{
+    const age=r.headers.get('age'); if(age!==null&&age!==''&&Number.isFinite(Number(age))) return Math.max(0,Math.round(Number(age)));
+  }catch{}
+  return null;
+}
+// One request → {json, digest, cdnAge}. On the static site the response bytes are read once, hashed (so they can be compared
+// with build.json.files) and parsed from the same buffer.
+async function fetchApi(u,opt={}){
   const timeout=u.startsWith('/api/marketfg')?35000:45000;
   try{
     const signal=opt.signal||AbortSignal.timeout(timeout);
     const r=await fetch(apiUrl(u),{cache:'no-store',...opt,signal});
-    const j=await r.json().catch(()=>({error:'invalid response'}));
-    if(!r.ok) throw new Error(j.error||r.statusText);
-    return j;
+    let json, digest=null;
+    let parsed=true;
+    if(STATIC_BUILD){ const buf=await r.arrayBuffer(); try{ json=JSON.parse(new TextDecoder().decode(buf)); }catch{ parsed=false; json={error:'invalid response'}; } digest=r.ok?await sha256Hex(buf):null; }
+    else json=await r.json().catch(()=>{ parsed=false; return {error:'invalid response'}; });
+    if(!r.ok) throw new Error(json.error||r.statusText);
+    // a 200 whose body is not JSON must fail here; otherwise {error:…} travels on as data
+    if(!parsed) throw new Error('the response was not valid JSON');
+    return {json,digest,cdnAge:STATIC_BUILD?cdnAgeSeconds(r):null};
   }catch(error){
     if(error&&(['AbortError','TimeoutError'].includes(error.name))) throw new Error(u.startsWith('/api/marketfg')?'Fear & Greed request timed out':'request timed out');
     throw error;
   }
+}
+const getJson=async(u,opt)=>(await fetchApi(u,opt)).json;
+const SNAPSHOT_FILES=['config','holdings','nav','perf','quotes','dalal','nport','marketfg'];
+// Fetch build.json and the eight data files and check that they come from one build: each file is a separate CDN object with its
+// own expiry, so right after a deployment the CDN can serve a mixed set. On a mismatch build.json is fetched again (it may be the
+// stale one) and then whatever still disagrees, once; a set that is still mixed is returned flagged, never silently.
+// index.html itself cannot check its own hash from inside the page (build.json.files carries it for external readers).
+async function fetchSnapshotSet(){
+  const got={};
+  const fetchAll=async names=>{ const rs=await Promise.allSettled(names.map(n=>fetchApi('/api/'+n))); names.forEach((n,i)=>{ got[n]=rs[i].status==='fulfilled'?rs[i].value:{error:rs[i].reason}; }); };
+  let build=null, cdnAge=null;
+  if(STATIC_BUILD){ const b=await fetchApi('/api/build'); build=b.json; cdnAge=b.cdnAge; }
+  await fetchAll(SNAPSHOT_FILES);
+  const mismatched=()=>STATIC_BUILD?SNAPSHOT_FILES.filter(n=>!got[n].error&&filesMatch(build&&build.files,'api/'+n+'.json',got[n].digest)==='mismatch'):[];
+  let bad=mismatched(), retried=false;
+  if(bad.length){ retried=true; const b=await fetchApi('/api/build'); build=b.json; cdnAge=b.cdnAge; bad=mismatched(); if(bad.length) await fetchAll(bad); bad=mismatched(); }
+  const data={}, digests={}, errors={};
+  for(const n of SNAPSHOT_FILES){ if(got[n].error) errors[n]=got[n].error; else { data[n]=got[n].json; digests[n]=got[n].digest; } }
+  // Which build produced the page code now running: the build injects this meta into the published index.html, and the CDN
+  // can serve the page and the JSON from different builds. A page cannot hash itself, so this stamp is the only way to tell.
+  const codeBuild=(document.querySelector('meta[name="investments-build-commit"]')||{}).content||null;
+  return {build,codeBuild,cdnAge,cdnAgeAt:Date.now(),data,digests,errors,mismatched:bad,mixed:bad.length>0,retried,pabraiErrs:[],marketErrs:[]};
 }
 let SEC_BROWSER_CHECK=null;
 async function checkLatestSecAccession(D){
@@ -393,13 +483,15 @@ async function checkLatestSecAccession(D){
 
 if(STATIC_BUILD){
   $('#btnRefresh').textContent='Reload snapshot';
-  $('#btnRefresh').title='Re-downloads the published snapshot, bypassing caches, and reports whether a newer build was found';
+  $('#btnRefresh').title='Re-downloads the published JSON files, skipping the browser cache. The Pages CDN may still serve a copy up to 10 minutes old (the status line shows the copy’s age) and the page reports whether a newer build was served.';
 }
 
 // ---- owner live update (public site only). GitHub Pages has no server and the fund's files and Yahoo refuse
-// browser requests, so "live" means: ask GitHub Actions for a fresh build (tests skipped, they ran on push) and
-// reload when it is deployed. A fine-grained token with Actions read/write on the repository is stored only in
-// this browser's local storage and is sent only to api.github.com.
+// browser requests, so "live" means: ask GitHub Actions for a fresh build (the suite is skipped only when a tested run
+// of the same commit exists), wait until build.json served by the CDN comes from that run, then reload this page.
+// A fine-grained token with Actions read/write on the repository is kept in localStorage, which is shared by every page
+// served from https://netic123.github.io (all of this account's Pages sites) and readable by browser extensions; this
+// page sends it only to api.github.com.
 const LIVE_REPO='netic123/investments', LIVE_WORKFLOW='pages.yml', LIVE_TOKEN_KEY='investments.liveUpdateToken';
 const liveToken=()=>{ try{ return localStorage.getItem(LIVE_TOKEN_KEY)||''; }catch{ return ''; } };
 const setLiveToken=v=>{ try{ if(v) localStorage.setItem(LIVE_TOKEN_KEY,v); else localStorage.removeItem(LIVE_TOKEN_KEY); return true; }catch{ return false; } };
@@ -407,7 +499,7 @@ const setLiveToken=v=>{ try{ if(v) localStorage.setItem(LIVE_TOKEN_KEY,v); else 
 const LIVE_AUTO_KEY='investments.liveUpdateAutoMinutes';
 const liveAutoMinutes=()=>{ try{ const v=Number(localStorage.getItem(LIVE_AUTO_KEY)); return Number.isFinite(v)&&v>=5?Math.min(720,Math.round(v)):0; }catch{ return 0; } };
 const setLiveAutoMinutes=v=>{ try{ if(v>0) localStorage.setItem(LIVE_AUTO_KEY,String(v)); else localStorage.removeItem(LIVE_AUTO_KEY); return true; }catch{ return false; } };
-let LIVE_RUNNING=false, LIVE_LAST_AUTO=0;
+let LIVE_RUNNING=false, LIVE_LAST_AUTO=0, LIVE_AUTO_BLOCKED_BUILD=null; // after a failed automatic build, auto mode waits for a newer snapshot or a manual click
 // The button is only shown to the owner: open the page once with #owner in the address (remembered for this
 // browser session) or have a token stored. Visitors see the plain "Reload snapshot" button. The hash is read
 // here, before the tab router replaces it.
@@ -417,64 +509,105 @@ function renderLivePanel(message,isError){
   if(!STATIC_BUILD) return;
   const panel=$('#livePanel'), btn=$('#btnLive'), gear=$('#btnLiveSettings'), token=liveToken();
   btn.hidden=!(token||OWNER_MODE); btn.textContent = token ? 'Update (rebuild)' : 'Live update…';
-  btn.title = token ? 'Start a fresh build on GitHub (about 2–4 minutes) and reload this page when it is deployed' : 'Owner: set up a token to rebuild the snapshot on demand';
+  btn.title = token ? 'Start a fresh build on GitHub (about a minute of build and deploy when the test suite is skipped, four to five minutes with it, plus GitHub’s queue), wait until the CDN serves its snapshot, then reload this page' : 'Owner: set up a token to rebuild the snapshot on demand';
   gear.hidden=!token;
   if(!panel.dataset.open){ panel.hidden=true; return; }
   panel.hidden=false;
   const note=message?`<div class="${isError?'down':'muted'}" style="margin-top:8px">${esc(message)}</div>`:'';
+  const scope=`That permission also allows cancelling, re-running and approving workflow runs and deleting runs, logs, artifacts and caches of ${esc(LIVE_REPO)} — everything under Actions there, nothing outside it; the token cannot read or change code. Give it a short expiry; GitHub’s signed attestations survive a deleted run.`;
+  const storage=`The token is kept in this browser’s local storage, which every page served from https://netic123.github.io (all of this account’s Pages sites) and any browser extension with page access can read; this page sends it only to api.github.com.`;
   panel.innerHTML = token
-    ? `<b>Live update is set up in this browser.</b> A token ending in <span class="mono">…${esc(token.slice(-4))}</span> is stored only in this browser’s local storage and is sent only to api.github.com, to start a build of ${esc(LIVE_REPO)} and follow it. Anyone who can use this browser profile can start builds with it, nothing more. <div style="margin-top:8px"><label><input type="checkbox" id="liveAuto"${liveAutoMinutes()?' checked':''}> Automatically rebuild while this page is open and the snapshot is older than <input type="number" id="liveAutoMinutes" min="5" max="720" step="5" value="${liveAutoMinutes()||30}" style="font:inherit;width:6ch"> minutes</label><div class="muted" style="font-size:.82rem">Checked on load and every 10 minutes while the tab is visible; at most one build per 15 minutes; an already queued or running build is followed instead of starting another.</div></div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="liveForget">Forget token</button><button type="button" id="liveClose">Close</button></div>${note}`
-    : `<b>Live update (owner only).</b> This page is a published snapshot: the fund’s files and Yahoo do not allow a browser to fetch them directly, so a live figure needs a fresh build. A fine-grained GitHub token with <i>Actions: read and write</i> on ${esc(LIVE_REPO)} (and nothing else) lets the button start that build, about 2–4 minutes, and reload this page when it is deployed. The token is stored only in this browser and is sent only to api.github.com. <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label>Token <input type="password" id="liveTokenInput" autocomplete="off" spellcheck="false" style="font:inherit;width:min(100%,34ch)"></label><button type="button" id="liveSave">Save in this browser</button><button type="button" id="liveClose">Close</button></div>${note}`;
+    ? `<b>Live update is set up in this browser.</b> A token ending in <span class="mono">…${esc(token.slice(-4))}</span> is used to start a build of ${esc(LIVE_REPO)}, follow it and, once the CDN serves the new snapshot, reload this page. ${storage} Anyone who can use this browser profile can use it for the same. ${scope} <div style="margin-top:8px"><label><input type="checkbox" id="liveAuto"${liveAutoMinutes()?' checked':''}> Automatically rebuild while this page is open and the snapshot is older than <input type="number" id="liveAutoMinutes" min="5" max="720" step="5" value="${liveAutoMinutes()||30}" style="font:inherit;width:6ch"> minutes</label><div class="muted" style="font-size:.82rem">Checked on load and every 10 minutes while the tab is visible, judging the age from the CDN copy of build.json; at most one build per 15 minutes; an already queued, running or just-published build is followed instead of starting another; after a failed automatic build it waits for a newer snapshot or a manual Update.</div></div><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="liveForget">Forget token</button><button type="button" id="liveClose">Close</button></div>${note}`
+    : `<b>Live update (owner only).</b> This page is a published snapshot: the fund’s files and Yahoo do not allow a browser to fetch them directly, so a live figure needs a fresh build. A fine-grained GitHub token with <i>Actions: read and write</i> on ${esc(LIVE_REPO)} (and nothing else) lets the button start that build, wait until the CDN serves its snapshot, then reload this page. A build takes about a minute of build and deploy time when the test suite is skipped (it is skipped only when a run of the same commit has already passed it; otherwise four to five minutes), after whatever queue GitHub adds, and the CDN can keep the previous snapshot for up to 10 minutes more. ${scope} ${storage} <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label>Token <input type="password" id="liveTokenInput" autocomplete="off" spellcheck="false" style="font:inherit;width:min(100%,34ch)"></label><button type="button" id="liveSave">Save in this browser</button><button type="button" id="liveClose">Close</button></div>${note}`;
+}
+// What an unexpected GitHub API answer means, by status; GitHub exposes its X-RateLimit-* headers to the browser.
+function explainGithub(r){
+  const resetAt=()=>{ const s=Number(r.headers.get('x-ratelimit-reset')); return s>0 ? '; it resets at '+whenFull(new Date(s*1000).toISOString()) : ''; };
+  if(r.status===401) return 'GitHub rejected the token (HTTP 401): it is invalid, expired or revoked. Use ⚙ to forget it and store a new one';
+  if(r.status===403&&r.headers.get('x-ratelimit-remaining')==='0') return 'GitHub’s API rate limit for this token is used up (HTTP 403)'+resetAt();
+  if(r.status===403) return 'GitHub refused the request (HTTP 403): the token lacks Actions: read and write on '+LIVE_REPO+', or GitHub applied a secondary rate limit. If the permission is wrong, use ⚙ to forget the token and store a new one';
+  if(r.status===404) return 'GitHub answered HTTP 404: the workflow '+LIVE_WORKFLOW+' or the repository '+LIVE_REPO+' is not reachable with this token (a fine-grained token without access to the repository also gets 404)';
+  if(r.status===429) return 'GitHub asked to slow down (HTTP 429)'+resetAt();
+  if(r.status>=500) return 'GitHub had a problem answering (HTTP '+r.status+'); try again later';
+  return 'GitHub answered HTTP '+r.status;
 }
 async function runLiveUpdate(opts={}){
   const token=liveToken(); if(!token||LIVE_RUNNING) return;
   LIVE_RUNNING=true;
   const btn=$('#btnLive'), st=$('#status'); btn.disabled=true; $('#btnRefresh').disabled=true;
   const say=(msg,err)=>{ st.className=err?'err':''; st.textContent='live update: '+msg; STATUS_RENDER=()=>{ st.className=err?'err':''; st.textContent='live update: '+msg; }; };
-  const api=(path,init={})=>fetch('https://api.github.com/repos/'+LIVE_REPO+path,{...init,cache:'no-store',signal:AbortSignal.timeout(20000),headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',Authorization:'Bearer '+token,...(init.headers||{})}});
-  const t0=Date.now(), previousBuild=BUILD_META&&BUILD_META.generatedAt, elapsed=()=>Math.round((Date.now()-t0)/1000)+' s';
+  const api=async(path,init={})=>{
+    try{ return await fetch('https://api.github.com/repos/'+LIVE_REPO+path,{...init,cache:'no-store',signal:AbortSignal.timeout(20000),headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',Authorization:'Bearer '+token,...(init.headers||{})}}); }
+    catch(e){ throw new Error('could not reach api.github.com ('+(e&&e.name==='TimeoutError'?'timed out after 20 s':String(e&&e.message||e))+')'); }
+  };
+  const ACTIVE=['queued','in_progress','waiting','pending','requested'];
+  const t0=Date.now(), loadedBuild=BUILD_META&&BUILD_META.generatedAt, elapsed=()=>Math.round((Date.now()-t0)/1000)+' s';
+  let failed=false;
   try{
     say(opts.auto?'snapshot is older than '+liveAutoMinutes()+' min — checking GitHub for a build…':'asking GitHub to build a fresh snapshot…');
-    // A build may already be queued or running (a schedule, a push, or another tab); follow it instead of adding one.
-    const activeList=await api('/actions/workflows/'+LIVE_WORKFLOW+'/runs?per_page=5');
-    if(activeList.status===401||activeList.status===403||activeList.status===404) throw new Error('GitHub refused the request (HTTP '+activeList.status+'): the token needs Actions: read and write on '+LIVE_REPO+'. Use ⚙ to forget it and store a new one.');
-    let run=((await activeList.json()).workflow_runs||[]).find(x=>['queued','in_progress','waiting','pending','requested'].includes(x.status))||null;
-    if(run){ say('a build is already '+String(run.status).replace('_',' ')+' on GitHub — following it…'); }
+    // A build may already be queued or running (a schedule, a push, or another tab), or may have finished after the snapshot
+    // this page loaded (the CDN serves build.json for up to 10 minutes); either is followed instead of adding a build.
+    const activeList=await api('/actions/workflows/'+LIVE_WORKFLOW+'/runs?per_page=10');
+    if(!activeList.ok) throw new Error(explainGithub(activeList));
+    const runs=(await activeList.json()).workflow_runs||[];
+    let run=runs.find(x=>ACTIVE.includes(x.status))||null, sinceMs=null;
+    const published=runs.find(x=>x.status==='completed'&&x.conclusion==='success'&&loadedBuild&&Date.parse(x.updated_at)>Date.parse(loadedBuild)&&String(x.id)!==String(BUILD_META.runId))||null;
+    // The floor for "a newer snapshot" is never earlier than the one already loaded: a run created while an earlier build was
+    // still deploying has a created_at before that build's generatedAt, and would make the loaded snapshot itself look new.
+    const loadedMs=Number.isFinite(Date.parse(loadedBuild))?Date.parse(loadedBuild):0;
+    if(run){ say('a build is already '+String(run.status).replace('_',' ')+' on GitHub — following it…'); sinceMs=Math.max(Date.parse(run.created_at),loadedMs); }
+    else if(published){ run=published; sinceMs=Math.max(Date.parse(run.created_at),loadedMs); say('GitHub finished a build at '+whenFull(run.updated_at)+' that the CDN has not served yet — waiting for it instead of starting another…'); }
     else {
+      sinceMs=t0;
       const r=await api('/actions/workflows/'+LIVE_WORKFLOW+'/dispatches',{method:'POST',body:JSON.stringify({ref:'main',inputs:{skip_tests:'true',reason:opts.auto?'automatic live update from the page (snapshot older than '+liveAutoMinutes()+' min)':'live update requested from the page'}})});
-      if(r.status===401||r.status===403||r.status===404) throw new Error('GitHub refused the request (HTTP '+r.status+'): the token needs Actions: read and write on '+LIVE_REPO+'. Use ⚙ to forget it and store a new one.');
-      if(r.status!==204) throw new Error('GitHub did not accept the build request (HTTP '+r.status+')');
+      if(r.status!==204) throw new Error(r.ok ? 'GitHub did not accept the build request (HTTP '+r.status+')' : explainGithub(r));
       for(let i=0;i<40&&!run;i++){
         await sleep(3000);
-        const list=await (await api('/actions/workflows/'+LIVE_WORKFLOW+'/runs?event=workflow_dispatch&per_page=5')).json();
-        run=(list.workflow_runs||[]).find(x=>Date.parse(x.created_at)>=t0-60000)||null;
+        const lr=await api('/actions/workflows/'+LIVE_WORKFLOW+'/runs?event=workflow_dispatch&per_page=5');
+        if(lr.ok){ run=((await lr.json()).workflow_runs||[]).find(x=>Date.parse(x.created_at)>=t0-60000)||null; }
+        else if(lr.status===401||lr.status===404) throw new Error(explainGithub(lr));
         if(!run) say('waiting for GitHub to queue the build… ('+elapsed()+')');
       }
-      if(!run) throw new Error('GitHub did not start a build within two minutes; check the Actions tab of '+LIVE_REPO);
+      if(!run) throw new Error('GitHub accepted the request but no run appeared within two minutes; check the Actions tab of '+LIVE_REPO);
     }
+    // Poll the run; the last good run object is kept so id and html_url survive an error answer.
+    let pollFailures=0, lastProblem='';
     while(run.status!=='completed'){
-      if(Date.now()-t0>12*60*1000) throw new Error('the build is taking more than 12 minutes; see '+run.html_url);
+      if(Date.now()-t0>15*60*1000) throw new Error('gave up after 15 minutes: the build was still '+String(run.status||'').replace('_',' ')+' on GitHub; see '+run.html_url);
       say('build '+String(run.status||'').replace('_',' ')+' on GitHub… ('+elapsed()+')');
       await sleep(15000);
-      run=await (await api('/actions/runs/'+run.id)).json();
+      let r=null;
+      try{ r=await api('/actions/runs/'+run.id); }catch(e){ lastProblem=String(e&&e.message||e); }
+      if(r&&r.ok){ run=await r.json(); pollFailures=0; continue; }
+      if(r&&(r.status===401||r.status===404)) throw new Error(explainGithub(r));
+      if(r) lastProblem=explainGithub(r);
+      if(++pollFailures>=4) throw new Error(lastProblem+' while following '+run.html_url);
     }
-    if(run.conclusion!=='success') throw new Error('the build ended with “'+run.conclusion+'”; see '+run.html_url);
-    // the deploy job has finished; the Pages CDN can take a little longer to serve the new files
-    for(let i=0;i<8;i++){
-      say('deployed — loading the new snapshot… (attempt '+(i+1)+', '+elapsed()+')');
-      await sleep(i?8000:4000);
-      await load('manual');
-      if(BUILD_META&&BUILD_META.generatedAt!==previousBuild) return;
+    if(run.conclusion!=='success'){ failed=true; throw new Error('the build ended with “'+run.conclusion+'”; see '+run.html_url); }
+    // The deploy finished; now wait until build.json served by the CDN is the one this run produced (its runId, or a
+    // generatedAt after the floor above), then reload the page. The CDN may keep the previous copy of either file for up
+    // to 10 minutes, so the reload can still return the previous page code with the new data: the reloaded page compares
+    // its own build stamp (the investments-build-commit meta the build injects) with build.json.commit and says so.
+    const waitStart=Date.now();
+    while(Date.now()-waitStart<10*60*1000){
+      say('build finished — waiting for the CDN to serve its snapshot (it may keep the previous copy for up to 10 min)… ('+elapsed()+')');
+      const b=await fetchApi('/api/build').catch(()=>null), j=b&&b.json;
+      if(j&&(String(j.runId)===String(run.id)||(Number.isFinite(Date.parse(j.generatedAt))&&Date.parse(j.generatedAt)>sinceMs))){ say('the new snapshot is served — reloading this page…'); location.reload(); return; }
+      await sleep(20000);
     }
-    say('the build finished, but the CDN still serves the previous snapshot; press Reload snapshot again in a minute',true);
-  }catch(e){ say(String(e&&e.message||e),true); }
+    say('the build finished at '+whenFull(run.updated_at)+', but after 10 minutes the CDN still served the previous snapshot; reload the page later',true);
+  }catch(e){ if(opts.auto) LIVE_AUTO_BLOCKED_BUILD=loadedBuild||'unknown'; say(String(e&&e.message||e)+(opts.auto?' — automatic rebuilds pause until a newer snapshot appears or you press Update':''),true); }
   finally{ LIVE_RUNNING=false; btn.disabled=false; $('#btnRefresh').disabled=false; }
 }
 function maybeAutoLiveUpdate(){
   const minutes=liveAutoMinutes();
   if(!STATIC_BUILD||!minutes||!liveToken()||LIVE_RUNNING) return;
   if(document.visibilityState!=='visible') return;
-  const ageMin=BUILD_META&&BUILD_META.generatedAt ? (Date.now()-new Date(BUILD_META.generatedAt).getTime())/60000 : NaN;
+  if(LIVE_AUTO_BLOCKED_BUILD&&BUILD_META&&(BUILD_META.generatedAt||'unknown')===LIVE_AUTO_BLOCKED_BUILD) return;
+  // The age is judged as of the CDN copy of build.json (its Age header): a build published since that copy was made would not
+  // show yet, and runLiveUpdate then finds it in GitHub's run list and follows it instead of starting another.
+  const cdnMs=(SNAPSHOT&&SNAPSHOT.cdnAge||0)*1000;
+  const ageMin=BUILD_META&&BUILD_META.generatedAt ? (Date.now()-cdnMs-new Date(BUILD_META.generatedAt).getTime())/60000 : NaN;
   if(!(ageMin>minutes)) return;
   if(Date.now()-LIVE_LAST_AUTO<15*60*1000) return;
   LIVE_LAST_AUTO=Date.now();
@@ -490,7 +623,7 @@ if(STATIC_BUILD){
     if(!setLiveAutoMinutes(on?minutes:0)) return;
     if(on) maybeAutoLiveUpdate();
   });
-  $('#btnLive').addEventListener('click',()=>{ if(liveToken()) runLiveUpdate(); else { $('#livePanel').dataset.open='1'; renderLivePanel(); $('#liveTokenInput')?.focus(); } });
+  $('#btnLive').addEventListener('click',()=>{ if(liveToken()){ LIVE_AUTO_BLOCKED_BUILD=null; runLiveUpdate(); } else { $('#livePanel').dataset.open='1'; renderLivePanel(); $('#liveTokenInput')?.focus(); } });
   $('#btnLiveSettings').addEventListener('click',()=>{ $('#livePanel').dataset.open='1'; renderLivePanel(); });
   $('#livePanel').addEventListener('click',e=>{
     const b=e.target.closest('button'); if(!b) return;
@@ -506,99 +639,179 @@ if(STATIC_BUILD){
   $('#livePanel').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id==='liveTokenInput'){ e.preventDefault(); $('#liveSave')?.click(); } });
 }
 
-async function load(mode){ // mode: 'manual' = Update button (re-fetch everything), 'auto' = 10-minute timer, undefined = first load
+// ---- status line. PAGE_LOADED_AT is recorded once, when this page was loaded; it is never recomputed when the line is
+// redrawn (tab switch, Build history read, 10-minute re-check). The snapshot's age and the shared warnings are evaluated
+// at draw time because they change while the tab stays open.
+const PAGE_LOADED_AT=timeStr();
+let SNAPSHOT=null; // the set being shown: {build, cdnAge, data, digests, errors, mixed, pabraiErrs, marketErrs}
+let LAST_CHECK={at:null,mode:undefined,note:''}; // the most recent completed load(): when, which kind, and its verdict
+let LAST_UPDATED_AT=null; // the last load() that actually replaced the data; a failed re-check must not restamp it
+let BUILD_RUNS_24H=null; // from Build history once the visitor opened it: {n, atLeast} runs GitHub started in the last 24 h (null = not read; atLeast when every listed run falls inside the window, because only 20 are read)
+const errMsg=e=>String(e&&e.message||e||'unknown error');
+// Warnings that hold on every tab, from the snapshot alone.
+function sharedWarnings(){
+  const out=[]; if(!STATIC_BUILD||!SNAPSHOT||!SNAPSHOT.build) return out;
+  const B=SNAPSHOT.build, now=Date.now();
+  const ageH=B.generatedAt&&Number.isFinite(Date.parse(B.generatedAt)) ? (now-Date.parse(B.generatedAt))/36e5 : NaN;
+  const th=staleThreshold(B,now);
+  if(!Number.isFinite(ageH)) out.push({level:'err',text:'the snapshot build time is unknown'});
+  else if(th.hours&&ageH>th.hours){
+    const runs=BUILD_RUNS_24H==null?'':' — GitHub started '+(BUILD_RUNS_24H.atLeast?'at least ':'')+BUILD_RUNS_24H.n+' run'+(BUILD_RUNS_24H.n===1?'':'s')+' of the build workflow in the last 24 h';
+    const window=th.window?(th.inWindow?' while the weekday schedule is active':' outside the weekday schedule'):'';
+    out.push({level:'err',text:`this snapshot is ${Math.round(ageH)} h old, older than the ${th.hours} h expected${window}: no newer build has been served to this page since ${whenFull(B.generatedAt)} (the CDN can keep the previous build.json for up to 10 min), so every figure on this page is as of that build. Nothing on this page can start a build; a new snapshot appears after a push, after a requested build, or when GitHub starts one of the scheduled slots, and it skips most of them${runs}`});
+  }
+  const H=SNAPSHOT.data.holdings, fileDate=H&&H.latest&&H.latest.date, expected=expectedHoldingsFileDate(B,now);
+  if(fileDate&&expected&&fileDate<expected){
+    const expectedAt=Date.parse(expected+'T'+B.holdingsFileExpectedByUtc+':00Z'), builtBefore=Number.isFinite(expectedAt)&&Date.parse(B.generatedAt)<expectedAt;
+    out.push({level:'warn',text: builtBefore
+      ? `the fund’s file dated ${fmtDate(expected)} is normally published by ${B.holdingsFileExpectedByUtc} UTC; this snapshot was built before it and shows the ${fmtDate(fileDate)} file`
+      : `the fund’s file dated ${fmtDate(expected)} is normally published by ${B.holdingsFileExpectedByUtc} UTC, but this snapshot, built after that time, still shows the ${fmtDate(fileDate)} file: the fund had not published a newer one when the build fetched (a US market holiday would explain that and is not modelled here) or the fetch failed`});
+  }
+  if(SNAPSHOT.mixed) out.push({level:'err',text:'a file’s bytes do not match the SHA-256 that build.json publishes for it, normally the CDN still serving a file from an earlier build; figures may not match'});
+  if(SNAPSHOT.codeBuild&&B.commit&&SNAPSHOT.codeBuild!==B.commit) out.push({level:'warn',text:`this page’s code is from build ${SNAPSHOT.codeBuild.slice(0,7)} while its data is from build ${String(B.commit).slice(0,7)}: the CDN serves the page and the JSON files separately, and it may keep either for up to 10 min. Reload in a few minutes`});
+  return out;
+}
+function renderStatus(extra){
+  const st=$('#status'), onPabrai=document.body.dataset.tab==='pabrai';
+  const shared=sharedWarnings(), scoped=SNAPSHOT ? (onPabrai?SNAPSHOT.pabraiErrs:SNAPSHOT.marketErrs) : [];
+  const errs=[...shared.map(w=>w.text),...scoped];
+  const B=SNAPSHOT&&SNAPSHOT.build;
+  const built=B&&B.generatedAt ? whenFull(B.generatedAt)+(ageStr(B.generatedAt)?' ('+ageStr(B.generatedAt)+')':'') : 'unknown time';
+  // the copy this page holds keeps ageing after it was fetched (the CDN may or may not have refreshed since)
+  const cdn=SNAPSHOT&&SNAPSHOT.cdnAge!=null ? ' · CDN copy '+Math.round(SNAPSHOT.cdnAge+(Date.now()-(SNAPSHOT.cdnAgeAt||Date.now()))/1000)+' s old' : '';
+  const checked=LAST_CHECK.mode&&LAST_CHECK.at ? ' · checked '+LAST_CHECK.at : '';
+  st.textContent = (STATIC_BUILD ? 'snapshot built '+built+cdn+' · page loaded '+PAGE_LOADED_AT+checked+LAST_CHECK.note : 'updated '+(LAST_UPDATED_AT||PAGE_LOADED_AT)+LAST_CHECK.note)+(errs.length?' — '+errs.join(' · '):'')+(extra||'');
+  st.className = scoped.length||shared.some(w=>w.level==='err') ? 'err' : shared.length||LAST_CHECK.failed ? 'warn' : '';
+  STATUS_RENDER=()=>renderStatus(extra);
+}
+
+async function load(mode){ // mode: 'manual' = Update / Reload snapshot button, 'auto' = 10-minute timer, undefined = first load
+  if(LIVE_RUNNING) return; // the owner's live update owns the status line and the buttons until it ends
   const st=$('#status'); st.className=''; st.textContent = STATIC_BUILD ? (mode?'checking for a newer published snapshot…':'loading published snapshot…') : (mode ? 'refreshing… fund files, NAV, quotes' : 'loading…'); $('#btnRefresh').disabled=true;
-  const t0=Date.now(), pabraiErrs=[], marketErrs=[];
-  let reloadNote='';
-  const setStatus=extra=>{
-    const onPabrai=document.body.dataset.tab==='pabrai';
-    const errs=onPabrai?pabraiErrs:marketErrs;
-    const published=BUILD_META&&BUILD_META.generatedAt ? whenFull(BUILD_META.generatedAt)+(ageStr(BUILD_META.generatedAt)?' ('+ageStr(BUILD_META.generatedAt)+')':'') : 'unknown time';
-    st.textContent = (STATIC_BUILD ? 'snapshot built '+published+' · page loaded '+timeStr()+reloadNote : 'updated '+timeStr())+(errs.length?' — '+errs.join(' · '):'')+(onPabrai?'':(extra||''));
-    st.className = errs.length?'err':'';
-    STATUS_RENDER=()=>setStatus(extra);
-  };
+  const t0=Date.now();
   try{
     if(mode&&!STATIC_BUILD) await getJson('/api/refresh'+(mode==='manual'?'?force=1':''),{method:'POST'}); // POST so a cross-site <img> cannot trigger it; force=1 re-fetches the raw series behind the shared model
-    if(STATIC_BUILD){
-      const previousBuild=BUILD_META&&BUILD_META.generatedAt;
-      STATIC_BUST = mode==='manual' ? '?reload='+Date.now() : '';
-      BUILD_META=await getJson('/api/build'); CFG=await getJson('/api/config');
-      if(mode==='manual') reloadNote = previousBuild&&BUILD_META.generatedAt!==previousBuild ? ' · newer snapshot loaded' : ' · no newer snapshot has been published';
-      // A failed scheduled build leaves the previous snapshot online; say so instead of showing a fresh "page loaded" time next to day-old data.
-      const ageH=BUILD_META.generatedAt ? (Date.now()-new Date(BUILD_META.generatedAt).getTime())/36e5 : NaN;
-      const staleAfter=Number(BUILD_META.snapshotStaleAfterHours)||SNAPSHOT_STALE_AFTER_HOURS;
-      if(!(ageH<=staleAfter)){
-        const warning=isFinite(ageH) ? `this snapshot is ${Math.round(ageH)} h old — no scheduled rebuild has succeeded since ${whenFull(BUILD_META.generatedAt)}, so every figure on this page is as of that build` : 'the snapshot build time is unknown';
-        pabraiErrs.push(warning); marketErrs.push(warning);
-      }
-    }
-    else CFG = CFG || await getJson('/api/config');
-    $('#aboutBuild').textContent = STATIC_BUILD
-      ? (BUILD_META&&BUILD_META.commit ? `This snapshot was built from commit ${String(BUILD_META.commit).slice(0,7)} (${esc(BUILD_META.ref||'main')}${BUILD_META.dirty?', with uncommitted changes':''}) at ${whenFull(BUILD_META.generatedAt)}${BUILD_META.trigger==='workflow_dispatch'?', on request'+(BUILD_META.reason?' ('+esc(BUILD_META.reason)+')':'')+(BUILD_META.testsSkipped?', test suite skipped for speed':''):BUILD_META.trigger==='schedule'?', on schedule'+(BUILD_META.schedule?' ('+esc(BUILD_META.schedule)+' UTC)':'')+(BUILD_META.testsSkipped?', test suite skipped':''):BUILD_META.trigger==='push'?', after a push to main':''}.` : 'Build identity unavailable.')
-      : 'Running locally from the repository; figures are fetched live by the local server.';
-    if(CFG.sources){ if(CFG.sources.holdings) $('#srcHoldings').href=CFG.sources.holdings; if(CFG.sources.navDaily) $('#srcNav').href=CFG.sources.navDaily; }
-    $('#srcJson').href = STATIC_BUILD ? './api/holdings.json' : '/api/holdings';
-    $('#aboutVerify').innerHTML = STATIC_BUILD&&BUILD_META&&BUILD_META.runUrl
-      ? `Produced by <a href="${esc(BUILD_META.runUrl)}" target="_blank" rel="noopener">this Actions run</a> (public log); <a href="./api/build.json" target="_blank" rel="noopener">build.json</a> lists the SHA-256 of every published file, and GitHub’s signed provenance statement can be checked with <span class="mono">gh attestation verify &lt;file&gt; --owner netic123</span>.`
-      : '';
-    // All requests start at once, but the Pabrai part renders as soon as it is ready — the daily series behind the market-state models must not hold it back.
-    const fgReq=getJson('/api/marketfg');
-    const [h,n,p,q,d,np] = await Promise.allSettled([getJson('/api/holdings'),getJson('/api/nav'),getJson('/api/perf'),getJson('/api/quotes'),getJson('/api/dalal'),getJson('/api/nport')]);
-    const Q = q.status==='fulfilled' ? q.value : {};
-    DALAL = d.status==='fulfilled' ? d.value : CFG.dalalStreet;
-    // NAV carries the actual pricing date for the T+1 holdings file. Render it first so the watch cards show that date too.
-    if(n.status==='fulfilled') renderNav(n.value); else pabraiErrs.push('NAV could not be fetched');
-    if(h.status==='fulfilled'){
-      renderHoldings(h.value, Q);
-      if(h.value.fetchError){
-        const rejected=h.value.source&&h.value.source.status==='rejected';
-        pabraiErrs.push((rejected?'the official holdings file was fetched but rejected ('+h.value.fetchError+')':'the official holdings file could not be fetched ('+h.value.fetchError+')')+(h.value.latest?' — showing the last accepted file, dated '+fmtDate(h.value.latest.date):''));
-      } else {
-        const check=holdingsNavCheck(h.value,n.status==='fulfilled'?n.value:null);
-        if(!check.matched) pabraiErrs.push('pricing date of the holdings file is not asserted — '+check.reason);
-      }
-    } else pabraiErrs.push('holdings: '+h.reason.message);
-    if(p.status==='fulfilled') renderPerf(p.value); else pabraiErrs.push('performance could not be fetched');
-    if(q.status!=='fulfilled') pabraiErrs.push('quotes could not be fetched');
-    else { const bad=Object.values(Q).filter(x=>x.error).map(x=>x.symbol); if(bad.length) pabraiErrs.push('quote missing: '+bad.join(', ')); }
-    if(d.status!=='fulfilled') pabraiErrs.push(`SEC automatic refresh failed — showing the official filing manually verified${DALAL&&DALAL.manualVerifiedAt?' '+fmtDate(DALAL.manualVerifiedAt):''}`);
-    else if(!d.value.ok) pabraiErrs.push(`SEC automatic refresh unavailable at ${STATIC_BUILD?'build':'update'} time — official filing manually verified${d.value.manualVerifiedAt?' '+fmtDate(d.value.manualVerifiedAt):''}${d.value.pastFilingDeadline?' is past its next filing deadline; a newer 13F may exist':''}`);
-    renderDalal(DALAL); renderDates();
-    // The fund's own N-PORT is an independent cross-check of the daily file; SEC being unavailable is a labelled state, never a finding.
-    NPORT = np.status==='fulfilled' ? np.value : null;
-    if(np.status!=='fulfilled') pabraiErrs.push('SEC N-PORT check could not be fetched ('+np.reason.message+')');
-    else if(!np.value.ok) pabraiErrs.push(`SEC N-PORT check unavailable at ${STATIC_BUILD?'build':'update'} time — ${np.value.fetchError||'no reason given'}`);
-    renderNport(NPORT);
-    if(STATIC_BUILD) renderBuildHistory();
-    if(!DALAL.ok){
-      const secCheck=await checkLatestSecAccession(DALAL);
-      if(secCheck.checked&&secCheck.newer){
-        $('#dalalCall').insertAdjacentHTML('afterbegin',`<b>NEW SEC FILING DETECTED:</b> ${esc(secCheck.latest.form)} ${esc(secCheck.latest.accession)}, filed ${fmtDate(secCheck.latest.filed)}. The holdings below are older and must not be treated as current.<br>`);
-        pabraiErrs.push('new Dalal Street SEC filing detected — holdings import pending');
-      } else if(secCheck.checked){
-        $('#dalalCall').insertAdjacentHTML('beforeend',` <span class="muted">SEC’s submissions index was checked from your browser at ${whenFull(secCheck.checkedAt)}: ${esc(secCheck.latest.accession)} is still the latest 13F accession, so no newer filing exists. The row totals keep their separate manual-verification date.</span>`);
-      } else {
-        $('#dalalCall').insertAdjacentHTML('beforeend',` <span class="muted"><b>Filing recency unconfirmed:</b> SEC’s submissions index could not be checked from your browser${secCheck.error?' ('+esc(secCheck.error)+')':''}, so a newer 13F cannot be ruled out from this page.</span>`);
-      }
-    }
-    setStatus(' · computing one shared six-component market model from daily series…');
-    // All six Fear & Greed tabs come from one marketfg response and one model identity.
-    const [mf] = await Promise.allSettled([fgReq]);
-    for(const t of FG_TABS){
-      if(mf.status!=='fulfilled'){ setFg(t.id, {error:mf.reason.message}); continue; }
-      const M=mf.value.markets[t.market];
-      if(M) setFg(t.id, normMarket(M, mf.value.model, mf.value.fetchedAt)); else { setFg(t.id, {error:(mf.value.failed||{})[t.market]||'no data'}); marketErrs.push('Fear & Greed '+t.tab+' could not be computed'); }
-    }
-    if(mf.status!=='fulfilled') marketErrs.push('Fear & Greed for the markets could not be fetched');
-    setStatus(!STATIC_BUILD&&mode==='manual' ? ` · all sources re-fetched in ${((Date.now()-t0)/1000).toFixed(1)} s` : '');
-  }catch(e){ st.className='err'; st.textContent='error: '+e.message; }
-  $('#btnRefresh').disabled=false;
+    const set=await fetchSnapshotSet();
+    if(!set.data.config) throw new Error('config: '+errMsg(set.errors.config));
+    const prev=SNAPSHOT; let note='', keep=false;
+    if(STATIC_BUILD&&prev&&prev.build){
+      const older=Date.parse(set.build.generatedAt)<Date.parse(prev.build.generatedAt);
+      const same=set.build.generatedAt===prev.build.generatedAt&&SNAPSHOT_FILES.every(n=>set.digests[n]===prev.digests[n]&&!(n in set.errors)===!(n in prev.errors));
+      if(older){ keep=true; note=' · the CDN served an older snapshot (built '+whenFull(set.build.generatedAt)+') than the one already loaded; kept the loaded one'; }
+      else if(set.mixed&&!prev.mixed){ keep=true; note=' · the CDN served files from two different builds; kept the consistent set already loaded'; }
+      else if(same){ keep=true; if(mode==='manual') note=' · no newer snapshot was served (the CDN may hold a copy for up to 10 min)'; }
+      else if(set.build.generatedAt===prev.build.generatedAt){ if(mode==='manual') note=' · same build re-loaded'+(prev.mixed&&!set.mixed?', now served consistently':''); }
+      else if(mode==='manual') note=' · newer snapshot loaded';
+    } else if(STATIC_BUILD&&mode==='manual') note=' · first snapshot loaded';
+    if(keep){ if(prev.build.generatedAt===set.build.generatedAt){ prev.cdnAge=set.cdnAge; prev.cdnAgeAt=set.cdnAgeAt; } }
+    // assign before drawing, so a renderer that throws cannot leave the status line describing the previous build
+    else { SNAPSHOT=set; await renderSet(set); }
+    LAST_CHECK={at:timeStr(),mode,note};
+    LAST_UPDATED_AT=LAST_CHECK.at; // the last check that actually loaded data; a failed one must not restamp it
+    renderStatus(!STATIC_BUILD&&mode==='manual' ? ` · all sources re-fetched in ${((Date.now()-t0)/1000).toFixed(1)} s` : '');
+  }catch(e){
+    // a failed re-check leaves the loaded set (and its status) in place and says the check failed; a failed first load has nothing to keep
+    if(SNAPSHOT){ LAST_CHECK={at:timeStr(),mode,note:' · this check failed ('+errMsg(e)+')',failed:true}; renderStatus(''); }
+    else { st.className='err'; st.textContent='error: '+errMsg(e); STATUS_RENDER=()=>{}; }
+  }
+  $('#btnRefresh').disabled=LIVE_RUNNING;
   if(mode!=='manual') maybeAutoLiveUpdate();
+}
+// Draw one verified set. Source problems go to the set's own status scopes so they stay with the data they describe.
+async function renderSet(set){
+  const {data,errors,pabraiErrs,marketErrs}=set;
+  CFG=data.config; BUILD_META=set.build;
+  renderAbout(set);
+  const Q=data.quotes||{};
+  DALAL=data.dalal||CFG.dalalStreet;
+  // NAV carries the actual pricing date for the T+1 holdings file. Render it first so the watch cards show that date too.
+  if(data.nav) renderNav(data.nav,Q); else pabraiErrs.push('NAV could not be fetched');
+  if(data.holdings){
+    const H=data.holdings; renderHoldings(H, Q);
+    if(H.fetchError){
+      const rejected=H.source&&H.source.status==='rejected';
+      pabraiErrs.push((rejected?'the official holdings file was fetched but rejected ('+H.fetchError+')':'the official holdings file could not be fetched ('+H.fetchError+')')+(H.latest?' — showing the last accepted file, dated '+fmtDate(H.latest.date):''));
+    } else if(!set.mixed){ // a mixed set can pair a holdings file with the wrong NAV file; the mixed-build warning covers that case
+      const check=holdingsNavCheck(H,data.nav||null);
+      if(!check.matched) pabraiErrs.push('pricing date of the holdings file is not asserted — '+check.reason);
+    }
+  } else pabraiErrs.push('holdings: '+errMsg(errors.holdings));
+  if(data.perf) renderPerf(data.perf); else pabraiErrs.push('performance could not be fetched');
+  if(!data.quotes) pabraiErrs.push('quotes could not be fetched');
+  else { const bad=Object.values(Q).filter(x=>x&&x.error).map(x=>x.symbol); if(bad.length) pabraiErrs.push('quote missing: '+bad.join(', ')); }
+  if(!data.dalal) pabraiErrs.push(`SEC automatic refresh failed (${errMsg(errors.dalal)}) — showing the official filing manually verified${DALAL&&DALAL.manualVerifiedAt?' '+fmtDate(DALAL.manualVerifiedAt):''}`);
+  else if(!data.dalal.ok) pabraiErrs.push(`SEC automatic refresh unavailable at ${STATIC_BUILD?'build':'update'} time (${data.dalal.fetchError||'no reason given'}) — official filing manually verified${data.dalal.manualVerifiedAt?' '+fmtDate(data.dalal.manualVerifiedAt):''}${data.dalal.pastFilingDeadline?' is past its next filing deadline; a newer 13F may exist':''}`);
+  renderDalal(DALAL);
+  // The fund's own N-PORT is an independent cross-check of the daily file; SEC being unavailable is a labelled state, never a finding.
+  NPORT=data.nport||null;
+  if(!data.nport) pabraiErrs.push('SEC N-PORT check could not be fetched ('+errMsg(errors.nport)+')');
+  else if(!data.nport.ok) pabraiErrs.push(`SEC N-PORT check unavailable at ${STATIC_BUILD?'build':'update'} time — ${data.nport.fetchError||'no reason given'}`);
+  renderNport(NPORT);
+  renderDates(NPORT); // the shareholder-report lines come from the same SEC index the N-PORT check reads
+  if(!DALAL.ok){
+    const secCheck=await checkLatestSecAccession(DALAL);
+    if(secCheck.checked&&secCheck.newer){
+      $('#dalalCall').insertAdjacentHTML('afterbegin',`<b>NEW SEC FILING DETECTED:</b> ${esc(secCheck.latest.form)} ${esc(secCheck.latest.accession)}, filed ${fmtDate(secCheck.latest.filed)}. The holdings below are older and must not be treated as current.<br>`);
+      pabraiErrs.push('new Dalal Street SEC filing detected — holdings import pending');
+    } else if(secCheck.checked){
+      $('#dalalCall').insertAdjacentHTML('beforeend',` <span class="muted">SEC’s submissions index was checked from your browser at ${whenFull(secCheck.checkedAt)}: ${esc(secCheck.latest.accession)} is still the latest 13F accession, so no newer filing exists. The row totals keep their separate manual-verification date.</span>`);
+    } else {
+      $('#dalalCall').insertAdjacentHTML('beforeend',` <span class="muted"><b>Filing recency unconfirmed:</b> SEC’s submissions index could not be checked from your browser${secCheck.error?' ('+esc(secCheck.error)+')':''}, so a newer 13F cannot be ruled out from this page.</span>`);
+    }
+  }
+  // All six Fear & Greed tabs come from one marketfg response and one model identity.
+  const mf=data.marketfg;
+  for(const t of FG_TABS){
+    if(!mf){ setFg(t.id, {error:errMsg(errors.marketfg)}); continue; }
+    const M=(mf.markets||{})[t.market];
+    if(M) setFg(t.id, normMarket(M, mf.model, mf.fetchedAt)); else { setFg(t.id, {error:(mf.failed||{})[t.market]||'no data'}); marketErrs.push('Fear & Greed '+t.tab+' could not be computed'); }
+  }
+  if(!mf) marketErrs.push('Fear & Greed for the markets could not be fetched');
+}
+// The About line: plain text through textContent (no escaping, no markup), links through escaped HTML in #aboutVerify.
+function renderAbout(set){
+  const B=set.build;
+  if(CFG.sources){ if(CFG.sources.holdings) $('#srcHoldings').href=CFG.sources.holdings; if(CFG.sources.navDaily) $('#srcNav').href=CFG.sources.navDaily; }
+  $('#srcJson').href = STATIC_BUILD ? './api/holdings.json' : '/api/holdings';
+  if(!STATIC_BUILD){
+    $('#aboutBuild').textContent='Running locally from the repository; figures are fetched live by the local server.';
+    $('#aboutVerify').innerHTML=''; $('#aboutFreshness').textContent='Locally every figure is as of the update time in the status line.'; return;
+  }
+  if(!B||!B.commit){ $('#aboutBuild').textContent='Build identity unavailable.'; $('#aboutVerify').innerHTML=''; return; }
+  const slot=B.schedule ? (CRON_LABELS[B.schedule]||"cron '"+B.schedule+"' (UTC)") : '';
+  const how = B.trigger==='workflow_dispatch' ? ', on request'+(B.reason?' ('+String(B.reason).slice(0,80)+')':'')
+    : B.trigger==='schedule' ? ', in a scheduled run'+(slot?' (the slot '+slot+'; GitHub starts such runs late, so the slot is not the build time)':'')
+    : B.trigger==='push' ? ', after a push to main' : B.trigger==='local' ? ', locally' : '';
+  const tests = B.testsSkipped ? ' The test suite was skipped in this run'+(B.testsVerifiedBy?' because it had passed on the same commit in an earlier run (linked below).':'; no run that passed it on this commit is recorded.') : '';
+  const schedules=describeSchedules(B.schedules);
+  const parts=[`This snapshot was built from commit ${String(B.commit).slice(0,7)} (${B.ref||'main'}${B.dirty?', with uncommitted changes':''}) at ${whenFull(B.generatedAt)}${how}.${tests}`];
+  if(schedules) parts.push(`Builds run after a push to main, on request, and when GitHub starts one of the scheduled slots: ${schedules}.`);
+  if(B.scheduleNote) parts.push(String(B.scheduleNote)+'.');
+  if(B.secContact) parts.push('SEC contact used by the build: '+String(B.secContact)+'.');
+  const Y=B.yahooRequests;
+  if(Y&&Number.isFinite(Y.requests)) parts.push(`Yahoo chart requests in this build: ${fmt(Y.requests)}${Number.isFinite(Y.fullHistoryRequests)&&Number.isFinite(Y.topUpRequests)?` (${fmt(Y.fullHistoryRequests)} full-history, ${fmt(Y.topUpRequests)} top-up${Number.isFinite(Y.retries)?', '+fmt(Y.retries)+' retries':''})`:''}.`);
+  if(B.historyDurability) parts.push('Holdings history: '+String(B.historyDurability)+'.');
+  $('#aboutBuild').textContent=parts.join(' ');
+  const th=staleThreshold(B,Date.now());
+  $('#aboutFreshness').textContent = th.window
+    ? `On the public site every figure is as of the snapshot build time in the status line, which shows the snapshot’s age and warns when it exceeds ${B.snapshotStaleAfterHours} h ${th.window.days} ${th.window.from}–${th.window.to} UTC (while the weekday schedule is active) or ${B.snapshotStaleAfterHoursOffSchedule} h otherwise, and when the fund’s newest weekday file is not in it.`
+    : 'On the public site every figure is as of the snapshot build time in the status line, which shows the snapshot’s age.';
+  const verified = B.testsVerifiedBy ? `; the test suite passed on this commit in <a href="${esc(B.testsVerifiedBy)}" target="_blank" rel="noopener">${esc(String(B.testsVerifiedBy).replace(/^https:\/\/github\.com\//,''))}</a>` : '';
+  $('#aboutVerify').innerHTML = B.runUrl
+    ? `Produced by <a href="${esc(B.runUrl)}" target="_blank" rel="noopener">this Actions run</a> (public log)${verified}; <a href="./api/build.json" target="_blank" rel="noopener">build.json</a> lists the SHA-256 of index.html and of every api/*.json except itself, and this page checks each JSON file it loads against those digests (the CDN serves each file separately). GitHub’s signed provenance statement can be checked, with a GitHub account (after <span class="mono">gh auth login</span>), with <span class="mono">gh attestation verify &lt;file&gt; --owner netic123</span>, or browsed at <a href="https://github.com/netic123/investments/attestations" target="_blank" rel="noopener">github.com/netic123/investments/attestations</a>.`
+    : '';
 }
 
 function nameOf(t){ const m=CFG.names[t]; return m?m.name:t; }
 function flagOf(t){ const m=CFG.names[t]; return m?m.flag:''; }
+// Listing currency of a FilePoint ticker: an explicit config.names[t].currency, else the ticker suffix (TI Borsa Istanbul,
+// IN India, CN Canada, PW Warsaw, NO Oslo); no suffix is a US listing in USD; an unknown suffix gives '' rather than a guess.
+const SUFFIX_CCY={TI:'TRY',IN:'INR',CN:'CAD',PW:'PLN',NO:'NOK'};
+function ccyOf(t){ const m=CFG.names[t]; if(m&&m.currency) return m.currency; const s=String(t).split(' ')[1]; return s ? (SUFFIX_CCY[s]||'') : 'USD'; }
+// ISO dates inside a sentence from the API ("2026-06-30") in the page's date style
+const humanDates=s=>String(s??'').replace(/\b\d{4}-\d{2}-\d{2}\b/g,m=>fmtDate(m));
+const isoDay=d=>d.toISOString().slice(0,10);
+// A Saturday or Sunday rolled to the following Monday (SEC deadlines and release days; federal holidays are not modelled)
 function avanzaPill(t){ const a=(CFG.names[t]||{}).avanza; return a==='online'?'<span class="pill ok">online</span>':a==='telefon'?'<span class="pill tel">by phone</span>':a==='nej'?'<span class="pill no">not available</span>':'<span class="pill">—</span>'; }
 const isCashLike = t => (CFG.cashLike||[]).includes(t);
 
@@ -613,46 +826,135 @@ function holdingsNavCheck(H,N){
   const gap=Math.abs(L.netAssets-nav*L.sharesOutstanding), tolerance=Math.max(1,Math.abs(L.netAssets)*0.00001);
   const navFileShares=Number.isFinite(N.sharesOut)&&N.sharesOut>0?N.sharesOut:null;
   const unitChange=navFileShares==null?null:L.sharesOutstanding-navFileShares;
-  const base={navDate:N.date,nav,fundShares:L.sharesOutstanding,navFileShares,unitChange,perShare};
+  // The match proves the pricing date, not the asset total: the holdings file's NetAssets is the rounded NAV x units, while the
+  // NAV file reports the fund's own net assets; the two are compared only when both files carry the same unit count.
+  const navFileNetAssets=Number.isFinite(N.netAssets)&&N.netAssets>0?N.netAssets:null;
+  const sameUnits=navFileShares!=null&&Math.abs(unitChange)<0.5;
+  const netAssetsDifference=navFileNetAssets!=null&&sameUnits ? L.netAssets-navFileNetAssets : null;
+  const base={navDate:N.date,nav,fundShares:L.sharesOutstanding,navFileShares,unitChange,perShare,navFileNetAssets,navFileNavPerUnit:navFileNetAssets!=null&&navFileShares!=null?navFileNetAssets/navFileShares:null,netAssetsDifference,netAssetsComparable:netAssetsDifference!=null};
   if(!(dateGap>=0&&dateGap<=4)) return {...base,matched:false,mode:null,reason:`the newest NAV is dated ${fmtDate(N.date)}, not within the four days before the holdings file date ${fmtDate(L.date)}`};
   if(gap<=tolerance&&(navFileShares==null||Math.abs(unitChange)<0.5)) return {...base,matched:true,mode:'exact',reason:null};
   if(perShareGap<=0.005) return {...base,matched:true,mode:'per-share',reason:null};
   return {...base,matched:false,mode:null,reason:`NetAssets ÷ units = $${fmt(perShare,4)} per unit, which is not the ${fmtDate(N.date)} NAV of $${fmt(nav,2)}`};
 }
-function unitFlowBetween(a,b){
-  const from=a&&a.sharesOutstanding, to=b&&b.sharesOutstanding; if(!(from>0)||!(to>0)) return null;
-  const delta=to-from; return {unitsFrom:from,unitsTo:to,delta,pct:delta/from*100,kind:delta>0?'creation':delta<0?'redemption':'none',perUnitPct:from/to*100-100};
+// ---- unit counts of saved files (mirrors impliedUnitsFromNav in pabrai.js; test/site_trust.test.js runs this block)
+// A holdings file's NetAssets is the rounded NAV of its pricing date x its unit count, to the cent, so NetAssets / NAV is a
+// whole number when the NAV is the right one (the cent rounding of NetAssets moves the quotient by at most 0.005 / NAV). A
+// quotient further from an integer proves nothing and is refused. The count is implied by the file's arithmetic, never
+// reported by it: it is labelled "implied" wherever it is shown. Files saved before 25 Aug 2026 carry no SharesOutstanding.
+function impliedUnitsFromNav(netAssets,nav){
+  if(!Number.isFinite(netAssets)||!Number.isFinite(nav)||nav<=0||netAssets<=0) return {units:null,quotient:null,residual:null,tolerance:null,nav:null,implied:false,reason:'NetAssets or NAV is missing'};
+  const roundedNav=Math.round(nav*100)/100, quotient=netAssets/roundedNav, units=Math.round(quotient), residual=quotient-units;
+  const tolerance=Math.max(0.01,0.005/roundedNav*2), implied=units>0&&Math.abs(residual)<=tolerance;
+  return {units:implied?units:null,quotient,residual,tolerance,nav:roundedNav,implied,reason:implied?null:`NetAssets / NAV = ${quotient.toFixed(4)} is not a whole number of units, so this NetAssets is not this NAV x a unit count`};
 }
+// The official NAV of the previous rate date: the newest NAV history row dated before the file date, at most four days
+// earlier (the file is dated the next weekday after its pricing date).
+function navBefore(fileDate,N){
+  const rows=(N&&Array.isArray(N.history)?N.history:[]).filter(r=>r&&r.date&&Number.isFinite(r.nav)&&r.date<fileDate&&(Date.parse(fileDate+'T00:00:00Z')-Date.parse(r.date+'T00:00:00Z'))/864e5<=4).sort((a,b)=>a.date.localeCompare(b.date));
+  return rows.length?rows[rows.length-1]:null;
+}
+// The pricing NAV of a saved file and the unit count it implies; null unless NetAssets is that NAV x a whole number of units
+// (and the file's own count, when it reports one).
+function pricingOf(snap,N){
+  if(!snap||!snap.date) return null;
+  const nav=navBefore(snap.date,N); if(!nav) return null;
+  const r=impliedUnitsFromNav(snap.netAssets,nav.nav); if(!r.implied) return null;
+  const reported=Number.isFinite(snap.sharesOutstanding)&&snap.sharesOutstanding>0?snap.sharesOutstanding:null;
+  if(reported!=null&&Math.abs(reported-r.units)>=0.5) return null;
+  return {navDate:nav.date,nav:r.nav,units:reported!=null?reported:r.units,implied:reported==null};
+}
+// A saved file's unit count: its own SharesOutstanding when it reports one; else the count implied from NetAssets / the NAV
+// of the previous rate date, flagged implied; else unknown, with the reason.
+function unitsOf(snap,N){
+  if(!snap) return {units:null,implied:false,reason:'no file'};
+  if(Number.isFinite(snap.sharesOutstanding)&&snap.sharesOutstanding>0) return {units:snap.sharesOutstanding,implied:false,reason:null};
+  const p=pricingOf(snap,N);
+  if(p) return {units:p.units,implied:true,navDate:p.navDate,nav:p.nav,reason:null};
+  return {units:null,implied:false,reason:`the ${fmtDate(snap.date)} file reports no unit count${N&&Array.isArray(N.history)&&N.history.length?' and its NetAssets is not a whole number of units at the NAV of the previous rate date':' and no NAV history is loaded to imply one'}`};
+}
+// WAGN unit flow between two saved files, using implied counts where a file reports none; known:false when either is unknown.
+function unitFlowWithImplied(a,b,N){
+  const fromUnits=unitsOf(a,N), toUnits=unitsOf(b,N);
+  if(!(fromUnits.units>0)||!(toUnits.units>0)) return {known:false,fromUnits,toUnits,delta:null,reason:fromUnits.units>0?toUnits.reason:fromUnits.reason};
+  const delta=toUnits.units-fromUnits.units;
+  return {known:true,fromUnits,toUnits,unitsFrom:fromUnits.units,unitsTo:toUnits.units,delta,pct:delta/fromUnits.units*100,kind:delta>0?'creation':delta<0?'redemption':'none',perUnitPct:fromUnits.units/toUnits.units*100-100,implied:fromUnits.implied||toUnits.implied};
+}
+// ---- end unit counts
 function weekdaysBetween(a,b){ let n=0; const d=new Date(a+'T00:00:00Z'), end=new Date(b+'T00:00:00Z'); while(d<end){ d.setUTCDate(d.getUTCDate()+1); const w=d.getUTCDay(); if(w!==0&&w!==6) n++; } return n; }
+// The NAV file's own net assets next to the holdings file's derived figure (holdingsNavCheck), as a sentence or ''.
+const navFileNetAssetsText=checked=>{
+  if(!checked||checked.navFileNetAssets==null) return '';
+  return checked.netAssetsComparable
+    ? ` The fund’s NAV file dated ${fmtDate(checked.navDate)} reports net assets of <b>$${fmt(checked.navFileNetAssets)}</b>, ${fmt(Math.abs(checked.netAssetsDifference))} ${checked.netAssetsDifference>=0?'below':'above'} the holdings file’s figure.`
+    : ` The fund’s NAV file dated ${fmtDate(checked.navDate)} reports net assets of <b>$${fmt(checked.navFileNetAssets)}</b>${checked.navFileShares?' at '+fmt(checked.navFileShares)+' units':''}; the two totals are not directly comparable because the unit counts differ.`;
+};
+// Two stamps for the displayed file, never one: when this exact file (by SHA-256) was first saved, and what the fetch behind
+// this snapshot established about it (H.upstreamCheckOutcome, latest.source.lastConfirmedAt). An older holdings.json without
+// those fields gets the first stamp only.
 const fileDateLine=(H,N)=>{
-  const L=H.latest, checked=holdingsNavCheck(H,N), live=H.source&&H.source.status==='verified';
-  const captured=L.source&&L.source.capturedAt || H.fetchedAt;
+  const L=H.latest, checked=holdingsNavCheck(H,N), live=H.source&&H.source.status==='verified', S=L.source||{};
+  const captured=S.capturedAt || H.fetchedAt;
   const receipt=captured ? whenFull(captured) : 'unknown time';
-  const checksum=L.source&&L.source.sha256 ? ` · SHA-256 <span class="mono" title="${esc(L.source.sha256)}">${esc(L.source.sha256.slice(0,12))}…</span>` : '';
+  const checksum=S.sha256 ? ` · SHA-256 <span class="mono" title="${esc(S.sha256)}">${esc(S.sha256.slice(0,12))}…</span>` : '';
   const source=live ? '<b>Official WAGN source verified</b>' : '<b>Last accepted WAGN file</b>';
+  const outcome=H.upstreamCheckOutcome;
+  const confirm = outcome==='accepted new file'&&S.lastConfirmedAt ? ' (saved by the fetch behind this snapshot)'
+    : outcome==='confirmed unchanged'&&S.lastConfirmedAt ? ` · confirmed unchanged at ${whenFull(S.lastConfirmedAt)} (the fetch behind this snapshot served the same SHA-256)`
+    : (outcome==='rejected'||outcome==='fetch failed')&&H.upstreamCheckedAt ? ` · not re-confirmed: the fetch at ${whenFull(H.upstreamCheckedAt)} ${outcome==='rejected'?'served a file that was rejected':'failed'}, so this is the saved copy`
+    : '';
   const pricing=!checked.matched ? `<b>Pricing date not asserted:</b> ${esc(checked.reason)}.`
-    : checked.mode==='exact' ? `Priced at the <b>${fmtDate(checked.navDate)}</b> close: NetAssets reconcile to NAV <b>$${fmt(checked.nav,2)}</b> × <b>${fmt(checked.fundShares)}</b> fund units.`
-    : `Priced at the <b>${fmtDate(checked.navDate)}</b> close: NetAssets ÷ <b>${fmt(checked.fundShares)}</b> units = NAV <b>$${fmt(checked.nav,2)}</b>${checked.unitChange ? `; <b>${fmt(Math.abs(checked.unitChange))} units were ${checked.unitChange>0?'created':'redeemed'}</b> after that NAV file, which still reports ${fmt(checked.navFileShares)}` : checked.navFileShares==null ? ' (the NAV file carries no unit count, so a creation or redemption in between cannot be quantified)' : ' (same unit count in both files)'}.`;
-  const early=L.source&&L.source.futureDateAccepted&&L.source.capturedAt ? ` (published by the fund ahead of that date; accepted ${fmtDate(String(L.source.capturedAt).slice(0,10))} UTC)` : '';
-  return `${source}: file dated <b>${fmtDate(L.date)}</b>${early}. ${pricing} Retrieved ${receipt}${checksum}.`;
+    : checked.mode==='exact' ? `Priced at the <b>${fmtDate(checked.navDate)}</b> close: the file’s NetAssets equals the rounded NAV <b>$${fmt(checked.nav,2)}</b> × <b>${fmt(checked.fundShares)}</b> fund units to the cent — a pricing-date proof, not an independent asset total.${navFileNetAssetsText(checked)}`
+    : `Priced at the <b>${fmtDate(checked.navDate)}</b> close: NetAssets ÷ <b>${fmt(checked.fundShares)}</b> units = NAV <b>$${fmt(checked.nav,2)}</b> (the file’s NetAssets is that rounded NAV × its unit count, not an independent asset total)${checked.unitChange ? `; <b>${fmt(Math.abs(checked.unitChange))} units were ${checked.unitChange>0?'created':'redeemed'}</b> after that NAV file, which still reports ${fmt(checked.navFileShares)}` : checked.navFileShares==null ? '; the NAV file carries no unit count, so a creation or redemption in between cannot be quantified' : '; same unit count in both files'}.${navFileNetAssetsText(checked)}`;
+  const early=S.futureDateAccepted&&S.capturedAt ? ` (published by the fund ahead of that date; accepted ${fmtDate(String(S.capturedAt).slice(0,10))} UTC)` : '';
+  return `${source}: file dated <b>${fmtDate(L.date)}</b>${early}. ${pricing} File first captured ${receipt}${confirm}${checksum}.`;
 };
 const changeSignal=c=>c ? (Number.isFinite(c.signalDelta)?c.signalDelta:c.delta) : null;
 const changeSignalPct=c=>c ? (Number.isFinite(c.signalPct)?c.signalPct:c.pct) : null;
+// The Fund assets KPI: the holdings file's NetAssets (rounded NAV x units), with the NAV file's own figure in the title and,
+// under it, the change since the first saved file split into NAV change x unit flow when both files' pricing NAVs are in
+// nav.history; a first file without a reported unit count gets an implied count, labelled so, or the split is withheld.
+function renderFundAssets(H){
+  const L=H.latest, F=H.first, hasFirst=!!(F&&L&&F.date!==L.date);
+  const priced=holdingsNavCheck(H,NAV_DATA);
+  $('#kNet').textContent = L.netAssets==null ? '—' : '$'+fmt(L.netAssets/1e6,1)+'M';
+  const navFile = priced.navFileNetAssets!=null ? `; the fund’s NAV file dated ${fmtDate(priced.navDate)} reports net assets of $${fmt(priced.navFileNetAssets)}${priced.netAssetsComparable?` (${fmt(Math.abs(priced.netAssetsDifference))} ${priced.netAssetsDifference>=0?'below':'above'} the holdings file)`:` at ${fmt(priced.navFileShares)} units — not directly comparable, different unit counts`}` : '';
+  $('#kNet').title = `Holdings file dated ${fmtDate(L.date)}: NetAssets $${fmt(L.netAssets)}${priced.matched?` = rounded NAV $${fmt(priced.nav,2)} × ${fmt(L.sharesOutstanding)} units (a pricing-date proof, not an independent asset total)`:''}${navFile}`;
+  const firstFlow = hasFirst ? unitFlowWithImplied(F,L,NAV_DATA) : null;
+  const pF = hasFirst ? pricingOf(F,NAV_DATA) : null, pL = pricingOf(L,NAV_DATA);
+  let sub='';
+  if(hasFirst){
+    const total=pct(ratio(L.netAssets,F.netAssets),1)+' since '+fmtDate(F.date);
+    if(pF&&pL&&firstFlow.known){
+      const implied=[pF.implied?fmtDate(F.date):null,pL.implied?fmtDate(L.date):null].filter(Boolean);
+      sub=`${total} = NAV ${pct(ratio(pL.nav,pF.nav),1)} ($${fmt(pF.nav,2)} → $${fmt(pL.nav,2)}) × units ${pct(firstFlow.pct,1)} (${fmt(firstFlow.unitsFrom)}${pF.implied?' implied':''} → ${fmt(firstFlow.unitsTo)}${pL.implied?' implied':''})${implied.length?`; the ${implied.join(' and ')} file reports no unit count, so its count is implied from NetAssets ÷ NAV`:''} · not a return`;
+    } else sub=`${total} — incl. unit creations/redemptions, which cannot be separated here: ${firstFlow&&firstFlow.reason?firstFlow.reason:'the pricing NAV of one of the files is not loaded'} · not a return`;
+  }
+  $('#kNetSub').textContent=sub;
+  // the unit flow over the "since first file" interval goes into the section note and the header's title, not the header text
+  const created = !hasFirst ? '' : firstFlow&&firstFlow.known&&firstFlow.delta ? `${fmt(Math.abs(firstFlow.delta))} units ${firstFlow.delta>0?'created':'redeemed'} since the first saved file (${pct(firstFlow.pct,1)}${firstFlow.implied?'; first-file units implied':''})` : firstFlow&&firstFlow.known ? `units unchanged since the first saved file${firstFlow.implied?' (first-file units implied)':''}` : 'first-file unit count unknown';
+  $('#thFirst').textContent = hasFirst ? `Δ shares since first saved file (${fmtDate(F.date)})` : 'Δ shares since first saved file';
+  $('#thFirst').title = !hasFirst ? '' : firstFlow&&firstFlow.known&&firstFlow.delta
+    ? `${fmt(firstFlow.unitsFrom)} → ${fmt(firstFlow.unitsTo)} WAGN units${firstFlow.implied?' (a count implied from NetAssets ÷ NAV where the file reports none)':''}: part of an increase can be creation-basket delivery rather than a decision, and an unchanged share count means a ${pct(Math.abs(firstFlow.perUnitPct),2,false)} ${firstFlow.delta>0?'smaller':'larger'} share per unit. “vs pro-rata” under a cell restates the change relative to keeping the same share per unit.`
+    : firstFlow&&firstFlow.known ? 'No units were created or redeemed over the interval, so each difference is a change in the position itself.'
+    : `The ${fmtDate(F.date)} file reports no unit count and none could be implied, so a unit creation in the interval cannot be told apart from trades here.`;
+  return {priced,firstFlow,unitsNote:created};
+}
 function renderHoldings(H,Q){
   const L=H.latest; if(!L){ $('#cards').innerHTML='<div class="empty">No holdings data — the source did not respond and no snapshot is saved yet.</div>'; return; }
   const F=H.first, P=H.previous;
   LAST_H=H; $('#fileDate').innerHTML = fileDateLine(H, NAV_DATA);
-  $('#kNet').textContent = L.netAssets==null ? '—' : '$'+fmt(L.netAssets/1e6,1)+'M';
   const hasFirst=!!(F&&L&&F.date!==L.date);
-  $('#kNetSub').textContent = hasFirst ? pct(ratio(L.netAssets,F.netAssets),1)+' since '+fmtDate(F.date)+' (incl. unit creations/redemptions — not a return)' : '';
-  $('#thFirst').textContent = hasFirst ? 'Δ shares since first file ('+fmtDate(F.date)+')' : 'Δ shares since first file';
+  $('#thPrev').textContent = P ? `Δ shares vs previous saved file (${fmtDate(P.date)})` : 'Δ shares vs previous saved file';
+  $('#thPrev').title = P ? 'The previous file this site saved, which is the fund\u2019s previous file only when no file day was missed.' : '';
+  const {priced,firstFlow,unitsNote}=renderFundAssets(H);
   TR_WEIGHT = Object.entries(L.rows).filter(([t])=>t.endsWith(' TI')).reduce((s,[,r])=>s+(r.weight||0),0);
 
   // ---- focused watchlist: daily WAGN disclosure + quarterly Dalal Street 13F are separate signals
   const fx={}; for(const [cur,sym] of Object.entries(CFG.fx||{})){ const qq=Q[sym]; if(qq&&qq.price) fx[cur]=qq.price; }
   const prevMap = P ? Object.fromEntries(H.changesVsPrevious.map(c=>[c.ticker,c])) : {};
   const posMeta=CFG.positionsMeta||{};
-  $('#mineNote').textContent = CFG.myPositions.length+' watched'+(P?' · WAGN vs '+fmtDate(P.date):' · first WAGN snapshot');
+  $('#mineNote').textContent = CFG.myPositions.length+' watched holdings · WAGN file dated '+fmtDate(L.date)+(P?', changes vs the file dated '+fmtDate(P.date):' — first saved file, nothing to compare yet');
   $('#watchNote').innerHTML = posMeta.demo
     ? (STATIC_BUILD
       ? '<b>PUBLIC DEMO watchlist.</b> These are example tickers, not verified as your positions. Private local positions are intentionally excluded from GitHub Pages.'
@@ -661,8 +963,7 @@ function renderHoldings(H,Q){
       ? '<b>PUBLIC focus watchlist.</b> Constellation Software, Kaspi.kz and Warrior Met Coal are tracked for Pabrai activity. Personal entry prices are intentionally not published on GitHub Pages.'
     : `<b>${CFG.myPositions.length} focus positions.</b> WAGN is checked from the fund’s daily T+1 holdings file; Dalal Street is checked separately from its delayed quarterly 13F. A quantity change is not proof of an execution date or price. All other Pabrai holdings remain visible in the full tables below.`;
   const t0=today0();
-  const flow=unitFlowBetween(P,L);
-  const priced=holdingsNavCheck(H,NAV_DATA);
+  const flow=P ? unitFlowWithImplied(P,L,NAV_DATA) : null;
   $('#cards').innerHTML = CFG.myPositions.map(pos=>{
     const fundTicker=pos.fundTicker||pos.ticker;
     const secTicker=pos.secTicker||pos.ticker;
@@ -684,16 +985,27 @@ function renderHoldings(H,Q){
     const wagnChange = !ch ? (row?'No change in shares held':'—') : `${ch.delta>0?'+':''}${fmt(ch.delta)} shares (${pct(ch.pct,1)})`;
     const proRata = ch&&ch.flowAdjusted&&ch.unitFlow ? ` Relative to a pro-rata deployment of the ${fmt(Math.abs(ch.unitFlow.delta))}-unit ${ch.unitFlow.kind}: ${ch.flowAdjustedDelta>0?'+':''}${fmt(ch.flowAdjustedDelta)} shares.` : '';
     const wagnChangeNote = ch ? `≈ $${fmt(ch.approxUsd)} at the latest holding-file value; not an execution price.${proRata}`
-      : flow&&flow.delta ? `${fmt(Math.abs(flow.delta))} WAGN units were ${flow.delta>0?'created':'redeemed'} between ${fmtDate(P.date)} and ${fmtDate(L.date)}; this holding was not traded, so its share per WAGN unit is ${pct(Math.abs(flow.perUnitPct),2,false)} ${flow.delta>0?'smaller':'larger'} than before.`
-      : (P?`${fmtDate(P.date)} → ${fmtDate(L.date)}`:'—');
+      : flow&&flow.delta ? `${fmt(Math.abs(flow.delta))} WAGN units were ${flow.delta>0?'created':'redeemed'} between ${fmtDate(P.date)} and ${fmtDate(L.date)}${flow.implied?' (a unit count implied from NetAssets ÷ NAV)':''}; this holding’s share count is the same in both files, so its share per WAGN unit is ${pct(Math.abs(flow.perUnitPct),2,false)} ${flow.delta>0?'smaller':'larger'} than before.`
+      : (P?`${fmtDate(P.date)} → ${fmtDate(L.date)}${flow&&!flow.known?' · '+flow.reason:''}`:'—');
+    // The 13F row for this security, with the quarter-on-quarter classification from the build (change/changeText/changeNote
+    // on the row, or D.changeByCusip for the manual fallback); a listing that is not a 13(f) security cannot appear at all.
     const D=DALAL||CFG.dalalStreet||{};
     const dh=(D.holdings||[]).find(h=>h.ticker===secTicker);
+    const dc=dh ? (dh.change ? dh : ((D.changeByCusip||{})[dh.cusip]||null)) : null;
+    const sec13f=(CFG.names[fundTicker]||{}).sec13f||null;
     const dw=dh&&D.portfolioValueUsd ? dh.valueUsd/D.portfolioValueUsd*100 : null;
-    const dalalPosition=dh ? (dh.shares===0&&dh.prevShares>0 ? 'sold out in the latest 13F' : `${fmt(dh.shares)} shares · ${pct(dw,2,false)} of the 13F`) : 'not reported in the latest 13F';
-    let dalalChange='—';
+    const gone=!!dh&&(dc ? dc.change==='no longer reported' : (dh.shares===0&&dh.prevShares>0));
+    const dalalPosition = !dh
+      ? (sec13f&&sec13f.reportable===false ? `<span class="muted">not in the 13F — ${esc(sec13f.note)}</span>` : 'not reported in the latest 13F'+(sec13f&&sec13f.reportable===true?' <span class="muted">(a 13(f) security, so it could have been listed; a position under 10,000 shares and $200,000 may be omitted)</span>':''))
+      : gone ? 'no longer reported in the latest 13F' : `${fmt(dh.shares)} shares · ${pct(dw,2,false)} of the 13F`;
+    let dalalChange='—', dalalChangeNote = !dh&&sec13f&&sec13f.reportable===false ? 'no 13F data exists for this listing' : 'Do not add WAGN and 13F quantities together';
     if(dh){
-      if(dh.prevShares==null) dalalChange='<span class="up">NEW in latest filing</span>';
-      else { const dd=dh.shares-dh.prevShares, dp=dh.prevShares?dd/dh.prevShares*100:null; dalalChange=`<span class="${cls(dd)}">${dd>0?'+':''}${fmt(dd)} shares (${pct(dp,2)})</span>`; }
+      const numeric = dh.prevShares!=null&&dh.prevShares>0 ? (()=>{ const dd=dh.shares-dh.prevShares, dp=dd/dh.prevShares*100; return `<span class="${cls(dd)}">${dd>0?'+':''}${fmt(dd)} shares (${pct(dp,2)})</span>`; })() : null;
+      dalalChange = dc ? ((['increase','decrease','unchanged'].includes(dc.change)&&numeric) ? numeric : esc(dc.changeText||dc.change)) : (numeric || 'first reported (not in the prior 13F)');
+      const parts=[];
+      if(D.previous&&D.previous.asOf) parts.push('vs the '+fmtDate(D.previous.asOf)+' 13F'+(D.previous.accession?' ('+esc(D.previous.accession)+')':''));
+      if(dc&&dc.changeNote) parts.push(esc(dc.changeNote));
+      parts.push(dalalChangeNote); dalalChangeNote=parts.join(' · ');
     }
     const rp = pos.nextReport ? Math.round((new Date(pos.nextReport+'T00:00:00')-t0)/864e5) : null;
     const report = !pos.nextReport ? '—' : rp<0 ? `<span class="down">${fmtDate(pos.nextReport)} (passed — update config)</span>`
@@ -703,9 +1015,9 @@ function renderHoldings(H,Q){
       <div class="hd"><span class="chip">${esc(pos.ticker)}</span><span class="nm">${esc(nameOf(fundTicker))}</span>${badge}</div>
       <div class="grid2">
         <div><div class="l">Pabrai · WAGN daily file</div><div class="v">${inFund}</div><div class="s">file ${fmtDate(L.date)}${priced.matched?', priced '+fmtDate(priced.navDate):', pricing date not asserted'}</div></div>
-        <div><div class="l">WAGN shares held · change vs previous file</div><div class="v ${ch?cls(ch.delta):'flat'}">${wagnChange}</div><div class="s">${wagnChangeNote}</div></div>
-        <div><div class="l">Pabrai · Dalal Street 13F</div><div class="v">${dalalPosition}</div><div class="s">as of ${fmtDate(D.asOf)} · delayed quarterly disclosure${D.ok?' · SEC auto-verified':` · official filing manually verified${D.manualVerifiedAt?' '+fmtDate(D.manualVerifiedAt):''}`}</div></div>
-        <div><div class="l">Dalal change vs prior 13F</div><div class="v">${dalalChange}</div><div class="s">Do not add WAGN and 13F quantities together</div></div>
+        <div><div class="l">WAGN shares held · change vs previous saved file${P?' ('+fmtDate(P.date)+')':''}</div><div class="v ${ch?cls(ch.delta):'flat'}">${wagnChange}</div><div class="s">${wagnChangeNote}</div></div>
+        <div><div class="l">Pabrai · Dalal Street 13F</div><div class="v">${dalalPosition}</div><div class="s">as of ${fmtDate(D.asOf)} · delayed quarterly disclosure${D.ok?' · fetched from SEC EDGAR and validated by this '+(STATIC_BUILD?'build':'update'):` · official filing manually verified${D.manualVerifiedAt?' '+fmtDate(D.manualVerifiedAt):''}`}</div></div>
+        <div><div class="l">Dalal change vs prior 13F</div><div class="v">${dalalChange}</div><div class="s">${dalalChangeNote}</div></div>
         <div><div class="l">${qLabel}</div><div class="v big">${live?money(live,pos.currency)+' <span class="'+cls(day)+'" style="font-size:.8rem">'+pct(day,2)+'</span>':'<span class="down" style="font-size:.95rem">price unavailable</span>'}</div><div class="s">${qWhen}${day!=null?' · vs previous close':''}</div></div>
         <div><div class="l">${hasEntry?'Price return since entry ('+money(pos.entry,pos.currency)+')':'Return since entry'}</div><div class="v big ${hasEntry?cls(vsEntry):'flat'}">${hasEntry?pct(vsEntry,1):(posMeta.source==='public'?'Entry price not published':'No entry price entered')}</div><div class="s">${hasEntry?'Local currency; excludes FX, fees and dividends, so it differs from Avanza’s SEK result':''}</div></div>
         <div><div class="l">Price in SEK (per share)</div><div class="v">${sek?fmt(sek,0)+' kr':(live?'FX rate missing':'—')}</div><div class="s">${fxNote}</div></div>
@@ -715,54 +1027,89 @@ function renderHoldings(H,Q){
 
   // ---- changes: differences in shares held between the two latest files (the footer says what is and is not listed)
   const C=H.changesVsPrevious.filter(c=>!c.cashLike), LOG=H.log.filter(c=>!c.cashLike);
+  const CASH=H.changesVsPrevious.filter(c=>c.cashLike), CASHLOG=H.log.filter(c=>c.cashLike);
   const span = P ? `${fmtDate(P.date)} → ${fmtDate(L.date)}` : '';
   const sessions = P ? weekdaysBetween(P.date,L.date) : 0;
   const gapCallout = sessions>1 ? `<div class="callout">The interval ${span} spans ${sessions} weekdays — only the net change between these two disclosures is known; exact transactions in between are not.</div>` : '';
-  const flowCallout = flow&&flow.delta ? `<div class="callout"><b>${fmt(Math.abs(flow.delta))} WAGN units were ${flow.delta>0?'created':'redeemed'}</b> between these files (${fmt(flow.unitsFrom)} → ${fmt(flow.unitsTo)} units, ${pct(flow.pct,2)}). Holdings whose share count did not change are not listed: nothing was traded in them; each one’s share per WAGN unit is now ${pct(Math.abs(flow.perUnitPct),2,false)} ${flow.delta>0?'smaller':'larger'} than before. “vs pro-rata” shows each trade relative to deploying the flow in proportion to the previous portfolio.</div>` : '';
+  const flowCallout = flow&&flow.delta ? `<div class="callout"><b>${fmt(Math.abs(flow.delta))} WAGN units were ${flow.delta>0?'created':'redeemed'}</b> between these files (${fmt(flow.unitsFrom)} → ${fmt(flow.unitsTo)} units, ${pct(flow.pct,2)}${flow.implied?'; a count implied from NetAssets ÷ NAV where the file reports none':''}). Holdings whose share count did not change are not listed: their share count is the same in both files, which over an interval of more than one file day is a net result, not proof that nothing was traded. Each one’s share per WAGN unit is now ${pct(Math.abs(flow.perUnitPct),2,false)} ${flow.delta>0?'smaller':'larger'} than before. “vs pro-rata” shows each trade relative to deploying the flow in proportion to the previous portfolio.</div>`
+    : flow&&!flow.known ? `<div class="callout">Whether WAGN units were created or redeemed between these files is not known: ${esc(flow.reason)}. A share change below may therefore include creation-basket delivery.</div>` : '';
+  // Cash-like rows (config cashLike, the money-market fund) change with cash management, not with a decision about a holding;
+  // they are never listed as trades, and the visitor is told what they did.
+  const cashChange=list=>list.map(c=>`${isCashLike(c.ticker)?'money-market fund ':''}${esc(c.ticker)} ${c.delta>0?'+':''}${fmt(c.delta)} shares (${pct(c.pct,1)}, ≈ ${c.delta<0?'−':'+'}$${fmt(c.approxUsd)})`).join('; ');
+  const cashLine = CASH.length ? `<div class="muted" style="font-size:.82rem;margin-top:8px">Cash-like rows are not listed as trades: ${cashChange(CASH)} between these files.</div>` : '';
   $('#chgNote').textContent = P ? span : '—';
   $('#changes').innerHTML = !P ? '<div class="empty">Only one snapshot saved so far — changes appear from the next file day.</div>'
-    : !C.length ? flowCallout+`<div class="empty">No change in shares held (${span}).</div>`
-    : gapCallout+flowCallout+changesTable(C);
-  $('#log').innerHTML = LOG.length ? changesTable(LOG,true) : '<div class="empty">Empty.</div>';
+    : !C.length ? flowCallout+`<div class="empty">No change in shares held (${span}).</div>`+cashLine
+    : gapCallout+flowCallout+changesTable(C)+cashLine;
+  const cashLog = CASHLOG.length ? `<div class="muted" style="font-size:.82rem;margin-top:8px">Cash-like rows not listed as trades: ${CASHLOG.map(c=>`${fmtDate(c.from)} → ${fmtDate(c.to)} ${esc(c.ticker)} ${c.delta>0?'+':''}${fmt(c.delta)} (${pct(c.pct,1)})`).join('; ')}.</div>` : '';
+  $('#log').innerHTML = (LOG.length ? changesTable(LOG,true) : '<div class="empty">Empty.</div>')+cashLog;
 
   // ---- the full table: the Δ columns are plain differences in shares held; a raw move without a listed change was proportional to the unit flow
   const firstMap = H.changesVsFirst ? Object.fromEntries(H.changesVsFirst.map(c=>[c.ticker,c])) : {};
-  const firstFlow = hasFirst ? unitFlowBetween(F,L) : null;
   const mine=new Set(CFG.myPositions.map(p=>p.fundTicker||p.ticker));
   const rows=Object.entries(L.rows).sort((a,b)=>(b[1].weight||0)-(a[1].weight||0));
-  $('#allNote').textContent=rows.length+' holdings · file '+fmtDate(L.date)+(priced.matched?' · priced '+fmtDate(priced.navDate):'')+' · flags show the company’s home market';
+  $('#allNote').textContent=rows.length+' holdings · file '+fmtDate(L.date)+(priced.matched?' · priced '+fmtDate(priced.navDate):'')+(unitsNote?' · '+unitsNote:'')+' · flags show the investment country of the fund’s own N-PORT filing · Avanza = availability at the Swedish broker Avanza, checked by hand';
   const cash=Object.values(L.cash||{}).reduce((a,v)=>a+(v||0),0);
+  const cashLikeRows=rows.filter(([t])=>isCashLike(t)), cashLikeMv=cashLikeRows.reduce((a,[,r])=>a+(r.mv||0),0), cashLikeNames=cashLikeRows.map(([t])=>esc(t)).join(', ');
+  // The file reports each currency balance in its MarketValue column, i.e. already converted to USD, so the currency code
+  // names the exposure and the number is dollars. Labelling "TRY -1,486,269" without that reads as lira.
+  const cashBreakdown=Object.entries(L.cash||{}).map(([k,v])=>k+' balance $'+fmt(v)).join(' · ');
+  const shareOf=v=>pct(L.netAssets?v/L.netAssets*100:null,2,false);
+  // One cell of a Δ column: the raw difference in shares held; where the unit flow over the interval is known and units
+  // changed, the difference relative to keeping the same share per unit ("vs pro-rata") under it, or a title on a "0".
   const deltaCell=(t,r,base,baseFlow,change)=>{
     if(!base||base.date===L.date) return '<span class="flat">—</span>';
     const b=base.rows[t]; const d=b ? r.shares-b.shares : r.shares; const p=b&&b.shares ? d/b.shares*100 : null;
-    if(Math.abs(d)<0.5) return '<span class="flat">0</span>';
-    const note = change ? '' : (baseFlow&&baseFlow.delta ? '<div class="s">∝ unit flow</div>' : '');
+    const flowKnown=!!(baseFlow&&baseFlow.known&&baseFlow.delta)&&!isCashLike(t); // a cash-like row is cash management, not a position to restate pro-rata
+    if(Math.abs(d)<0.5) return flowKnown ? `<span class="flat" title="unchanged share count; with ${fmt(Math.abs(baseFlow.delta))} units ${baseFlow.delta>0?'created':'redeemed'}, its share per WAGN unit is ${pct(Math.abs(baseFlow.perUnitPct),2,false)} ${baseFlow.delta>0?'smaller':'larger'}">0</span>` : '<span class="flat">0</span>';
+    const pro = flowKnown&&b ? (()=>{ const adj=change&&Number.isFinite(change.flowAdjustedDelta) ? change.flowAdjustedDelta : r.shares-b.shares*baseFlow.unitsTo/baseFlow.unitsFrom; return `<div class="s">vs pro-rata ${adj>0?'+':''}${fmt(adj)}</div>`; })() : '';
+    const note = change ? pro : (flowKnown ? '<div class="s">∝ unit flow</div>' : '');
     return `<span class="${cls(d)}">${d>0?'+':''}${fmt(d)}${b?' ('+pct(p,1)+')':' (new)'}</span>${note}`;
   };
   $('#tblAll tbody').innerHTML = rows.map(([t,r],i)=>{
-    const c=prevMap[t], f=firstMap[t], cl=isCashLike(t);
+    const c=prevMap[t], f=firstMap[t], cl=isCashLike(t), ccy=ccyOf(t);
     const px = cl && r.shares ? r.mv/r.shares : r.price;
     return `<tr class="${mine.has(t)?'mine ':''}${cl?'cashrow':(c?(c.delta>0?'chg-buy':'chg-sell'):'')}">
       <td class="num">${i+1}</td><td>${flagOf(t)} <span class="tick">${esc(t)}</span> ${esc(nameOf(t))}</td>
       <td class="num">${pct(r.weight,2,false)}</td><td class="num">${fmt(r.shares)}</td><td class="num">${deltaCell(t,r,P,flow,c)}</td><td class="num">${deltaCell(t,r,F,firstFlow,f)}</td>
-      <td class="num">${fmt(px,2)}</td><td class="num">${fmt(div(r.mv,1e6),2)}M</td><td>${avanzaPill(t)}</td></tr>`;
-  }).join('') + `<tr class="cashrow"><td></td><td>Cash / currencies (net)</td><td class="num">${pct(L.netAssets?cash/L.netAssets*100:null,2,false)}</td><td colspan="4"></td><td class="num">${fmt(cash/1e6,2)}M</td><td></td></tr>`;
+      <td class="num">${fmt(px,2)}${ccy?' <span class="muted">'+esc(ccy)+'</span>':''}</td><td class="num">${fmt(div(r.mv,1e6),2)}M</td><td>${avanzaPill(t)}</td></tr>`;
+  }).join('')
+  + `<tr class="cashrow"><td></td><td title="${esc(cashBreakdown)}">Currency balances &amp; other (net)${cashLikeNames?' — excludes the '+cashLikeNames+' money-market row above':''}<div class="s">${esc(cashBreakdown)}${cash<0?'. Negative: the file reports more owed than held in those currencies (payables for unsettled purchases or creations can exceed cash on hand); it does not state the cause':''}</div></td><td class="num">${shareOf(cash)}</td><td colspan="4"></td><td class="num">${fmt(cash/1e6,2)}M</td><td></td></tr>`
+  + (cashLikeRows.length ? `<tr class="cashrow"><td></td><td>Net cash incl. the ${cashLikeNames} money-market fund</td><td class="num">${shareOf(cash+cashLikeMv)}</td><td colspan="4"></td><td class="num">${fmt((cash+cashLikeMv)/1e6,2)}M</td><td></td></tr>` : '');
 }
+// The badge column is the kind of share-count change between two files (NEW / SOLD OUT / INCREASE / DECREASE), not a signal.
+// "vs pro-rata" needs the unit flow over the interval; where a file reports no unit count, the count implied from
+// NetAssets ÷ NAV is used and said so, and otherwise the cell says the units are unknown.
 function changesTable(list,withDate){
-  const flowCol=list.some(c=>c.flowAdjusted);
-  return `<div class="tablewrap"><table class="changes-table${withDate?' changes-table--dated':''}"><thead><tr>${withDate?'<th>Between files</th>':''}<th>Holding</th><th>Signal</th><th class="num">Shares Δ</th><th class="num">Δ %</th>${flowCol?'<th class="num">vs pro-rata</th>':''}<th class="num">After</th><th class="num">≈ Value USD</th></tr></thead><tbody>`+
+  const byDate=Object.fromEntries(((LAST_H&&LAST_H.snapshots)||[]).map(s=>[s.date,s]));
+  const proCell=c=>{
+    if(c.flowAdjusted) return `<span class="${cls(c.flowAdjustedDelta)}">${c.flowAdjustedDelta>0?'+':''}${fmt(c.flowAdjustedDelta)}</span>${withDate&&c.unitFlow?`<div class="s">${fmt(c.unitFlow.unitsFrom)} → ${fmt(c.unitFlow.unitsTo)} units</div>`:''}`;
+    if(!(c.unitFlow&&c.unitFlow.known===false)) return '<span class="flat">—</span>';
+    const f=unitFlowWithImplied(byDate[c.from],byDate[c.to],NAV_DATA);
+    if(!f.known) return `<span class="flat">—</span><div class="s">${esc(c.unitFlow.state||'units unknown')}</div>`;
+    if(!f.delta) return `<span class="flat">—</span><div class="s">no unit flow (${fmt(f.unitsFrom)} units${f.implied?', implied':''})</div>`;
+    const adj=c.sharesTo-c.sharesFrom*f.unitsTo/f.unitsFrom;
+    return `<span class="${cls(adj)}">${adj>0?'+':''}${fmt(adj)}</span><div class="s">${fmt(f.unitsFrom)}${f.fromUnits.implied?' (implied)':''} → ${fmt(f.unitsTo)}${f.toUnits.implied?' (implied)':''} units</div>`;
+  };
+  const flowCol=list.some(c=>c.flowAdjusted||(c.unitFlow&&c.unitFlow.known===false));
+  return `<div class="tablewrap"><table class="changes-table${withDate?' changes-table--dated':''}"><thead><tr>${withDate?'<th>Between files</th>':''}<th>Holding</th><th title="Kind of share-count change between the two files">Change</th><th class="num">Shares Δ</th><th class="num">Δ %</th>${flowCol?'<th class="num">vs pro-rata</th>':''}<th class="num">After</th><th class="num">≈ Value USD</th></tr></thead><tbody>`+
     list.map(c=>{ const d=c.delta, p=c.pct;
-      const pro=c.flowAdjusted ? `<span class="${cls(c.flowAdjustedDelta)}">${c.flowAdjustedDelta>0?'+':''}${fmt(c.flowAdjustedDelta)}</span>${withDate&&c.unitFlow?`<div class="s">${fmt(c.unitFlow.unitsFrom)} → ${fmt(c.unitFlow.unitsTo)} units</div>`:''}` : '<span class="flat">—</span>';
       return `<tr class="${d>0?'chg-buy':'chg-sell'}">${withDate?`<td class="mono">${fmtDate(c.from)} → ${fmtDate(c.to)}</td>`:''}<td>${flagOf(c.ticker)} <span class="tick">${esc(c.ticker)}</span> ${esc(nameOf(c.ticker))}</td>
-      <td><span class="badge ${d>0?'b-buy':'b-sell'}" style="margin:0">${esc(c.kind)}</span></td><td class="num ${cls(d)}">${d>0?'+':''}${fmt(d)}</td><td class="num ${cls(d)}">${pct(p,1)}</td>${flowCol?`<td class="num">${pro}</td>`:''}<td class="num">${fmt(c.sharesTo)}</td><td class="num">${fmt(c.approxUsd)}</td></tr>`; }).join('')+'</tbody></table></div>';
+      <td><span class="badge ${d>0?'b-buy':'b-sell'}" style="margin:0">${esc(c.kind)}</span></td><td class="num ${cls(d)}">${d>0?'+':''}${fmt(d)}</td><td class="num ${cls(d)}">${pct(p,1)}</td>${flowCol?`<td class="num">${proCell(c)}</td>`:''}<td class="num">${fmt(c.sharesTo)}</td><td class="num">${fmt(c.approxUsd)}</td></tr>`; }).join('')+'</tbody></table></div>';
 }
 
-function renderNav(N){
+// The NAV KPIs from the fund's DailyNAV file: the NAV change is the file's one-day change versus the previous rate date, the
+// market price is that day's closing price on the exchange; Yahoo's WAGN quote (a separate source) is only in the title.
+function renderNav(N,Q){
   $('#kNav').textContent = N.nav==null ? '—' : '$'+fmt(N.nav,2);
-  $('#kNavSub').innerHTML = `<span class="${cls(N.navChgPct)}">${pct(N.navChgPct,2)}</span> · ${fmtDate(N.date)}`;
+  const prev=(N.history||[]).filter(r=>r&&r.nav!=null&&r.date&&r.date<N.date).pop();
+  $('#kNavSub').innerHTML = N.navChgPct==null ? fmtDate(N.date) : `<span class="${cls(N.navChgPct)}">${pct(N.navChgPct,2)}</span> for the day${prev?' (vs '+fmtDate(prev.date)+')':''} · ${fmtDate(N.date)}`;
   $('#kPx').textContent = N.price==null ? '—' : '$'+fmt(N.price,2);
-  $('#kPxSub').textContent = N.premium==null ? (N.price==null?'':'close · '+fmtDate(N.date)) : (N.premium<0?'discount ':'premium ')+pct(Math.abs(N.premium),2,false)+' vs NAV · '+fmtDate(N.date);
-  NAV_DATE=N.date||null; NAV_DATA=N; if(LAST_H&&LAST_H.latest) $('#fileDate').innerHTML = fileDateLine(LAST_H, NAV_DATA);
+  $('#kPxSub').textContent = N.price==null ? '' : 'closing market price · '+(N.premium==null?'':(N.premium<0?'discount ':'premium ')+pct(Math.abs(N.premium),2,false)+' vs NAV · ')+fmtDate(N.date);
+  const wq=Q&&Q.WAGN;
+  $('#kPx').title = wq&&Number.isFinite(wq.price) ? `The fund’s DailyNAV file; Yahoo’s WAGN quote at ${whenFull(wq.time)} was $${fmt(wq.price,2)}${wq.exchange?' ('+wq.exchange+')':''}` : 'The fund’s DailyNAV file';
+  NAV_DATE=N.date||null; NAV_DATA=N;
+  if(LAST_H&&LAST_H.latest){ $('#fileDate').innerHTML = fileDateLine(LAST_H, NAV_DATA); renderFundAssets(LAST_H); }
   renderNavSpark();
 }
 let NAV_DATA=null, NAV_DAYS=0, PERF_DATE=null; // the NAV chart always shows the fund's full life — lifetime history only, no short-term windows
@@ -786,32 +1133,53 @@ function renderNavSpark(){
     focus:svg.querySelector('.chart-focus'),line:svg.querySelector('.chart-focus-line'),halo:svg.querySelector('.chart-focus-halo'),dot:svg.querySelector('.chart-focus-dot'),tip,live,
     describe:row=>{ const date=fmtDate(row.date),value='$'+fmt(row.nav,2); return {date,value,meta:'Fund NAV',aria:`${date}, NAV ${value}`}; }});
   const first=h[0], last=h[h.length-1], r=ratio(last.nav,first.nav);
-  $('#sparkSub').innerHTML=`${fmtDate(first.date)} $${fmt(first.nav,2)} → ${fmtDate(last.date)} $${fmt(last.nav,2)} <span class="${cls(r)}">${pct(r,1)}</span>${NAV_DAYS?'':' · since inception, NAV price only (distributions excluded; the fund’s monthly performance table'+(PERF_DATE?' as of '+fmtDate(PERF_DATE):'')+' is total return)'}`;
+  $('#sparkSub').innerHTML=`${fmtDate(first.date)} $${fmt(first.nav,2)} → ${fmtDate(last.date)} $${fmt(last.nav,2)} <span class="${cls(r)}">${pct(r,1)}</span>${NAV_DAYS?'':' · the fund’s daily NAV series from its first record, NAV per unit only (no distributions added back); the Performance table is the fund’s own month-end return table'+(PERF_DATE?' as of '+fmtDate(PERF_DATE):'')}`;
 }
+// The fund's MonthlyPerformance file as it is: period returns at NAV and at market price and two S&P 500 comparison rows.
+// The file states no return basis for the fund rows (only the S&P rows are named total-return indices) and no inception
+// date; the NAV history's first record is stated instead of a date the file does not carry.
 function renderPerf(Pf){
   const m=Pf.monthly||[]; if(!m.length){ $('#perfNote').textContent='—'; return; }
-  $('#perfNote').textContent='as of '+fmtDate(m[0].date)+' · monthly data from the fund';
+  const hist=(NAV_DATA&&NAV_DATA.history)||[], firstNav=hist.find(r=>r&&r.date&&r.nav!=null), firstPx=hist.find(r=>r&&r.date&&r.price!=null);
+  $('#perfNote').textContent='as of '+fmtDate(m[0].date)+' · month-end returns from the fund’s monthly performance file, at NAV and at market price; the file does not state the return basis of the fund rows (its two S&P 500 rows are named total-return indices)'+(firstNav?' · since inception: the fund’s NAV history starts '+fmtDate(firstNav.date)+' at $'+fmt(firstNav.nav,2):'');
   PERF_DATE=m[0].date||null; if(NAV_DATA) renderNavSpark();
   const order=['WAGN NAV','WAGN MKT','SPTR2','SPXEWTR']; const label={'WAGN NAV':'Pabrai (NAV)','WAGN MKT':'Pabrai (market price)','SPTR2':'S&P 500 TR','SPXEWTR':'S&P 500 equal weight'};
+  const title={'WAGN MKT':firstPx?`The fund’s NAV history carries no market price before ${fmtDate(firstPx.date)}; what the file uses for earlier periods of this row is not stated`:'',
+    'SPTR2':'The file names this row “S&P 500 TR” (a total-return index)','SPXEWTR':'The file names this row “S&P 500 Equal Weight Total Return”'};
   const rows=order.map(k=>m.find(r=>r.ticker===k)).filter(Boolean);
   const c=v=>`<td class="num ${cls(v)}">${pct(v,2)}</td>`;
-  $('#tblPerf tbody').innerHTML=rows.map(r=>`<tr><td><b>${esc(label[r.ticker]||r.ticker)}</b></td>${c(r.m1)}${c(r.m3)}${c(r.m6)}${c(r.ytd)}${c(r.y1)}${c(r.sinceAnn)}${c(r.sinceCum)}</tr>`).join('');
+  $('#tblPerf tbody').innerHTML=rows.map(r=>`<tr><td${title[r.ticker]?` title="${esc(title[r.ticker])}"`:''}><b>${esc(label[r.ticker]||r.ticker)}</b></td>${c(r.m1)}${c(r.m3)}${c(r.m6)}${c(r.ytd)}${c(r.y1)}${c(r.sinceAnn)}${c(r.sinceCum)}</tr>`).join('');
 }
+// Dalal Street's 13F: what the build fetched and validated (never "SEC verified" — SEC publishes, the build checks the
+// download against the filing's own totals), the prior filing behind every quarter-on-quarter change, the next deadline
+// computed from the displayed report (a configured date only on the manual fallback), and the de minimis caveat.
 function renderDalal(D){
-  D=D||CFG.dalalStreet; $('#dalalNote').textContent='as of '+fmtDate(D.asOf)+' · filed '+fmtDate(D.filed)+(D.ok?' · SEC auto-verified':` · official filing manually verified${D.manualVerifiedAt?' '+fmtDate(D.manualVerifiedAt):''}`);
+  D=D||CFG.dalalStreet;
+  const verifiedBy = STATIC_BUILD?'build':'update';
+  $('#dalalNote').textContent='as of '+fmtDate(D.asOf)+' · filed '+fmtDate(D.filed)+(D.ok?' · fetched from SEC EDGAR and validated by this '+verifiedBy:` · official filing manually verified${D.manualVerifiedAt?' '+fmtDate(D.manualVerifiedAt):''}`);
   const src = D.sourceUrl ? ` Source: <a href="${esc(D.sourceUrl)}" target="_blank" rel="noopener">${esc(D.source||'SEC EDGAR 13F-HR')}</a>.` : '';
   const state=D.ok
-    ? `<b>Official SEC data fetched and validated${D.fetchedAt?' '+whenFull(D.fetchedAt):''}:</b> accession ${esc(D.accession||'—')}; the declared entry count and total value match the information table${D.manualFallbackCheck&&D.manualFallbackCheck.matches?', and the rows equal the manually verified copy kept in the configuration':''}.`
+    ? `<b>Fetched from SEC EDGAR${D.fetchedAt?' '+whenFull(D.fetchedAt):''} and validated by this ${verifiedBy}:</b> accession ${esc(D.accession||'—')}; the declared entry count and total value match the information table${D.manualFallbackCheck&&D.manualFallbackCheck.matches?', and the rows equal the manually verified copy kept in the configuration':''}. SEC publication is not an SEC audit of the filing.`
     : `<b>Official SEC filing manually verified${D.manualVerifiedAt?' '+fmtDate(D.manualVerifiedAt):''}:</b> accession ${esc(D.accession||'—')} and the displayed row totals were checked against EDGAR by hand. The automatic SEC download did not succeed when this ${STATIC_BUILD?'snapshot was built':'page was updated'} (${esc(D.fetchError||'no live verification result was returned')}), so the figures are that verified copy, not a fresh download.${D.pastFilingDeadline?' <b>The next filing deadline has passed and SEC could not be checked at build time: a newer 13F may exist.</b>':''}`;
-  const next=D.nextFilingWindow ? ` <b>Next filing expected ${esc(D.nextFilingWindow)}.</b>` : '';
-  $('#dalalCall').innerHTML=`${state} <b>$${fmt(D.portfolioValueUsd/1e6,1)}M across ${(D.holdings||[]).filter(h=>!h.exited).length} reported securities.</b> This is Dalal Street LLC’s manager-aggregated 13F, not a complete or live private-fund portfolio. It is quarterly and generally covers reportable long Section 13(f) securities; cash, shorts and many non-US securities are absent. It is manager-submitted data; SEC publication does not mean SEC has certified its accuracy or completeness.${next}${src}`;
+  const prev = D.previous&&D.previous.accession ? ` Changes in the quarter are versus the 13F for ${fmtDate(D.previous.asOf)}${D.previous.filed?' (filed '+fmtDate(D.previous.filed)+')':''}: ${D.previous.sourceUrl?`<a href="${esc(D.previous.sourceUrl)}" target="_blank" rel="noopener">accession ${esc(D.previous.accession)}</a>`:'accession '+esc(D.previous.accession)}.` : '';
+  $('#thDalalChange').textContent = D.previous&&D.previous.asOf ? 'Change vs the '+fmtDate(D.previous.asOf)+' 13F' : 'Change in quarter';
+  const dmText = (D.deMinimisRule&&D.deMinimisRule.text) || 'a 13F may omit any holding under 10,000 shares and under $200,000, so a row appearing or vanishing between quarters is not proof of a trade';
+  const deMinimis = ' '+esc(dmText.charAt(0).toUpperCase()+dmText.slice(1))+'.';
+  const dl=D.nextFilingDeadline, past=!!dl&&dl<todayIso();
+  const next = dl
+    ? ` <b>Next 13F${D.nextReportDate?' (for the quarter ending '+fmtDate(D.nextReportDate)+')':''} due by ${fmtDate(dl)}</b>${D.nextFilingSource==='computed'?' — '+esc(humanDates(D.nextFilingNote||'45 days after that quarter end, a Saturday or Sunday rolled to Monday; a US federal holiday on that day would move it later, which is not modelled')):' — a date typed into the configuration, used because SEC could not be fetched'}${past?`; that date has passed, so a newer 13F may exist that this ${STATIC_BUILD?'snapshot':'page'} does not show`:''}.`
+    : D.nextFilingWindow ? ` <b>Next filing expected ${esc(D.nextFilingWindow)}</b> (a configured date).` : '';
+  $('#dalalCall').innerHTML=`${state} <b>$${fmt(D.portfolioValueUsd/1e6,1)}M across ${(D.holdings||[]).filter(h=>!h.exited).length} reported securities.</b> This is Dalal Street LLC’s manager-aggregated 13F, not a complete or live private-fund portfolio. It is quarterly and generally covers reportable long Section 13(f) securities; cash, shorts and many non-US securities are absent.${deMinimis} It is manager-submitted data; SEC publication does not mean SEC has certified its accuracy or completeness.${prev}${next}${src}`;
   const mine=new Set(CFG.myPositions.map(p=>p.secTicker||p.ticker));
   $('#tblDalal tbody').innerHTML=(D.holdings||[]).map(h=>{
     const w = h.valueUsd!=null && D.portfolioValueUsd ? h.valueUsd/D.portfolioValueUsd*100 : h.weight; // weight = 13F value / total
+    const c = h.change ? h : ((D.changeByCusip||{})[h.cusip]||null);
+    const numeric = h.prevShares!=null&&h.prevShares>0&&h.shares>0 ? (()=>{ const d=h.shares-h.prevShares, p=d/h.prevShares*100; return `<span class="${cls(d)}">${pct(p,2)} (${d>0?'+':''}${fmt(d)})</span>`; })() : null;
     let q;
-    if(h.shares===0&&h.prevShares>0) q = '<span class="down">sold out (-100%)</span>';
-    else if(h.prevShares==null) q = h.qChange!=null ? esc(h.qChange) : '<span class="up">new</span>';
-    else { const d=h.shares-h.prevShares, p=h.prevShares?d/h.prevShares*100:null; q=`<span class="${cls(d)}">${pct(p,2)} (${d>0?'+':''}${fmt(d)})</span>`; }
+    if(c) q = ((['increase','decrease','unchanged'].includes(c.change)&&numeric) ? numeric : esc(c.changeText||c.change)) + (c.changeNote ? `<div class="s">${esc(c.changeNote)}</div>` : '');
+    else if(h.shares===0&&h.prevShares>0) q = 'no longer reported<div class="s">sold out, reduced below the 13F reporting threshold, or no longer a 13(f) security</div>';
+    else if(h.prevShares==null) q = h.qChange!=null ? esc(h.qChange) : 'first reported (not in the prior 13F)';
+    else q = numeric || '—';
     return `<tr class="${mine.has(h.ticker)?'mine':''}"><td><span class="tick">${esc(h.ticker)}</span> ${esc(h.name)}</td><td class="num">${pct(w,2,false)}</td><td class="num">${fmt(h.shares)}</td><td>${q}</td></tr>`; }).join('');
 }
 // The fund's own Form N-PORT held against the saved daily file priced as of the same date. Says exactly what
@@ -820,66 +1188,127 @@ function renderNport(N){
   const note=$('#nportNote'), call=$('#nportCall'), wrap=$('#nportWrap'), thead=$('#tblNport thead'), tbody=$('#tblNport tbody');
   const when=STATIC_BUILD?'build':'update';
   const shares=v=> v==null||!isFinite(v) ? '—' : Number.isInteger(v)?fmt(v):fmt(v,2);
+  // the archive's 30-character <name> when it differs from the untruncated name the build published
+  const filedAs=h=> h.secName&&h.secName!==h.name ? ` <span class="muted" title="the 30-character issuer name as filed">(filed as “${esc(h.secName)}”)</span>` : '';
   if(!N||!N.ok){
     note.textContent='SEC unavailable at '+when+' time';
-    const cands=N&&Array.isArray(N.candidates)&&N.candidates.length ? ` SEC’s submissions index lists ${N.candidates.length} N-PORT report${N.candidates.length===1?'':'s'} of the trust with quarter-end report dates, the newest as of ${fmtDate(N.candidates[0].reportDate)} (one filing per series); which of them is this fund’s could not be determined without opening the documents.` : '';
+    // candidateCount is the whole index; candidates is the capped list the walk may open (an older snapshot has only the latter)
+    const listed=N&&Array.isArray(N.candidates)?N.candidates.length:0, counted=!!(N&&Number.isFinite(N.candidateCount)), total=counted?N.candidateCount:listed;
+    const cands=listed ? ` SEC’s submissions index lists ${counted?'':'at least '}${fmt(total)} N-PORT report${total===1?'':'s'} of the trust with quarter-end report dates (one filing per series), the newest as of ${fmtDate(N.candidates[0].reportDate)}${total>listed?`; the ${fmt(listed)} newest are the ones the check would open${Number.isFinite(N.maxDocuments)?' (walk limit '+fmt(N.maxDocuments)+')':''}`:counted?'':`; this snapshot recorded only the ${fmt(listed)} newest, the ones the check would open`}. Which of them is this fund’s could not be determined without opening the documents${Number.isFinite(N.documentsOpened)&&N.documentsOpened>0?` (${fmt(N.documentsOpened)} opened before the failure)`:''}.` : '';
     call.innerHTML=`<b>SEC N-PORT unavailable at ${when} time</b> (${esc(N&&N.fetchError||'no result was returned')}). Nothing about the fund’s N-PORT is asserted here: the report was not read, so neither agreement nor disagreement with the daily file is claimed. The check runs again on the next ${when}.${cands}`;
     wrap.hidden=true; thead.innerHTML=''; tbody.innerHTML=''; return;
   }
   const link=N.sourceUrl?`<a href="${esc(N.sourceUrl)}" target="_blank" rel="noopener">${esc(N.form)} ${esc(N.accession)}</a>`:esc(N.form+' '+N.accession);
-  const C=N.comparison||{};
+  const C=N.comparison||{}, SEL=C.snapshotSelection||null, proof=C.pricingDateProof||(SEL&&SEL.pricingDateProof)||null;
   note.textContent='as of '+fmtDate(N.reportDate)+' · filed '+fmtDate(N.filed)+(C.comparable?' · compared with the file dated '+fmtDate(C.snapshotDate):' · not yet comparable');
-  const head=`<b>Official SEC Form N-PORT fetched ${whenFull(N.fetchedAt)}:</b> ${link}${N.isAmendment?' (an amended report, which replaces the original for the same period)':''}, filed ${fmtDate(N.filed)} by ${esc(N.registrantName||'the trust')} for the series ${esc(N.seriesName)} (${esc(N.seriesId)}), report period ${fmtDate(N.reportDate)}: ${fmt(N.holdingCount)} positions, net assets $${fmt(N.netAssets)}.${N.seriesIdMatchesConfig===false?` <b>The series ID differs from the configured ${esc(N.configuredSeriesId)}.</b>`:''} This is the fund’s own portfolio report to SEC; only the report for the last month of each fiscal quarter becomes public, about 60 days after that quarter end, so it is quarterly and lagged, and SEC publication is not an SEC audit of it. Your browser did not contact SEC for this; the ${when} did.`;
+  const head=`<b>Official SEC Form N-PORT fetched ${whenFull(N.fetchedAt)}:</b> ${link}${N.isAmendment?' (an amended report, which replaces the original for the same period)':''}, filed ${fmtDate(N.filed)} by ${esc(N.registrantName||'the trust')} for the series ${esc(N.seriesName)} (${esc(N.seriesId)}), report period ${fmtDate(N.reportDate)}: ${fmt(N.holdingCount)} positions, net assets $${fmt(N.netAssets)}.${N.seriesIdMatchesConfig===false?` <b>The series ID differs from the configured ${esc(N.configuredSeriesId)}.</b>`:''} This is the fund’s own portfolio report to SEC; only the report for the last month of each fiscal quarter becomes public, and it appears on EDGAR when the trust files it, which must be within 60 days of that quarter end — so it is quarterly and lagged, and SEC publication is not an SEC audit of it. Your browser did not contact SEC for this; the ${when} did.`;
   if(!C.comparable){
     const nx=N.nextOpportunity||{}, range=N.snapshotRange;
-    call.innerHTML=`${head} <b>Not yet comparable:</b> the daily file priced as of ${fmtDate(N.reportDate)} is the one dated ${fmtDate(C.snapshotDate)}, and no such file is saved${range?` (saved files run from ${fmtDate(range.first)} to ${fmtDate(range.last)})`:' (no files are saved)'}. The first comparison possible is the ${fmtDate(nx.reportDate)} report, expected public by ${fmtDate(nx.publicBy)}, against the file dated ${fmtDate(nx.snapshotDate)}. Below are the positions as reported to SEC, not compared with anything.`;
+    // The build publishes the sentence (nextOpportunity.note): the report is public when the trust files it, due within
+    // 60 days of the quarter end. An older snapshot without it gets the deadline alone, never a claim about a release day.
+    const release = nx.note ? esc(nx.note)
+      : nx.filingDeadline ? `the report for the last month of a fiscal quarter is public on EDGAR as soon as the trust files it, which must be by ${fmtDate(nx.filingDeadline)}`
+      : '';
+    const which = nx.snapshotDateNote ? esc(nx.snapshotDateNote) : `the first saved file after ${fmtDate(nx.reportDate)} whose NetAssets per unit equals the official NAV dated ${fmtDate(nx.reportDate)}${nx.snapshotDate?' — normally the file dated '+fmtDate(nx.snapshotDate)+', later after a market holiday':''}`;
+    const why = C.reason ? esc(humanDates(C.reason)) : `no saved daily file is proven to be priced as of ${fmtDate(N.reportDate)}`;
+    call.innerHTML=`${head} <b>Not yet comparable:</b> ${why}${range?`; saved files run from ${fmtDate(range.first)} to ${fmtDate(range.last)}`:'; no files are saved'}. The first comparison possible is with the <b>${fmtDate(nx.reportDate)}</b> report: ${release} The file it will be compared with: ${which}. Below are the positions as reported to SEC, not compared with anything.`;
     thead.innerHTML='<tr><th>Holding (N-PORT)</th><th class="num">Shares</th><th class="num">Value USD</th><th class="num">% of net assets</th><th>Identifier</th></tr>';
-    tbody.innerHTML=(N.holdings||[]).map(h=>`<tr><td>${h.ticker?`<span class="tick">${esc(h.ticker)}</span> `:''}${esc(h.name)}${h.cashLike?' <span class="muted">(cash-like)</span>':''}</td><td class="num">${shares(h.balance)}</td><td class="num">${fmt(h.valUsd)}</td><td class="num">${pct(h.pctVal,2,false)}</td><td>${esc(h.cusip?'CUSIP '+h.cusip:h.isin?'ISIN '+h.isin:'—')}</td></tr>`).join('');
+    tbody.innerHTML=(N.holdings||[]).map(h=>`<tr><td>${h.ticker?`<span class="tick">${esc(h.ticker)}</span> `:''}${esc(h.name)}${filedAs(h)}${h.cashLike?' <span class="muted">(cash-like)</span>':''}</td><td class="num">${shares(h.balance)}</td><td class="num">${fmt(h.valUsd)}</td><td class="num">${pct(h.pctVal,2,false)}</td><td>${esc(h.cusip?'CUSIP '+h.cusip:h.isin?'ISIN '+h.isin:'—')}</td></tr>`).join('');
     wrap.hidden=false; return;
   }
   const S=C.summary||{}, BY=S.byMethod||{}, NA=C.netAssets;
-  const method={cusip:'CUSIP',isin:'ISIN national number',name:'issuer name'};
-  call.innerHTML=`${head} <b>Compared with the daily file dated ${fmtDate(C.snapshotDate)}, which is priced as of ${fmtDate(N.reportDate)}: ${fmt(S.matched)} of ${fmt(S.positions)} N-PORT positions have the same share count</b> (within half a share); ${fmt(S.mismatched)} differ, ${fmt(S.onlyInNport)} appear only in the N-PORT and ${fmt(S.onlyInHoldings)} only in the file; ${fmt(S.cashLike)} cash-like row${S.cashLike===1?'':'s'} listed but not counted.${NA?` Net assets: N-PORT $${fmt(NA.nport)} vs file $${fmt(NA.file)} (${pct(NA.diffPct,2)}).`:''} Rows are paired by CUSIP where the file carries one (${fmt(BY.cusip)}), else by the national number inside the N-PORT ISIN (${fmt(BY.isin)}), else by the first two words of the issuer name (${fmt(BY.name)}); the method is shown per row. A difference is a difference between two documents, not proof of which is right.`;
+  const method={cusip:'CUSIP',isin:'ISIN national number',name:'issuer name (first two words)',...(C.methodLabels||{})};
+  const methodOf=r=> r.methodLabel ? esc(r.methodLabel) : r.method ? esc(method[r.method]||r.method) : '—';
+  // how the compared file was chosen: by NAV proof (rule nav-reconciled), or the next-weekday file without a proof
+  const chosen = SEL&&SEL.rule==='nav-reconciled'&&proof
+    ? `chosen as ${SEL.ruleText?esc(humanDates(SEL.ruleText)):'the earliest saved file after the report date whose NetAssets per unit equals the official NAV dated the report date'} — priced as of <b>${fmtDate(proof.navDate)}</b>: NetAssets ÷ units = $${fmt(proof.perUnit,4)}, that day’s NAV of $${fmt(proof.nav,2)}${proof.unitChange?` (${fmt(Math.abs(proof.unitChange))} units ${proof.unitChange>0?'created':'redeemed'} after the NAV file)`:''}`
+    : SEL&&SEL.rule==='unproven' ? `the file dated the next weekday after the report date; <b>its pricing date is not proven</b> (no official NAV dated ${fmtDate(N.reportDate)} was available to check it)`
+    : `taken as the file priced as of ${fmtDate(N.reportDate)} (the one dated the next weekday; this snapshot records no pricing-date proof)`;
+  call.innerHTML=`${head} <b>Compared with the daily file dated ${fmtDate(C.snapshotDate)}</b>, ${chosen}. <b>${fmt(S.matched)} of ${fmt(S.positions)} N-PORT positions have the same share count</b> (within half a share); ${fmt(S.mismatched)} differ, ${fmt(S.onlyInNport)} appear only in the N-PORT and ${fmt(S.onlyInHoldings)} only in the file; ${fmt(S.cashLike)} cash-like row${S.cashLike===1?'':'s'} listed but not counted${C.cashLikeRule?' (cash-like = '+esc(C.cashLikeRule)+')':''}.${NA?` Net assets: N-PORT $${fmt(NA.nport)} vs the file’s $${fmt(NA.file)} (${pct(NA.diffPct,2)}; ${NA.fileNote?esc(NA.fileNote):'the file’s figure is the rounded NAV × its unit count, not an independently reported total'}).`:''} Rows are paired by CUSIP where the file carries one (${fmt(BY.cusip)}), else by the national number inside the N-PORT ISIN (${fmt(BY.isin)}), else by the first two words of the issuer name (${fmt(BY.name)}); the method is shown per row. A difference is a difference between two documents, not proof of which is right.`;
   thead.innerHTML='<tr><th>Holding</th><th class="num">N-PORT shares</th><th class="num">FilePoint shares</th><th class="num">Difference</th><th>Matched by</th></tr>';
-  const row=(r,state)=>`<tr><td>${r.fundTicker||r.ticker?`<span class="tick">${esc(r.fundTicker||r.ticker)}</span> `:''}${esc(r.name)}${r.cashLike?' <span class="muted">(cash-like)</span>':''}</td><td class="num">${shares(r.nportShares)}</td><td class="num">${shares(r.fileShares)}</td><td class="num ${r.diff==null?'':cls(r.diff)}">${r.diff==null?'—':(r.diff>0?'+':'')+shares(r.diff)}</td><td>${state||(r.method?esc(method[r.method]||r.method):'—')}</td></tr>`;
-  tbody.innerHTML=[...(C.matched||[]).map(r=>row(r)),...(C.mismatched||[]).map(r=>row(r)),...(C.onlyInNport||[]).map(r=>row(r,'<span class="down">only in N-PORT</span>')),...(C.onlyInHoldings||[]).map(r=>row(r,'<span class="down">only in the file</span>')),...(C.cashLike||[]).map(r=>row(r,(r.method?esc(method[r.method]||r.method):'—')+' · not counted'))].join('');
+  const row=(r,state)=>`<tr><td>${r.fundTicker||r.ticker?`<span class="tick">${esc(r.fundTicker||r.ticker)}</span> `:''}${esc(r.name)}${filedAs(r)}${r.cashLike?' <span class="muted">(cash-like)</span>':''}</td><td class="num">${shares(r.nportShares)}</td><td class="num">${shares(r.fileShares)}</td><td class="num ${r.diff==null?'':cls(r.diff)}">${r.diff==null?'—':(r.diff>0?'+':'')+shares(r.diff)}</td><td>${state||methodOf(r)}</td></tr>`;
+  tbody.innerHTML=[...(C.matched||[]).map(r=>row(r)),...(C.mismatched||[]).map(r=>row(r)),...(C.onlyInNport||[]).map(r=>row(r,'<span class="down">only in N-PORT</span>')),...(C.onlyInHoldings||[]).map(r=>row(r,'<span class="down">only in the file</span>')),...(C.cashLike||[]).map(r=>row(r,methodOf(r)+' · not counted'))].join('');
   wrap.hidden=false;
 }
-// The last builds as GitHub records them, including the ones that failed and therefore never published anything.
-// Unauthenticated read of the public Actions API (60 requests per hour per address); nothing is sent.
+// The last 20 builds as GitHub records them, including the ones that failed and therefore published nothing. Read only when
+// the visitor presses the button: an unauthenticated request to the public Actions API (60 per hour per address), with
+// no credential and nothing about the page; re-read at most every 5 minutes.
 let BUILDS_LOADED_AT=0;
+const BUILDS_URL='https://api.github.com/repos/netic123/investments/actions/workflows/pages.yml/runs?per_page=20';
 async function renderBuildHistory(){
-  const section=$('#buildsSection'); if(!section) return;
-  if(Date.now()-BUILDS_LOADED_AT<5*60*1000) return;
-  BUILDS_LOADED_AT=Date.now();
-  section.hidden=false;
-  const call=$('#buildsCall'), note=$('#buildsNote'), body=$('#tblBuilds tbody');
+  const section=$('#buildsSection'); if(!section||!STATIC_BUILD) return;
+  const call=$('#buildsCall'), note=$('#buildsNote'), body=$('#tblBuilds tbody'), wrap=$('#buildsWrap'), btn=$('#btnBuilds');
+  if(Date.now()-BUILDS_LOADED_AT<5*60*1000){ note.textContent=note.textContent.replace(/ · re-read.*$/,'')+' · re-read possible 5 min after the last read'; return; }
+  BUILDS_LOADED_AT=Date.now(); if(btn) btn.disabled=true;
+  const readAt=timeStr();
   try{
-    const r=await fetch('https://api.github.com/repos/netic123/investments/actions/workflows/pages.yml/runs?per_page=20',{cache:'no-store',headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},signal:AbortSignal.timeout(15000)});
+    const r=await fetch(BUILDS_URL,{cache:'no-store',headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},signal:AbortSignal.timeout(15000)});
     if(r.status===403||r.status===429) throw new Error('GitHub’s public API is rate-limited for your address right now (60 requests per hour); try again later');
     if(!r.ok) throw new Error('GitHub answered HTTP '+r.status);
     const runs=((await r.json()).workflow_runs||[]);
     const ok=runs.filter(x=>x.conclusion==='success').length, failed=runs.filter(x=>x.status==='completed'&&x.conclusion!=='success').length;
+    const started24h=runs.filter(x=>Number.isFinite(Date.parse(x.run_started_at||x.created_at))&&Date.now()-Date.parse(x.run_started_at||x.created_at)<864e5).length;
+    BUILD_RUNS_24H={n:started24h,atLeast:started24h===runs.length}; // only 20 runs are read, so a full window is a lower bound
     const triggerOf=x=> x.event==='schedule'?'schedule':x.event==='workflow_dispatch'?'on request':x.event==='push'?'push to main':esc(x.event);
-    const resultOf=x=> x.status!=='completed' ? `<span class="muted">${esc(x.status.replace('_',' '))}</span>` : x.conclusion==='success' ? '<span class="up">published</span>' : `<span class="down">${esc(x.conclusion||'failed')} — nothing published</span>`;
+    const resultOf=x=> x.status!=='completed' ? `<span class="muted">${esc(String(x.status||'').replace('_',' '))}</span>` : x.conclusion==='success' ? '<span class="up">published</span>' : `<span class="down">${esc(x.conclusion||'failed')} — nothing published</span>`;
+    // GitHub reports run_started_at equal to created_at for every run in this list, so there is no execution start to show:
+    // the duration is measured from the queue time to updated_at and includes any wait behind a running deploy (the workflow
+    // serialises deployments). Job-level times would cost one more request per run and are not fetched.
     const durationOf=x=>{ const ms=Date.parse(x.updated_at)-Date.parse(x.run_started_at||x.created_at); return isFinite(ms)&&ms>0 ? Math.round(ms/60000)+' min' : '—'; };
     body.innerHTML=runs.map(x=>`<tr><td class="mono">${whenFull(x.created_at)}</td><td>${triggerOf(x)}</td><td>${resultOf(x)}</td><td class="num">${durationOf(x)}</td><td><a href="${esc(x.html_url)}" target="_blank" rel="noopener">log</a></td></tr>`).join('');
-    note.textContent=`last ${runs.length} runs · ${ok} published · ${failed} failed`;
-    call.innerHTML=`Every attempt to rebuild this page, as recorded by GitHub Actions and read live from its public API at ${timeStr()}. A failed run leaves the previous snapshot online and is what the status line’s age warning is about. ${BUILD_META&&BUILD_META.runId?`The snapshot you are looking at came from run <a href="${esc(BUILD_META.runUrl)}" target="_blank" rel="noopener">${esc(String(BUILD_META.runId))}</a>.`:''}`;
+    note.textContent=`last ${runs.length} runs · ${ok} published · ${failed} failed · ${started24h===runs.length?runs.length+' or more':started24h} started in the last 24 h · read ${readAt}`;
+    const B=SNAPSHOT&&SNAPSHOT.build;
+    const newer=B&&B.generatedAt ? runs.find(x=>x.status==='completed'&&x.conclusion==='success'&&String(x.id)!==String(B.runId)&&Date.parse(x.updated_at)>Date.parse(B.generatedAt)) : null;
+    call.innerHTML=`The last ${runs.length} runs of the build workflow, as recorded by GitHub Actions and read from its public API at ${readAt} (re-read at most every 5 minutes). Queued is when GitHub created the run; GitHub records no separate execution start for these runs (its run_started_at equals the queue time), so Duration counts from the queue and includes any wait behind a running deploy. A failed run leaves the previous snapshot online. ${B&&B.runId?`The snapshot you are looking at came from run <a href="${esc(String(B.runUrl||''))}" target="_blank" rel="noopener">${esc(String(B.runId))}</a>.`:''}${newer?` <b>A newer build finished at ${whenFull(newer.updated_at)}; the CDN had not served it when this page last checked.</b>`:''} <button type="button" id="btnBuilds">Read again — contacts api.github.com</button>`;
+    wrap.hidden=false;
   }catch(e){
     note.textContent='unavailable';
-    body.innerHTML='';
-    call.innerHTML=`<b>Build history could not be read:</b> ${esc(String(e&&e.message||e))}. The <a href="https://github.com/netic123/investments/actions/workflows/pages.yml" target="_blank" rel="noopener">Actions page</a> shows the same list.`;
+    body.innerHTML=''; wrap.hidden=true;
+    call.innerHTML=`<b>Build history could not be read at ${readAt}:</b> ${esc(errMsg(e))}. The <a href="https://github.com/netic123/investments/actions/workflows/pages.yml" target="_blank" rel="noopener">Actions page</a> shows the same list. <button type="button" id="btnBuilds">Try again — contacts api.github.com</button>`;
   }
+  STATUS_RENDER(); // the age warning cites the 24-hour run count once it is known
 }
-function renderDates(){
-  const t0=today0();
-  const items=[...CFG.dates].sort((a,b)=>a.date.localeCompare(b.date));
-  const html=items.map(d=>{ const dt=new Date(d.date+'T00:00:00'); const days=Math.round((dt-t0)/864e5); if(days<-3) return '';
+$('#buildsSection').addEventListener('click',e=>{ if(e.target.closest('#btnBuilds')) renderBuildHistory(); });
+if(!STATIC_BUILD) $('#buildsSection').hidden=true; // the local server has no build history
+// An entry is shown on its date and for the three days after it (the section note says so); it disappears on the fourth day.
+// The fund's shareholder reports come from nport.shareholderReports (the trust's SEC submissions index, read each build):
+// the newest annual (N-CSR) and semi-annual (N-CSRS) report for the series, or the EDGAR due date when the report for a
+// period that has already ended is not on EDGAR yet. Nothing there is a date typed into the configuration.
+function renderDates(N){
+  const t0=today0(), today=todayIso();
+  const items=[...(CFG.dates||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  const entries=items.map(d=>{ const dt=new Date(d.date+'T00:00:00'); const days=Math.round((dt-t0)/864e5); if(days<-3) return null;
     const inStr=days<0?'passed':days===0?'today':days===1?'tomorrow':'in '+days+' days';
     const label=String(d.label).replace('{TR}', TR_WEIGHT!=null?pct(TR_WEIGHT,0,false):'~30%');
-    return `<li class="${days>=0&&days<=7?'soon':''}"><span class="d">${d.approx?'~':''}${fmtDate(d.date)}</span><span>${esc(label)}</span><span class="in">${inStr}</span></li>`; }).join('');
-  $('#dates').innerHTML = html || '<li class="empty">No upcoming dates — add to the list in data/config.json (dates).</li>';
+    return {date:d.date,html:`<li class="${days>=0&&days<=7?'soon':''}"><span class="d">${d.approx?'~':''}${fmtDate(d.date)}</span><span>${esc(label)}</span><span class="in">${inStr}</span></li>`}; }).filter(Boolean);
+  const SR=N&&N.shareholderReports;
+  if(SR&&SR.ok){
+    const daysFrom=iso=>Math.round((new Date(iso+'T00:00:00')-t0)/864e5);
+    const readAt=` Read from SEC’s submissions index at ${whenFull(N.fetchedAt)}.`;
+    const periodEnd=mmdd=>{ const y=Number(today.slice(0,4)); return [y,y-1].map(yy=>`${yy}-${mmdd}`).find(d=>d<=today)||null; }; // the latest such period end on or before today
+    // A filing is listed for 45 days after its filing date; a due date from 120 days before it until the report appears.
+    const reportLine=(kind,form,rep,mmdd,due,dueEnd)=>{
+      if(!/^\d{2}-\d{2}$/.test(String(mmdd||''))) return null;
+      const period=form==='N-CSR'?'fiscal year':'half-year', end=periodEnd(mmdd);
+      const link=rep&&rep.accession ? `<a href="${esc(rep.indexUrl||rep.sourceUrl||'')}" target="_blank" rel="noopener">accession ${esc(rep.accession)}</a>` : '';
+      if(rep&&rep.reportDate&&end&&rep.reportDate>=end){
+        if(!rep.filed||daysFrom(rep.filed)<-45) return null;
+        // The fund's own site carried the FY2026 report PDF before the EDGAR filing: a hand-checked fact about a site
+        // this build never fetches, tied to that one accession, so it is a separate sentence with its own check date.
+        const site = rep.accession==='0001133228-26-012211' ? ' Separately: the report PDF was on the fund’s own site (<a href="https://www.wagonsetf.com/ir" target="_blank" rel="noopener">wagonsetf.com/ir</a>) on 28 Aug 2026, checked by hand on 4 Sept 2026; this page does not fetch that site.' : '';
+        return {date:rep.filed,html:`<li><span class="d">${fmtDate(rep.filed)}</span><span>${kind} (Form ${esc(rep.form)}${rep.isAmendment?', amended':''}) for the ${period} ended ${fmtDate(rep.reportDate)}: filed on EDGAR ${fmtDate(rep.filed)} (${link}).${readAt}${site}</span><span class="in">filed</span></li>`};
+      }
+      if(!due||!dueEnd) return null;
+      const days=daysFrom(due); if(days>120) return null;
+      const inStr=days<0?'due date passed — not on EDGAR when read':days===0?'due today':days===1?'due tomorrow':'due in '+days+' days';
+      return {date:due,html:`<li class="${days>=0&&days<=7?'soon':''}"><span class="d">${fmtDate(due)}</span><span>${kind} (Form ${esc(form)}) for the ${period} ${dueEnd<=today?'ended':'ending'} ${fmtDate(dueEnd)}: due on EDGAR within ${fmt(SR.annualDueWithinDays||70)} days (by ${fmtDate(due)}; a weekend rolls to Monday, US federal holidays not modelled)${rep&&rep.reportDate?`; the newest on EDGAR is for ${fmtDate(rep.reportDate)}, filed ${fmtDate(rep.filed)}${link?' ('+link+')':''}`:'; none is on EDGAR for this series yet'}.${readAt}</span><span class="in">${inStr}</span></li>`};
+    };
+    for(const e of [reportLine('Annual report','N-CSR',SR.annual,SR.fiscalYearEnd,SR.nextAnnualDue,SR.nextAnnualPeriodEnd), reportLine('Semi-annual report','N-CSRS',SR.semiAnnual,SR.semiAnnualPeriodEnd,SR.nextSemiAnnualDue,SR.nextSemiAnnualPeriodEnd)]) if(e) entries.push(e);
+  } else if(N&&SR&&SR.ok===false){
+    entries.push({date:'9999-99-99',html:`<li><span class="d">—</span><span class="muted">Shareholder reports (Forms N-CSR, N-CSRS): SEC’s submissions index could not be read at ${STATIC_BUILD?'build':'update'} time${SR.fetchError?' ('+esc(SR.fetchError)+')':''}, so nothing about them is asserted here.</span><span class="in"></span></li>`});
+  }
+  entries.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  $('#dates').innerHTML = entries.map(e=>e.html).join('') || '<li class="empty">No upcoming dates — add to the list in data/config.json (dates).</li>';
 }
 
 // ---- Fear & Greed: one shared six-component model, six market mappings, one renderer.
@@ -1024,10 +1453,16 @@ ${t.kind==='market'?`<section class="fg-data">
 const SHOW_RESEARCH_SIGNAL = !STATIC_BUILD || OWNER_MODE;
 $('#fgPanels').innerHTML = FG_TABS.map(fgPanelHtml).join('');
 
-// One market from the shared /api/marketfg response → common renderer shape
+// ---- fear-greed normaliser (test/site_trust.test.js runs this block in vm): one market from the shared /api/marketfg
+// response → common renderer shape. Every sentence here is a claim to a visitor: it is built from the fields marketfg.js
+// publishes (carriedComponents, oldestComponentAsOf, disclosure, seriesNames, model.bands, model.warmup) and says nothing a
+// snapshot without those fields could not support.
 const MARKET_COMP_ORDER=['momentum','strength','volatility','safeHaven','credit','breadth'];
+// model.bands ([{min,max,label}]) is the published band table; model.labels the older array form; MARKET_BANDS the page copy.
+const bandsOf=model=> Array.isArray(model&&model.bands)&&model.bands.length ? model.bands.map(b=>[b.min,b.max,b.label]) : (model&&model.labels)||MARKET_BANDS;
 function normMarket(M,model,fetchedAt){
-  const bands=(model&&model.labels)||MARKET_BANDS, v=M.score, P=M.previous||{};
+  model=model||{};
+  const bands=bandsOf(model), v=M.score, P=M.previous||{};
   const H=(M.history||[]).filter(h=>h.score!=null).map(h=>({date:h.date,value:h.score,label:h.label,n:h.n}));
   const row=(val,date)=> val==null ? null : {value:val,label:bands[fgBand(val,bands)][2],date};
   const now={value:v,label:M.label,date:M.asOf,live:false};
@@ -1038,30 +1473,71 @@ function normMarket(M,model,fetchedAt){
   if(M.stale) callouts.push('Yahoo did not respond at the last fetch — showing the last fetched daily data.');
   for(const w of M.warnings||[]) callouts.push(esc(w));
   const comps=MARKET_COMP_ORDER.map(k=>M.components[k]).filter(Boolean);
-  // "as of" is the benchmark's date; other exchanges may have closed earlier, and the model carries such components forward for up to fillDays.
+  const compName=k=>{ const c=comps.find(x=>x.key===k); return c?c.name:k; };
   const topUps=Object.entries(M.recentBarTopUps||{});
   if(topUps.length) callouts.push(`Yahoo’s full-history response trailed the newest completed bars for ${topUps.map(([s,t])=>esc(s)+' (+'+fmt(t.appended)+' through '+dayMon(t.to)+')').join(', ')}; those bars were taken from a short-range request that agreed with the full history on their last shared close.`);
-  const carried=comps.filter(c=>c.lag&&c.asOf);
-  if(carried.length) callouts.push(`${carried.length} of ${M.total} indicators are carried forward from an earlier completed bar because their source had no newer one: ${carried.map(c=>esc(c.name)+' as of '+dayMon(c.asOf)+(c.lagDetail?' ('+esc(c.lagDetail)+')':'')).join('; ')}. The model allows up to ${fmt(model.fillDays||7)} calendar days; a later build picks the bars up when Yahoo publishes them.`);
+  // "as of" is the benchmark's last completed bar. A component whose source has no bar for that date is carried from its
+  // own last completed bar (lag=true) for up to fillDays; marketfg.js lists them in carriedComponents with, per series, what
+  // the data shows (a bar listed with no close; no bar on any series of that venue — holiday or feed gap, which the model
+  // cannot tell apart; no bar on this series alone). An older snapshot without the list gets the same from components[*].
+  const carried=Array.isArray(M.carriedComponents) ? M.carriedComponents.map(c=>({name:compName(c.component),symbol:c.symbol,asOf:c.asOf,detail:c.detail}))
+    : comps.filter(c=>c.lag&&c.asOf).map(c=>({name:c.name,symbol:(c.symbols||[]).join(', '),asOf:c.asOf,detail:c.lagDetail}));
+  const oldest=M.oldestComponentAsOf || (carried.length ? carried.map(c=>c.asOf).sort()[0] : M.asOf);
+  const total=M.total||comps.length||6;
+  if(carried.length) callouts.push(`${carried.length} of ${total} indicators are carried from an earlier completed bar of their own source: ${carried.map(c=>`<b>${esc(c.name)}</b> as of ${dayMon(c.asOf)}${c.detail?' — '+esc(humanDates(c.detail)):' ('+esc(c.symbol)+')'}`).join('; ')}. The model carries a component for up to ${fmt(model.fillDays||7)} calendar days and moves it forward only once its source has a newer completed bar; an exchange holiday leaves no bar to publish, so nothing here promises that a missing bar will appear.`);
+  // the stamp used by the header KPI, the Indicators note and the section note
+  const asOfText = carried.length
+    ? `as of ${when} — composite of the last completed benchmark bar; ${carried.length} of ${total} indicators carried from ${fmtDate(oldest)}`
+    : `as of ${when} — all ${total} indicators as of that date`;
   const realised=comps.some(c=>c.key==='volatility'&&/realised/.test(c.note||''));
-  const seriesList=comps.map(c=>`<li><b>${esc(c.name)}</b>: ${c.names.map((n,i)=>esc(n)+' <span class="mono muted">('+esc(c.symbols[i])+')</span>').join(' / ')}${c.note?' — '+esc(c.note):''}</li>`).join('');
+  // Series list: marketfg's curated display names and instrument types (seriesNames) with the symbol; Yahoo's own name is
+  // kept in a title where it differs. An older snapshot without seriesNames shows names/symbols as before.
+  const seriesOf=c=> Array.isArray(c.seriesNames)&&c.seriesNames.length
+    ? c.seriesNames.map(s=>`<span${s.providerName&&s.providerName!==s.name?` title="Yahoo’s own name for this series: ${esc(s.providerName)}"`:''}>${esc(s.name||s.symbol)}</span> <span class="mono muted">(${esc(s.symbol)})</span>${s.type?' <span class="muted">— '+esc(s.type)+'</span>':''}`).join(' / ')
+    : c.names.map((n,i)=>esc(n)+' <span class="mono muted">('+esc(c.symbols[i])+')</span>').join(' / ');
+  const seriesList=comps.map(c=>`<li><b>${esc(c.name)}</b>: ${seriesOf(c)}${c.note?' — '+esc(c.note):''}</li>`).join('');
   const crypto=M.key==='crypto';
+  const W=model.warmup||null;
+  // the composite's first row comes about 2 x percentileMinPoints - 1 observations after the latest-starting series (the
+  // strength percentile: 126 observations for its first raw value, then 126 finite raws) — model.warmup states the rule
+  const warmupObs = W&&Number.isFinite(W.percentileMinPoints) ? 2*W.percentileMinPoints-1 : null;
+  const warmupText = warmupObs ? `the warm-up has passed — about ${fmt(warmupObs)} observations after the latest-starting source series (the rule is quoted under “Exact scoring rules” above); on crypto’s seven-day calendar ${fmt(warmupObs)} observations is roughly ${Math.round(warmupObs/30.4)} months` : 'the warm-up has passed (this snapshot does not carry the rule, so its length is not stated here)';
+  const firstScored = M.firstScoredDate ? ` For this market the first scored date is ${fmtDate(M.firstScoredDate)}.` : '';
+  // What marketfg.js records about this market's benchmark and raw series (market.disclosure), quoted, never paraphrased
+  // into a stronger claim; a snapshot without it makes no verification statement at all.
+  const D=M.disclosure&&typeof M.disclosure==='object' ? M.disclosure : null;
+  const disclosureText = D ? `${D.benchmarkType?`<b>Benchmark:</b> ${esc(D.benchmarkType)}. `:''}${D.verified?`<b>What was checked about the raw series:</b> ${esc(D.verified)}. `:''}${D.note?`<b>Note:</b> ${esc(D.note)}. `:''}` : '';
   const disclosure=crypto
-    ? `<p class="muted" style="font-size:.82rem;margin:10px 0 0"><b>Crypto mapping:</b> the benchmark is a fixed, daily-rebalanced equal-weight return index of BTC, ETH, SOL, XRP, ADA, DOGE and BNB; each contributes one seventh of each day’s return. It is broader than BTC alone, but it is <b>not literally every coin, not market-cap weighted and not investable</b>. IEF is the US Treasury safe-haven proxy; HYG/LQD measures external US corporate-credit appetite. Breadth compares a non-core basket (SOL/XRP/ADA/DOGE/BNB) with a BTC/ETH core basket, so those assets overlap the benchmark. Selecting today’s surviving assets in August 2026 and reconstructing them backward creates hindsight-selection and survivorship bias; history starts only after all seven assets have common Yahoo daily closes and the warm-ups have passed (a trailing 252-observation high for strength and 126 scored values per component), roughly eight months later. The current UTC candle is excluded. US bond components carry their latest score over weekends.</p>`
-    : `<p class="muted" style="font-size:.82rem;margin:10px 0 0">As of August 2026 the author found no published Fear &amp; Greed index with an open data source for ${esc(M.name)}${M.key==='usa'?' apart from CNN’s published US index':''}, hence the own computation.${M.key==='ustech'?' <b>US Tech means the XLK US technology-sector benchmark, not QQQ or the whole Nasdaq-100.</b> Its volatility input is VXN, the Nasdaq-100 implied-volatility index; breadth compares the equal-weight technology ETF RSPT with the cap-weighted XLK; safe-haven and credit reuse the USA tab’s Treasury (IEF) and HYG/LQD proxies.':''}${M.key==='global'?' Global uses the ACWI benchmark with US-only volatility (VIX) and Treasury (IEF) proxies and London-listed global credit ETFs (HYLD.L/CORP.L) that are thinly traded, so that indicator is noisier.':''}${realised?' Volatility = realised 20-observation because this market is not configured with a matching implied-volatility series; it is backward-looking and behaves differently from a VIX-style measure.':''}${M.key==='usa'?' A one-off 23 Aug 2026 comparison of the earlier rolling-window model (v1) with CNN’s published index is historical context only and does not validate this v3 model.':''}</p>`;
-  const explain=`<div class="kpi"><div class="l">One shared repository model · v${esc(model.version||1)}</div></div>
-    <p style="margin:8px 0 0;font-size:.9rem">All six configured markets — Crypto, Sweden, USA, US Tech, Europe and Global — use the <b>same six-component engine, causal expanding full-history percentile scoring, equal weights, directions and labels</b>. At every date, each raw indicator is ranked against every finite value that component has produced from the start of the current provider maximum-history response through that date. There is no rolling percentile window and no internal history truncation. Scoring starts after ${fmt(model.percentileMinPoints)} valid raw values; the strength raw feature itself still measures distance from a trailing ${fmt(model.strengthWindow)}-observation high. Volatility is inverted and all ${model.minComponents} component ranks are averaged. Provider history completeness is ${model.providerHistoryCompleteness==='UNVERIFIED'?'<b>not independently verified</b>':esc(model.providerHistoryCompleteness)}. The BUY/SELL learner below is separate and refits on every matured row from the entire supplied score history.</p>
+    ? `<p class="muted" style="font-size:.82rem;margin:10px 0 0"><b>Crypto mapping:</b> the benchmark is a fixed, daily-rebalanced equal-weight return index of BTC, ETH, SOL, XRP, ADA, DOGE and BNB; each contributes one seventh of each day’s return. It is broader than BTC alone, but it is <b>not literally every coin, not market-cap weighted and not investable</b>. IEF is the US Treasury safe-haven proxy; HYG/LQD measures external US corporate-credit appetite. Breadth compares a non-core basket (SOL/XRP/ADA/DOGE/BNB) with a BTC/ETH core basket, so those assets overlap the benchmark. Selecting today’s surviving assets in August 2026 and reconstructing them backward creates hindsight-selection and survivorship bias. History starts only after all seven assets have common Yahoo daily closes and ${warmupText}.${firstScored} The current UTC candle is excluded. US bond components carry their latest score over weekends.</p>${disclosureText?`<p class="muted" style="font-size:.82rem;margin:8px 0 0">${disclosureText}</p>`:''}`
+    : `<p class="muted" style="font-size:.82rem;margin:10px 0 0">As of August 2026 the author found no published Fear &amp; Greed index with an open data source for ${esc(M.name)}${M.key==='usa'?' — CNN publishes a US index number but no open feed and no component data —':','} hence the own computation.${M.key==='ustech'?' <b>US Tech means the XLK US technology-sector benchmark, not QQQ or the whole Nasdaq-100.</b> Its volatility input is ^VXN, the Nasdaq-100 implied-volatility index; breadth compares the equal-weight technology ETF RSPT with the cap-weighted XLK; safe-haven and credit reuse the USA tab’s Treasury (IEF) and HYG/LQD proxies.':''}${M.key==='global'?' Global uses the ACWI benchmark with US-only volatility (^VIX) and Treasury (IEF) proxies and London-listed global credit ETFs (HYLD.L/CORP.L) that are thinly traded, so that indicator is noisier.':''}${M.key==='sweden'?' Its benchmark ^OMXSBGI is a gross total return index (dividends reinvested); the Europe tab’s ^STOXX is a price index (dividends excluded), so momentum, strength and safe-haven on the two tabs are not on the same basis.':''}${M.key==='europe'?' Its benchmark ^STOXX is a price index (dividends excluded), unlike the Sweden tab’s gross total return ^OMXSBGI.':''}${realised?' Volatility = realised 20-observation because this market is not configured with a matching implied-volatility series; it is backward-looking and behaves differently from a VIX-style measure.':''}${M.key==='usa'?' On 23 Aug 2026 the author compared, once and by hand (there is no feed), the earlier rolling-window model v1 with CNN’s published number; that is historical context only and says nothing about this v3 score.':''}${firstScored}</p>${disclosureText?`<p class="muted" style="font-size:.82rem;margin:8px 0 0">${disclosureText}</p>`:''}`;
+  const minPts=Number.isFinite(model.percentileMinPoints)?model.percentileMinPoints:null, sw=Number.isFinite(model.strengthWindow)?model.strengthWindow:null;
+  // Plain words first, the exact rules under a summary; the research learner is mentioned only where it is shown (SHOW_RESEARCH_SIGNAL).
+  const explain=`<div class="kpi"><div class="l">The model · v${esc(model.version||'?')}</div></div>
+    <p style="margin:8px 0 0;font-size:.9rem">Each of the six indicators listed below is turned into a rank from 0 to 100 against all of its own past values, from the earliest date Yahoo supplies up to that day${minPts?` (a rank starts only once ${fmt(minPts)} past values exist)`:''}; the six ranks are averaged, with volatility counted the other way round (high volatility = fear). The score therefore says how today compares with each indicator’s own history, and nothing else. The same rules apply to all six tabs (Crypto, Sweden, USA, US Tech, Europe and Global); only the raw series differ. The published score is rounded to one decimal and its label is the band that one-decimal value falls in.</p>
+    <details><summary>Exact scoring rules</summary><p class="muted" style="font-size:.82rem;margin:0;padding:10px 14px">At every date, each raw indicator is ranked (causal expanding percentile) against every finite value that component has produced from the start of the current provider maximum-history response through that date. There is no rolling percentile window and no internal history truncation. ${minPts?`Scoring starts after ${fmt(minPts)} valid raw values. `:''}${sw?`The strength raw feature measures distance from a trailing ${fmt(sw)}-observation high${minPts?`, on a shorter window (from ${fmt(minPts)} observations) until ${fmt(sw)} exist`:''}. `:''}Volatility is inverted and all ${fmt(model.minComponents||total)} component ranks are averaged with equal weights. Provider history completeness is ${model.providerHistoryCompleteness==='UNVERIFIED'?'<b>not independently verified</b>':esc(model.providerHistoryCompleteness||'not stated')}.${W&&W.description?` Warm-up: ${esc(W.description)}.`:''}${SHOW_RESEARCH_SIGNAL?' The BUY/SELL research learner shown above is a separate model that refits on every matured row of the score history.':' A separate research learner is computed and published in api/marketfg.json only; it is not shown on this page.'}</p></details>
     <ul class="fg-comp" style="list-style:disc">${seriesList}</ul>
     ${disclosure}
     <p class="muted" style="font-size:.82rem;margin:8px 0 0">This is a descriptive relative price/risk regime, not a survey of emotion or a probability of future gains. Not investment advice.</p>`;
-  return { bands, value:v, label:M.label, title:`Fear & Greed — ${M.name} (own model)`, note:`${esc(M.indexName)} · as of ${when} · ${fetchedStr(fetchedAt)}`,
-    sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous observation · `:'')+'as of '+when,
-    kpiSub:M.label+' · '+fmtDate(M.asOf), prevLabel:'Previous observation', prev:row(P.close,P.closeDate),
-    stats:[['Now',now],['Previous observation',row(P.close,P.closeDate)],['1 week ago',row(P.week,P.weekDate)],['1 month ago',row(P.month,P.monthDate)],['1 year ago',row(P.year,P.yearDate)],['Yearly high',hi],['Yearly low',lo]],
-    history:H, total:M.total, livePoint:false, callouts, components:comps, expandingSignal:M.expandingSignal||null, compnote:`${M.n} of ${M.total} indicators · as of ${fmtDate(M.asOf)}`,
-    explain, explnote:`${esc(model.id||'repository model')} · 0–100`,
-    footer:`<p><b>One model, separate raw mappings:</b> this repository calculates every market score in <span class="mono">marketfg.js</span>; Yahoo Finance supplies raw daily histories, not an index score. No CoinMarketCap or Alternative.me score enters the calculation. Yahoo’s chart feed has no contractual public API SLA.</p><p><b>Descriptive indicator only — predictive value must be tested separately.</b>${SHOW_RESEARCH_SIGNAL?'':' The repository’s retrospective rule searches found no reliable timing edge in this score (seven rule families falsified; the one residual Europe candidate failed replication and is under prospective test), so no buy/sell signal is shown here; the research learner’s output is published in api/marketfg.json for auditing only.'}</p>` };
+  // Research attribution, per research/README.md: the rule searches and the Europe lockbox used the earlier v1/v2 scores
+  // (trailing-window percentiles) on five markets; the v3 expanding-percentile score shown here has had none of it.
+  const studied = M.key==='ustech'
+    ? 'US Tech was added on 27 Aug 2026, after the owner’s back-tests: no rule search, replication, diagnostic battery or lockbox covers it. The one research record that includes it is a deliberately overfit fitted lookup, which its own document calls neither a strategy nor evidence of predictive value. '
+    : 'The owner’s back-tests of the earlier v1 and v2 scores (trailing-window percentiles, since replaced by this v3 score) found no reliable buy/sell timing rule: seven kinds of rule were tried across Crypto, Sweden, USA, Europe and Global and rejected after costs; one Europe candidate found on the v2 score failed a replication test on three other markets and is still being tracked in real time, on v2. ';
+  const Y=typeof BUILD_META!=='undefined'&&BUILD_META&&BUILD_META.yahooRequests;
+  const attempts = typeof BUILD_META!=='undefined'&&BUILD_META&&Number(BUILD_META.snapshotAttempts)>1 ? Number(BUILD_META.snapshotAttempts) : null;
+  const allAttempts = typeof BUILD_META!=='undefined'&&BUILD_META&&Number.isFinite(Number(BUILD_META.yahooRequestsAllAttempts)) ? Number(BUILD_META.yahooRequestsAllAttempts) : null;
+  // marketfg.js counts per model computation; a build that discarded an attempt sent that many again, so say both
+  const requests = Y&&Number.isFinite(Y.requests) ? ` The model computation behind this snapshot sent ${fmt(Y.requests)} Yahoo chart requests for ${Number.isFinite(Y.symbols)?fmt(Y.symbols)+' ':''}series${Number.isFinite(Y.fullHistoryRequests)&&Number.isFinite(Y.topUpRequests)?` (${fmt(Y.fullHistoryRequests)} full-history, ${fmt(Y.topUpRequests)} top-up${Number.isFinite(Y.retries)?', '+fmt(Y.retries)+' retries':''})`:''}${attempts&&allAttempts?`; the build itself made ${fmt(attempts)} attempts and sent ${fmt(allAttempts)} requests in all, because an attempt whose components were carried forward is discarded and repeated`:''}.` : '';
+  const footer=`<p><b>Who calculates this:</b> the repository’s own code (<span class="mono">marketfg.js</span>) from daily Yahoo Finance price histories; Yahoo supplies prices, not a score, and no third-party Fear &amp; Greed score (CoinMarketCap, Alternative.me, CNN) enters the calculation. Yahoo’s chart feed has no public API guarantee.${requests}</p><p><b>Descriptive indicator only.</b> ${SHOW_RESEARCH_SIGNAL?'The BUY/SELL research card above is an unvalidated research model shown in the local app and to the owner only.':studied+'This v3 score (expanding percentiles) has had no rule search and no prospective test, so no buy/sell signal is shown here; a separate research learner’s output is published in api/marketfg.json for auditing only.'}</p>`;
+  return { bands, value:v, label:M.label, title:`Fear & Greed — ${M.name} (own model)`, note:`${esc(M.indexName)} · ${esc(asOfText)} · ${fetchedStr(fetchedAt)}`,
+    sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous observation · `:'')+'last completed bar, as of '+when,
+    kpiSub:M.label+' · '+asOfText, prevLabel:'Previous observation', prev:row(P.close,P.closeDate),
+    stats:[['Latest',now],['Previous observation',row(P.close,P.closeDate)],['1 week ago',row(P.week,P.weekDate)],['1 month ago',row(P.month,P.monthDate)],['1 year ago',row(P.year,P.yearDate)],['Yearly high',hi],['Yearly low',lo]],
+    history:H, total:M.total, livePoint:false, model, callouts, components:comps, carried, oldestComponentAsOf:oldest, asOfText, expandingSignal:M.expandingSignal||null, compnote:`${M.n} of ${total} indicators scored · ${asOfText}`,
+    explain, explnote:`${esc(model.id||'repository model')} v${esc(model.version||'?')} · 0–100, one decimal`,
+    footer };
 }
+// ---- end fear-greed normaliser
 
 function renderRuleCard(id,N,$i){
   const D=N.expandingSignal, el=$i('rule');
@@ -1112,20 +1588,20 @@ function renderFg(id){
   const [dx,dy]=arcPt(v,80);
   $i('gauge').innerHTML = seg+
     `<circle cx="${dx.toFixed(1)}" cy="${dy.toFixed(1)}" r="6.5" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/>`+
-    `<text class="n" x="100" y="98" text-anchor="middle">${fmt(v)}</text>`+
+    `<text class="n" x="100" y="98" text-anchor="middle">${fmt(v,1)}</text>`+
     `<text class="t" x="4" y="121" text-anchor="start">0 · fear</text><text class="t" x="100" y="121" text-anchor="middle">50</text><text class="t" x="196" y="121" text-anchor="end">greed · 100</text>`;
   $i('label').innerHTML = `<span class="fg-c${b}">${esc(N.label)}</span>`;
   $i('sub').innerHTML=N.sub;
   const stat=(l,r)=> !r ? `<div><div class="l">${l}</div><div class="v">—</div><div class="s">&nbsp;</div></div>`
-    : `<div><div class="l">${l}</div><div class="v fg-c${fgBand(r.value,bands)}">${fmt(r.value)}</div><div class="s">${esc(r.label)} · ${fmtDate(r.date)}</div></div>`;
+    : `<div><div class="l">${l}</div><div class="v fg-c${fgBand(r.value,bands)}">${fmt(r.value,1)}</div><div class="s">${esc(r.label)} · ${fmtDate(r.date)}</div></div>`;
   $i('stats').innerHTML=N.stats.map(([l,r])=>stat(l,r)).join('');
   renderRuleCard(id,N,$i);
   if(N.components){
     $i('compnote').textContent=N.compnote;
     $i('comps').innerHTML=N.components.map(c=>`<tr><td><b>${esc(c.name)}</b><div class="muted" style="font-size:.78rem">${esc(c.desc)}${c.note?' · '+esc(c.note):''}</div></td>
       <td class="num">${fmtRaw(c.raw,c.unit)}</td>
-      <td><span class="fgbar"><b></b><i style="left:${c.score==null?0:Math.max(0,Math.min(100,c.score))}%"></i></span><span class="mono" style="font-size:.82rem">${c.score==null?'—':fmt(c.score)}</span></td>
-      <td class="fg-c${fgBand(c.score,bands)}">${c.label?esc(c.label):'—'}${c.lag?' <span class="pill">as of '+dayMon(c.asOf)+'</span>':''}${c.stale?' <span class="pill no">fallback data</span>':''}</td>
+      <td><span class="fgbar"><b></b><i style="left:${c.score==null?0:Math.max(0,Math.min(100,c.score))}%"></i></span><span class="mono" style="font-size:.82rem">${c.score==null?'—':fmt(c.score,1)}</span></td>
+      <td class="fg-c${fgBand(c.score,bands)}">${c.label?esc(c.label):'—'}${c.lag?' <span class="pill" title="'+esc(c.lagDetail?humanDates(c.lagDetail):'carried from this component’s own last completed bar')+'">carried · as of '+dayMon(c.asOf)+'</span>':''}${c.stale?' <span class="pill no">fallback data</span>':''}</td>
       <td class="mono" style="font-size:.78rem">${c.symbols.map(esc).join(' / ')}</td></tr>`).join('');
   }
   $i('bands').innerHTML=bands.map(([lo,hi,name],i)=>`<li><span class="swatch" style="background:${FG_COL[i]};opacity:${FG_OP[i]}"></span><span class="r">${lo}–${hi}</span><span>${esc(name)}</span>${i===b?'<span class="now">now</span>':''}</li>`).join('');
@@ -1159,14 +1635,17 @@ function renderFgChart(id){
   svg.setAttribute('aria-describedby',`${id}-chart-desc ${id}-charthelp`);
   setChartExplorer(svg,{points:h.map(row=>({row,x:X(row.date),y:Y(row.value)})),bounds:{left:L,right:W-R,top:T,bottom:HH-B},viewX:0,viewWidth:W,
     focus:svg.querySelector('.chart-focus'),line:svg.querySelector('.chart-focus-line'),halo:svg.querySelector('.chart-focus-halo'),dot:svg.querySelector('.chart-focus-dot'),tip,live,
-    describe:row=>{ const date=fmtDate(row.date),label=fgLabel(row.label,row.value,bands),value=fmt(row.value,2)+' · '+label;
-      const meta=row.n!=null&&N.total?`${row.n} of ${N.total} indicators`:'Repository model'; return {date,value,meta,aria:`${date}, score ${fmt(row.value,2)}, ${label}${meta?' · '+meta:''}`}; }});
+    describe:row=>{ const date=fmtDate(row.date),label=fgLabel(row.label,row.value,bands),value=fmt(row.value,1)+' · '+label; // the API carries one decimal
+      const meta=row.n!=null&&N.total?`${row.n} of ${N.total} indicators`:'Repository model'; return {date,value,meta,aria:`${date}, score ${fmt(row.value,1)}, ${label}${meta?' · '+meta:''}`}; }});
   const vals=h.map(r=>r.value), mn=Math.min(...vals), mx=Math.max(...vals), d=lr.value-f.value;
-  $i('chartnote').textContent=`${fmtDate(f.date)} – ${fmtDate(lr.date)} · ${spanDays>400 ? (spanDays/365.25).toFixed(1)+' years' : spanDays+' days'} · ${n} points`;
+  // Every point is recomputed at each build from the provider's current full history; the page itself is younger than the
+  // chart, so say from when it has published a score at all and since when with this scoring.
+  const M0=N.model||{}, since=M0.publishedSince?` · recomputed at each build from Yahoo’s current history; this page has published a score since ${fmtDate(M0.publishedSince)}${M0.scoringSince?` and this v3 scoring since ${fmtDate(M0.scoringSince)}`:''}, so earlier points were never shown at the time`:'';
+  $i('chartnote').textContent=`${fmtDate(f.date)} – ${fmtDate(lr.date)} · ${spanDays>400 ? (spanDays/365.25).toFixed(1)+' years' : spanDays+' days'} · ${n} points${since}`;
   // older stretches where not all indicator series existed yet (e.g. a credit ETF launched later) — the index was the mean of the ones available
   const partial=N.total?h.filter(r=>r.n!=null&&r.n<N.total):[]; const firstFull=N.total?h.find(r=>r.n===N.total):null;
   const partialNote = partial.length ? ` · before ${firstFull?fmtDate(firstFull.date):'the end'} only ${Math.min(...partial.map(r=>r.n))}–${Math.max(...partial.map(r=>r.n))} of ${N.total} indicators existed` : '';
-  $i('chartsub').innerHTML=`Low ${fmt(mn)} · high ${fmt(mx)} · ${fmt(f.value)} → ${fmt(lr.value)} <span class="${cls(d)}">${d>0?'+':''}${fmt(d)}</span> over the period${partialNote}`;
+  $i('chartsub').innerHTML=`Low ${fmt(mn,1)} · high ${fmt(mx,1)} · ${fmt(f.value,1)} → ${fmt(lr.value,1)} <span class="${cls(d)}">${d>0?'+':''}${fmt(d,1)}</span> over the period${partialNote}`;
 }
 $('#fgPanels').addEventListener('click',e=>{ const b=e.target.closest('.range[data-fg] button[data-days]'); if(!b) return;
   const id=b.closest('.range').dataset.fg; FGS[id].days=Number(b.dataset.days);
@@ -1175,11 +1654,11 @@ $('#fgPanels').addEventListener('click',e=>{ const b=e.target.closest('.range[da
 // header KPIs for the active Fear & Greed tab
 function updateFgHeader(id){
   const S=FGS[id]; if(!S) return; const N=S.norm, t=S.tab;
-  $('#fgFileNote').textContent = `Fear & Greed for ${t.forName} — one shared six-component repository model on daily Yahoo data, 0–100.`;
+  $('#fgFileNote').textContent = `Fear & Greed for ${t.forName} — six indicators from daily Yahoo price data, each ranked 0–100 against its own history and averaged; the score is that of the last completed daily bar, not live.`;
   $('#kFgPrevL').textContent = N&&!N.error ? N.prevLabel : 'Previous observation';
   if(!N||N.error){ $('#kFg').textContent='—'; $('#kFgSub').textContent=''; $('#kFgPrev').textContent='—'; $('#kFgPrevSub').textContent=''; return; }
-  $('#kFg').innerHTML=`<span class="fg-c${fgBand(N.value,N.bands)}">${fmt(N.value)}</span>`; $('#kFgSub').textContent=N.kpiSub;
-  const p=N.prev; $('#kFgPrev').innerHTML = p ? `<span class="fg-c${fgBand(p.value,N.bands)}">${fmt(p.value)}</span>` : '—';
+  $('#kFg').innerHTML=`<span class="fg-c${fgBand(N.value,N.bands)}">${fmt(N.value,1)}</span>`; $('#kFgSub').textContent=N.kpiSub;
+  const p=N.prev; $('#kFgPrev').innerHTML = p ? `<span class="fg-c${fgBand(p.value,N.bands)}">${fmt(p.value,1)}</span>` : '—';
   $('#kFgPrevSub').textContent = p ? p.label+' · '+dayMon(p.date) : '';
 }
 
@@ -1211,7 +1690,9 @@ $('#navRange').addEventListener('click',e=>{ const b=e.target.closest('button[da
   document.querySelectorAll('#navRange button').forEach(x=>{ const on=x===b; x.classList.toggle('active',on); x.setAttribute('aria-pressed',String(on)); }); renderNavSpark(); });
 $('#btnRefresh').addEventListener('click',()=>load('manual'));
 load();
-setInterval(()=>load('auto'), 10*60*1000); // every 10 minutes
+// Every 10 minutes the JSON files are re-checked (never index.html itself); not while the owner's live update is running,
+// which owns the status line and the buttons until it reloads the page or gives up.
+setInterval(()=>{ if(!LIVE_RUNNING) load('auto'); }, 10*60*1000);
 </script>
 </body>
 </html>
