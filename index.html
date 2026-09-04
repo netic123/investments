@@ -398,13 +398,15 @@ function filesMatch(files,relative,hex){
 }
 // Readable text for build.json.schedules (the cron lines of pages.yml, verbatim). Only the shapes the workflow uses are
 // described; anything else is printed as the cron expression so the sentence never claims a time the cron does not.
-const CRON_LABELS={'20 9 * * *':'09:20 UTC daily, with the test suite','20,50 5-8,10-22 * * 1-5':':20 and :50 past 05–08 and 10–22 UTC Mon–Fri','50 9 * * 1-5':'09:50 UTC Mon–Fri'};
+const CRON_LABELS={'20 9 * * *':'09:20 UTC daily, with the test suite','20,50 5-8,10-22 * * 1-5':':20 and :50 past 05–08 and 10–22 UTC Mon–Fri','50 9 * * 1-5':'09:50 UTC Mon–Fri','5,35 5-22 * * 1-5':':05 and :35 past 05–22 UTC Mon–Fri'};
 function describeSchedules(list){
   const rest=(Array.isArray(list)?list:[]).filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim());
   if(!rest.length) return '';
   const parts=[], take=c=>{ const i=rest.indexOf(c); if(i>=0) rest.splice(i,1); return i>=0; };
-  // together the three crons are one half-hourly weekday series (:20/:50 past every hour 05-22, the 09:20 slot being the daily one)
-  if(rest.includes('20,50 5-8,10-22 * * 1-5')&&rest.includes('50 9 * * 1-5')&&rest.includes('20 9 * * *')){ take('20,50 5-8,10-22 * * 1-5'); take('50 9 * * 1-5'); take('20 9 * * *'); parts.push('every 30 min 05:20–22:50 UTC Mon–Fri','09:20 UTC daily, with the test suite'); }
+  // together the four crons are one quarter-hourly weekday series (:05/:20/:35/:50 past every hour 05-22, the 09:20 slot being
+  // the daily one); a build.json from before 4 Sep 2026 carries the three half-hourly ones
+  if(rest.includes('5,35 5-22 * * 1-5')&&rest.includes('20,50 5-8,10-22 * * 1-5')&&rest.includes('50 9 * * 1-5')&&rest.includes('20 9 * * *')){ take('5,35 5-22 * * 1-5'); take('20,50 5-8,10-22 * * 1-5'); take('50 9 * * 1-5'); take('20 9 * * *'); parts.push('every 15 min 05:05–22:50 UTC Mon–Fri','09:20 UTC daily, with the test suite'); }
+  else if(rest.includes('20,50 5-8,10-22 * * 1-5')&&rest.includes('50 9 * * 1-5')&&rest.includes('20 9 * * *')){ take('20,50 5-8,10-22 * * 1-5'); take('50 9 * * 1-5'); take('20 9 * * *'); parts.push('every 30 min 05:20–22:50 UTC Mon–Fri','09:20 UTC daily, with the test suite'); }
   for(const c of rest) parts.push(CRON_LABELS[c]||"cron '"+c+"' (UTC)");
   return parts.join('; ');
 }
