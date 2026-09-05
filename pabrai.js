@@ -270,6 +270,26 @@ function nextWeekdayDate(isoDate) {
   return parsed.toISOString().slice(0, 10);
 }
 
+// NYSE full-day closures for 2026-2027 as a fixed list (nyse.com/markets/
+// hours-calendars). The fund prices only on NYSE trading days, and FilePoint
+// dates each holdings file to the next trading day after its pricing date: on
+// Sat 5 Sep 2026 at 00:02 UTC the file priced at Fri 4 Sep's close was dated
+// Tue 8 Sep, skipping Labor Day. The federal-holiday table above is a different
+// calendar (SEC deadlines; the NYSE is open on Columbus Day and Veterans Day
+// and closed on Good Friday). Beyond 2027 this list is empty, so
+// nextTradingDay skips only weekends until the list is extended.
+const NYSE_CLOSURES = Object.freeze({ '2026-01-01':'New Year’s Day','2026-01-19':'Martin Luther King Jr. Day','2026-02-16':'Presidents’ Day','2026-04-03':'Good Friday','2026-05-25':'Memorial Day','2026-06-19':'Juneteenth','2026-07-03':'Independence Day (observed)','2026-09-07':'Labor Day','2026-11-26':'Thanksgiving Day','2026-12-25':'Christmas Day','2027-01-01':'New Year’s Day','2027-01-18':'Martin Luther King Jr. Day','2027-02-15':'Presidents’ Day','2027-03-26':'Good Friday','2027-05-31':'Memorial Day','2027-06-18':'Juneteenth (observed)','2027-07-05':'Independence Day (observed)','2027-09-06':'Labor Day','2027-11-25':'Thanksgiving Day','2027-12-24':'Christmas Day (observed)' });
+function nyseClosure(iso) { return NYSE_CLOSURES[String(iso)] || null; }
+function nextTradingDay(isoDate) {
+  let date = String(isoDate);
+  for (let guard = 0; guard < 10; guard++) {
+    date = addCalendarDays(date, 1);
+    const day = new Date(`${date}T00:00:00Z`).getUTCDay();
+    if (day !== 0 && day !== 6 && !nyseClosure(date)) return date;
+  }
+  return date;
+}
+
 function validateWagnHoldingsFreshness(fileDate, checkedAt = new Date().toISOString()) {
   const exactFileDate = exactIsoDate(fileDate, 'holdings file date');
   const exactCheckTime = String(checkedAt || '');
@@ -284,14 +304,16 @@ function validateWagnHoldingsFreshness(fileDate, checkedAt = new Date().toISOStr
   const fileDay = Date.parse(`${exactFileDate}T00:00:00.000Z`) / 864e5;
   const checkDay = Date.parse(`${checkDate}T00:00:00.000Z`) / 864e5;
   const ageDays = checkDay - fileDay;
-  const maximumFutureDate = nextWeekdayDate(checkDate);
+  const maximumFutureDate = nextTradingDay(checkDate);
 
-  // FilePoint normally timestamps a receipt just after midnight UTC for that
-  // UTC date. Before a weekend it can instead publish the next weekday's WAGN
-  // portfolio, as it did on Saturday 2026-08-29 for Monday 2026-08-31. Permit
-  // only that immediately next weekday; never accept an arbitrary +2/+3 date.
+  // FilePoint publishes the file priced at a trading day's close at about
+  // 00:02 UTC on the next calendar day and dates it to the next NYSE trading
+  // day: Saturday 2026-08-29 brought the file dated Monday 2026-08-31, and
+  // Saturday 2026-09-05 the one dated Tuesday 2026-09-08 (Labor Day skipped;
+  // the next-weekday rule used until then refused it). Permit only that
+  // immediately next trading day; never accept an arbitrary later date.
   if (ageDays < 0 && exactFileDate !== maximumFutureDate) {
-    throw new Error(`official holdings source has an unsupported future date (${exactFileDate}; checked ${checkDate}; next allowed weekday ${maximumFutureDate})`);
+    throw new Error(`official holdings source has an unsupported future date (${exactFileDate}; checked ${checkDate}; next allowed trading day ${maximumFutureDate})`);
   }
   if (ageDays > 5) {
     throw new Error(`official holdings source is stale (${exactFileDate}, ${ageDays} calendar days old)`);
@@ -563,7 +585,7 @@ function diffWagnSnapshots(before, after, options = {}) {
   return out.sort((left, right) => right.absValue - left.absValue);
 }
 
-// The holdings receipt is dated the next weekday and carries NetAssets equal to
+// The holdings receipt is dated the next NYSE trading day and carries NetAssets equal to
 // the official NAV of the previous rate date multiplied by the receipt's own
 // SharesOutstanding, to the cent. Two proofs of the pricing date are accepted:
 //   exact      the NAV file reports the same SharesOutstanding and NetAssets
@@ -1017,8 +1039,8 @@ async function fetchDalalStreet13f(config = {}, options = {}) {
 // 60 days after the period end in every quarter since 2022, so a report
 // normally appears before the deadline. This fund's fiscal year ends 30 June, so its public reports
 // are as of 31 Mar, 30 Jun, 30 Sep and 31 Dec. The FilePoint holdings file
-// priced as of such a date (normally the one dated the next weekday, later
-// after a market holiday) is what makes a position-by-position comparison
+// priced as of such a date (the one dated the next NYSE trading day, see
+// nextTradingDay) is what makes a position-by-position comparison
 // possible, months after the fact; the pricing date is proven against the
 // official NAV of the report date, not assumed from the file date.
 
@@ -1101,11 +1123,11 @@ function nextNportOpportunity(reportDate, options = {}) {
     observedLagDays: lag,
     observedLagNote,
     note: `the report for the last month of a fiscal quarter is public on EDGAR as soon as the trust files it, which must be no later than 60 days after that quarter end: ${formatDayMonthYear(dueDate)}${rolled ? `, which is ${rolledReason}, so by ${formatDayMonthYear(filingDeadline)}` : ''}.${lag == null ? '' : ` The trust filed earlier than that this quarter (${observedLagNote}), so the report will probably appear before the deadline.`} The next build after it appears compares it.`,
-    // normally the file dated the next weekday is priced as of the report
-    // date; if no file carries that date the comparison selects by NAV proof
-    // (selectSnapshotForNport), not by this date
-    snapshotDate: nextWeekdayDate(next),
-    snapshotDateNote: `normally the FilePoint file dated ${formatDayMonthYear(nextWeekdayDate(next))} is the one priced as of ${formatDayMonthYear(next)}; if no file carries that date (a market holiday would explain it, which has not been observed) a later file is tried, so the file is chosen by proving its NetAssets per unit against the official NAV of ${formatDayMonthYear(next)}`,
+    // normally the file dated the next NYSE trading day is priced as of the
+    // report date; if no file carries that date the comparison selects by NAV
+    // proof (selectSnapshotForNport), not by this date
+    snapshotDate: nextTradingDay(next),
+    snapshotDateNote: `normally the FilePoint file dated ${formatDayMonthYear(nextTradingDay(next))}, the next NYSE trading day, is the one priced as of ${formatDayMonthYear(next)}; if no file carries that date a later file is tried, so the file is chosen by proving its NetAssets per unit against the official NAV of ${formatDayMonthYear(next)}`,
   };
 }
 
@@ -1226,8 +1248,8 @@ function selectNportFilings(submissions, expectedCik) {
 
 // The saved FilePoint file priced as of the N-PORT report date is the one
 // snapshot the report can be held against. Normally that is the file dated the
-// next weekday, but after a market holiday (1 Jan 2027 for the 31 Dec 2026
-// report) it is a later one, so the file is chosen by proof, not by date:
+// next NYSE trading day (4 Jan 2027 for the 31 Dec 2026 report, 1 Jan being a
+// closure), but the file is still chosen by proof, not by date:
 //   nav-reconciled   the earliest saved file dated 1-5 calendar days after the
 //                    report date whose NetAssets per unit equals the official
 //                    NAV dated the report date (reconcileWagnHoldingsToNav
@@ -1237,7 +1259,7 @@ function selectNportFilings(submissions, expectedCik) {
 // otherwise no snapshot, with the candidates tried and why. Legacy receipts
 // without a unit count (saved before 2026-08-25) cannot be proven.
 function selectSnapshotForNport(snapshots, reportDate, options = {}) {
-  const expectedDate = nextWeekdayDate(reportDate);
+  const expectedDate = nextTradingDay(reportDate);
   // reconcileWagnHoldingsToNav rejects a NAV date more than four days before
   // the file date, so a candidate dated reportDate+5 could never be proven and
   // must not be offered as one that failed on its per-unit value.
@@ -1283,7 +1305,7 @@ function selectSnapshotForNport(snapshots, reportDate, options = {}) {
         selection: {
           ...selection,
           rule: 'unproven',
-          ruleText: `the saved file dated the next weekday after ${reportDate}; no official NAV dated ${reportDate} was available, so its pricing date is not proven`,
+          ruleText: `the saved file dated the next NYSE trading day after ${reportDate}; no official NAV dated ${reportDate} was available, so its pricing date is not proven`,
           snapshotDate: candidate.date,
         },
       };
@@ -1294,7 +1316,7 @@ function selectSnapshotForNport(snapshots, reportDate, options = {}) {
     : ' (no saved file is dated within those four days)';
   selection.reason = nav
     ? `no saved holdings file dated within four calendar days after ${reportDate} has NetAssets per unit equal to the official NAV of ${selection.nav.toFixed(2)} dated ${reportDate}${triedText}`
-    : `no saved holdings file dated ${expectedDate}, the next weekday after ${reportDate}, and no official NAV dated ${reportDate} was available to prove another file's pricing date${triedText}`;
+    : `no saved holdings file dated ${expectedDate}, the next NYSE trading day after ${reportDate}, and no official NAV dated ${reportDate} was available to prove another file's pricing date${triedText}`;
   return { expectedDate, snapshot: null, selection };
 }
 
@@ -1718,6 +1740,9 @@ module.exports = {
   nextNportOpportunity,
   nextQuarterEnd,
   nextWeekdayDate,
+  nextTradingDay,
+  nyseClosure,
+  NYSE_CLOSURES,
   normalizeCik,
   normalizeWagnHoldings,
   selectWagnNavObservation,

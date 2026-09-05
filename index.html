@@ -313,7 +313,7 @@ footer p{margin:0 0 .5em}
 <footer>
   <p>Primary sources: <a href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">WAGN’s official fund page and daily FilePoint files</a> · Yahoo Finance for quotes · SEC EDGAR for Dalal Street LLC’s manager-aggregated 13F and for WAGN’s own quarterly Form N-PORT, which is used only as a lagged cross-check of the daily file (its section says what was compared, as of when, and what could not be). Source status is shown in the page; a 13F is delayed and incomplete, and only the N-PORT for the last month of each fiscal quarter is public — it appears on EDGAR when the trust files it, which must be within 60 days of that quarter end.</p>
   <p><b>Changes</b> are differences in the number of shares held between two official files. A holding whose share count did not change is not listed, even when a cash creation diluted its share per WAGN unit; a change that is merely proportional to a change in units outstanding (an in-kind basket) is not listed either. Cash-like rows (the money-market fund FXFXX, per the configuration) appear in the full table but are not listed as trades; a line under the table states their change. Where units changed, “vs pro-rata” restates the trade relative to deploying the flow in proportion to the previous portfolio. Neither number is proof of Pabrai’s exact trade time, execution price or motive.</p>
-  <p>The holdings file is dated the next weekday and priced at the previous NAV date. Its pricing date is asserted only when NetAssets divided by the file’s own unit count equals the official NAV (within half a cent per unit); if units were created or redeemed after the NAV file, the page says so. The file’s NetAssets is that rounded NAV × its unit count — a pricing-date proof, not an independent asset total; the fund’s NAV file carries its own net assets figure, shown next to it. Files saved before 25 Aug 2026 report no unit count; a count shown for them is implied from NetAssets ÷ NAV and labelled so. Snapshots are saved whenever a new official file day is detected; if a file day is missed, only the net change over the displayed interval is knowable.</p>
+  <p>The holdings file is priced at the previous NAV date and dated the next NYSE trading day after it; it is published at about 00:02 UTC on the calendar day after the pricing date, Saturdays included (on Sat 5 Sept 2026 the file priced at the 4 Sept close was dated Tue 8 Sept, the trading day after Labor Day). Its pricing date is asserted only when NetAssets divided by the file’s own unit count equals the official NAV (within half a cent per unit); if units were created or redeemed after the NAV file, the page says so. The file’s NetAssets is that rounded NAV × its unit count — a pricing-date proof, not an independent asset total; the fund’s NAV file carries its own net assets figure, shown next to it. Files saved before 25 Aug 2026 report no unit count; a count shown for them is implied from NetAssets ÷ NAV and labelled so. Snapshots are saved whenever a new official file day is detected; if a file day is missed, only the net change over the displayed interval is knowable.</p>
 </footer>
 
 </div><!-- /panel-pabrai -->
@@ -364,31 +364,27 @@ function staleThreshold(build,now){
   const d=new Date(now), hm=hhmmUtc(d), weekday=d.getUTCDay()>=1&&d.getUTCDay()<=5, inWindow=weekday&&hm>=w.from&&hm<w.to;
   return {hours:inWindow?on:off,inWindow,window:w};
 }
-// The newest weekday holdings file that should exist at `now`: the fund publishes the file dated a weekday by
-// holdingsFileExpectedByUtc on that day; before that time the previous weekday's file is the newest, and on a weekend the
-// Friday file is (FilePoint sometimes publishes Monday's file on Saturday, which only makes a saved file newer, never older).
-// NYSE full-day closures, 2026–2027, as a fixed list (nyse.com/markets/hours-calendars). The fund prices only on US trading
-// days, so on one of these days no new NAV exists; how FilePoint dates its file on and after a holiday has not been observed.
+// NYSE full-day closures, 2026–2027, as a fixed list (nyse.com/markets/hours-calendars); beyond 2027 the helpers below treat
+// every weekday as a trading day until the list is extended. The fund prices only on NYSE trading days. FilePoint publishes
+// the file priced at trading day T's close at about holdingsFileExpectedByUtc on the calendar day after T, Saturdays
+// included, and dates it to the next trading day after T (Sat 5 Sep 2026 00:02 UTC: the file priced at Fri 4 Sep's close
+// was dated Tue 8 Sep, skipping Labor Day; until that day the page assumed the next weekday).
 const US_MARKET_HOLIDAYS={'2026-01-01':'New Year’s Day','2026-01-19':'Martin Luther King Jr. Day','2026-02-16':'Presidents’ Day','2026-04-03':'Good Friday','2026-05-25':'Memorial Day','2026-06-19':'Juneteenth','2026-07-03':'Independence Day (observed)','2026-09-07':'Labor Day','2026-11-26':'Thanksgiving Day','2026-12-25':'Christmas Day','2027-01-01':'New Year’s Day','2027-01-18':'Martin Luther King Jr. Day','2027-02-15':'Presidents’ Day','2027-03-26':'Good Friday','2027-05-31':'Memorial Day','2027-06-18':'Juneteenth (observed)','2027-07-05':'Independence Day (observed)','2027-09-06':'Labor Day','2027-11-25':'Thanksgiving Day','2027-12-24':'Christmas Day (observed)'};
 const usMarketHoliday=iso=>US_MARKET_HOLIDAYS[iso]||null;
-// Why a file dated `expected` may legitimately not exist: the date is a market holiday, or the previous weekday (whose close
-// the file would carry) is one. Null on an ordinary trading day.
-function holidayGap(expected){
-  if(!expected) return null;
-  const own=usMarketHoliday(expected); if(own) return {date:expected,name:own,kind:'the date itself'};
-  const d=new Date(expected+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()-1);
-  const p=d.toISOString().slice(0,10), pn=d.getUTCDay()>=1&&d.getUTCDay()<=5 ? usMarketHoliday(p) : null;
-  return pn ? {date:p,name:pn,kind:'the previous weekday, whose close a file dated the next day would carry'} : null;
-}
-// The newest weekday whose file should exist by now (weekday after the published time; Friday's at the weekend). A holiday
-// is not skipped here: holidayGap() says when that expectation cannot be asserted, and the status line says so instead.
+const shiftDay=(iso,n)=>{const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10);};
+const isTradingDay=iso=>{const w=new Date(iso+'T00:00:00Z').getUTCDay(); return w>=1&&w<=5&&!usMarketHoliday(iso);};
+function nextTradingDay(iso){ let d=shiftDay(iso,1); for(let g=0;g<10&&!isTradingDay(d);g++) d=shiftDay(d,1); return d; }
+function lastTradingDayBefore(iso){ let d=shiftDay(iso,-1); for(let g=0;g<10&&!isTradingDay(d);g++) d=shiftDay(d,-1); return d; }
+// The newest holdings file that should exist at `now`: with T the last trading day before the latest calendar day whose
+// holdingsFileExpectedByUtc has passed, the file dated nextTradingDay(T). Null when no published time is known.
 function expectedHoldingsFileDate(build,now){
   const by=build&&build.holdingsFileExpectedByUtc; if(!/^\d\d:\d\d$/.test(String(by||''))) return null;
-  const d=new Date(now);
-  if(d.getUTCDay()>=1&&d.getUTCDay()<=5&&hhmmUtc(d)<by) d.setUTCDate(d.getUTCDate()-1);
-  while(d.getUTCDay()===0||d.getUTCDay()===6) d.setUTCDate(d.getUTCDate()-1);
-  return d.toISOString().slice(0,10);
+  const d=new Date(now); let day=d.toISOString().slice(0,10);
+  if(hhmmUtc(d)<by) day=shiftDay(day,-1);
+  return nextTradingDay(lastTradingDayBefore(day));
 }
+// When the file dated `expected` is normally live: holdingsFileExpectedByUtc on the calendar day after its pricing date.
+function holdingsFilePublishedAt(expected,by){ return shiftDay(lastTradingDayBefore(expected),1)+'T'+by+':00Z'; }
 // build.json.files maps 'api/<name>.json' to the SHA-256 of the bytes the build wrote. 'unknown' when there is no map, no
 // entry for the file, or no digest could be computed (crypto.subtle needs a secure context; a plain-http local open has none).
 function filesMatch(files,relative,hex){
@@ -678,12 +674,11 @@ function sharedWarnings(){
   }
   const H=SNAPSHOT.data.holdings, fileDate=H&&H.latest&&H.latest.date, expected=expectedHoldingsFileDate(B,now);
   if(fileDate&&expected&&fileDate<expected){
-    const expectedAt=Date.parse(expected+'T'+B.holdingsFileExpectedByUtc+':00Z'), builtBefore=Number.isFinite(expectedAt)&&Date.parse(B.generatedAt)<expectedAt;
-    const gap=holidayGap(expected);
-    if(gap) out.push({level:'warn',text:`${fmtDate(gap.date)} is a US market holiday (${gap.name}), ${gap.kind}: the fund prices only on trading days, and how FilePoint dates its file around a holiday has not been observed, so no file dated ${fmtDate(expected)} is expected with confidence; this snapshot shows the ${fmtDate(fileDate)} file`});
-    else out.push({level:'warn',text: builtBefore
-      ? `the fund’s file dated ${fmtDate(expected)} is normally published by ${B.holdingsFileExpectedByUtc} UTC; this snapshot was built before it and shows the ${fmtDate(fileDate)} file`
-      : `the fund’s file dated ${fmtDate(expected)} is normally published by ${B.holdingsFileExpectedByUtc} UTC, but this snapshot, built after that time, still shows the ${fmtDate(fileDate)} file: the fund had not published a newer one when the build fetched, or the fetch failed`});
+    const publishedAt=holdingsFilePublishedAt(expected,B.holdingsFileExpectedByUtc), expectedAt=Date.parse(publishedAt), builtBefore=Number.isFinite(expectedAt)&&Date.parse(B.generatedAt)<expectedAt;
+    const when=`${fmtDate(expected)} (priced at the ${fmtDate(lastTradingDayBefore(expected))} close) is normally published by ${B.holdingsFileExpectedByUtc} UTC on ${fmtDate(publishedAt.slice(0,10))}`;
+    out.push({level:'warn',text: builtBefore
+      ? `the fund’s file dated ${when}; this snapshot was built before it and shows the ${fmtDate(fileDate)} file`
+      : `the fund’s file dated ${when}, but this snapshot, built after that time, still shows the ${fmtDate(fileDate)} file: the fund had not published a newer one when the build fetched, the fetch failed, or the build refused the file (the Pabrai tab’s file line says which)`});
   }
   if(SNAPSHOT.mixed) out.push({level:'err',text:'a file’s bytes do not match the SHA-256 that build.json publishes for it, normally the CDN still serving a file from an earlier build; figures may not match'});
   if(SNAPSHOT.codeBuild&&B.commit&&SNAPSHOT.codeBuild!==B.commit) out.push({level:'warn',text:`this page’s code is from build ${SNAPSHOT.codeBuild.slice(0,7)} while its data is from build ${String(B.commit).slice(0,7)}: the CDN serves the page and the JSON files separately, and it may keep either for up to 10 min. Reload in a few minutes`});
@@ -870,7 +865,7 @@ function impliedUnitsFromNav(netAssets,nav){
   return {units:implied?units:null,quotient,residual,tolerance,nav:roundedNav,implied,reason:implied?null:`NetAssets / NAV = ${quotient.toFixed(4)} is not a whole number of units, so this NetAssets is not this NAV x a unit count`};
 }
 // The official NAV of the previous rate date: the newest NAV history row dated before the file date, at most four days
-// earlier (the file is dated the next weekday after its pricing date).
+// earlier (the file is dated the next NYSE trading day after its pricing date; a holiday next to a weekend makes four).
 function navBefore(fileDate,N){
   const rows=(N&&Array.isArray(N.history)?N.history:[]).filter(r=>r&&r.date&&Number.isFinite(r.nav)&&r.date<fileDate&&(Date.parse(fileDate+'T00:00:00Z')-Date.parse(r.date+'T00:00:00Z'))/864e5<=4).sort((a,b)=>a.date.localeCompare(b.date));
   return rows.length?rows[rows.length-1]:null;
@@ -902,7 +897,9 @@ function unitFlowWithImplied(a,b,N){
   return {known:true,fromUnits,toUnits,unitsFrom:fromUnits.units,unitsTo:toUnits.units,delta,pct:delta/fromUnits.units*100,kind:delta>0?'creation':delta<0?'redemption':'none',perUnitPct:fromUnits.units/toUnits.units*100-100,implied:fromUnits.implied||toUnits.implied};
 }
 // ---- end unit counts
-function weekdaysBetween(a,b){ let n=0; const d=new Date(a+'T00:00:00Z'), end=new Date(b+'T00:00:00Z'); while(d<end){ d.setUTCDate(d.getUTCDate()+1); const w=d.getUTCDay(); if(w!==0&&w!==6) n++; } return n; }
+// NYSE trading days in (a, b]: the sessions whose closes separate two files (a file dated a trading day carries the previous
+// session's close, so the Fri 4 → Tue 8 Sep 2026 pair spans one session, not two weekdays).
+function tradingDaysBetween(a,b){ let n=0; for(let d=shiftDay(a,1); d<=b; d=shiftDay(d,1)) if(isTradingDay(d)) n++; return n; }
 // The NAV file's own net assets next to the holdings file's derived figure (holdingsNavCheck), as a sentence or ''.
 const navFileNetAssetsText=checked=>{
   if(!checked||checked.navFileNetAssets==null) return '';
@@ -1050,8 +1047,8 @@ function renderHoldings(H,Q){
   const C=H.changesVsPrevious.filter(c=>!c.cashLike), LOG=H.log.filter(c=>!c.cashLike);
   const CASH=H.changesVsPrevious.filter(c=>c.cashLike), CASHLOG=H.log.filter(c=>c.cashLike);
   const span = P ? `${fmtDate(P.date)} → ${fmtDate(L.date)}` : '';
-  const sessions = P ? weekdaysBetween(P.date,L.date) : 0;
-  const gapCallout = sessions>1 ? `<div class="callout">The interval ${span} spans ${sessions} weekdays — only the net change between these two disclosures is known; exact transactions in between are not.</div>` : '';
+  const sessions = P ? tradingDaysBetween(P.date,L.date) : 0;
+  const gapCallout = sessions>1 ? `<div class="callout">The interval ${span} spans ${sessions} trading sessions — only the net change between these two disclosures is known; exact transactions in between are not.</div>` : '';
   const flowCallout = flow&&flow.delta ? `<div class="callout"><b>${fmt(Math.abs(flow.delta))} WAGN units were ${flow.delta>0?'created':'redeemed'}</b> between these files (${fmt(flow.unitsFrom)} → ${fmt(flow.unitsTo)} units, ${pct(flow.pct,2)}${flow.implied?'; a count implied from NetAssets ÷ NAV where the file reports none':''}). Holdings whose share count did not change are not listed: their share count is the same in both files, which over an interval of more than one file day is a net result, not proof that nothing was traded. Each one’s share per WAGN unit is now ${pct(Math.abs(flow.perUnitPct),2,false)} ${flow.delta>0?'smaller':'larger'} than before. “vs pro-rata” shows each trade relative to deploying the flow in proportion to the previous portfolio.</div>`
     : flow&&!flow.known ? `<div class="callout">Whether WAGN units were created or redeemed between these files is not known: ${esc(flow.reason)}. A share change below may therefore include creation-basket delivery.</div>` : '';
   // Cash-like rows (config cashLike, the money-market fund) change with cash management, not with a decision about a holding;
@@ -1243,8 +1240,8 @@ function renderNport(N){
   // how the compared file was chosen: by NAV proof (rule nav-reconciled), or the next-weekday file without a proof
   const chosen = SEL&&SEL.rule==='nav-reconciled'&&proof
     ? `chosen as ${SEL.ruleText?esc(humanDates(SEL.ruleText)):'the earliest saved file after the report date whose NetAssets per unit equals the official NAV dated the report date'} — priced as of <b>${fmtDate(proof.navDate)}</b>: NetAssets ÷ units = $${fmt(proof.perUnit,4)}, that day’s NAV of $${fmt(proof.nav,2)}${proof.unitChange?` (${fmt(Math.abs(proof.unitChange))} units ${proof.unitChange>0?'created':'redeemed'} after the NAV file)`:''}`
-    : SEL&&SEL.rule==='unproven' ? `the file dated the next weekday after the report date; <b>its pricing date is not proven</b> (no official NAV dated ${fmtDate(N.reportDate)} was available to check it)`
-    : `taken as the file priced as of ${fmtDate(N.reportDate)} (the one dated the next weekday; this snapshot records no pricing-date proof)`;
+    : SEL&&SEL.rule==='unproven' ? `the file dated the next NYSE trading day after the report date; <b>its pricing date is not proven</b> (no official NAV dated ${fmtDate(N.reportDate)} was available to check it)`
+    : `taken as the file priced as of ${fmtDate(N.reportDate)} (the one dated the next NYSE trading day; this snapshot records no pricing-date proof)`;
   call.innerHTML=`${head} <b>Compared with the daily file dated ${fmtDate(C.snapshotDate)}</b>, ${chosen}. <b>${fmt(S.matched)} of ${fmt(S.positions)} N-PORT positions have the same share count</b> (within half a share); ${fmt(S.mismatched)} differ, ${fmt(S.onlyInNport)} appear only in the N-PORT and ${fmt(S.onlyInHoldings)} only in the file; ${fmt(S.cashLike)} cash-like row${S.cashLike===1?'':'s'} listed but not counted${C.cashLikeRule?' (cash-like = '+esc(C.cashLikeRule)+')':''}.${NA?` Net assets: N-PORT $${fmt(NA.nport)} vs the file’s $${fmt(NA.file)} (${pct(NA.diffPct,2)}; ${NA.fileNote?esc(NA.fileNote):'the file’s figure is the rounded NAV × its unit count, not an independently reported total'}).`:''} Rows are paired by CUSIP where the file carries one (${fmt(BY.cusip)}), else by the national number inside the N-PORT ISIN (${fmt(BY.isin)}), else by the first two words of the issuer name (${fmt(BY.name)}); the method is shown per row. A difference is a difference between two documents, not proof of which is right.`;
   thead.innerHTML='<tr><th>Holding</th><th class="num">N-PORT shares</th><th class="num">FilePoint shares</th><th class="num">Difference</th><th>Matched by</th></tr>';
   const row=(r,state)=>`<tr><td>${r.fundTicker||r.ticker?`<span class="tick">${esc(r.fundTicker||r.ticker)}</span> `:''}${esc(r.name)}${filedAs(r)}${r.cashLike?' <span class="muted">(cash-like)</span>':''}</td><td class="num">${shares(r.nportShares)}</td><td class="num">${shares(r.fileShares)}</td><td class="num ${r.diff==null?'':cls(r.diff)}">${r.diff==null?'—':(r.diff>0?'+':'')+shares(r.diff)}</td><td>${state||methodOf(r)}</td></tr>`;

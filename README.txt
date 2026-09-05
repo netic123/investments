@@ -19,7 +19,10 @@ between 28 Aug and 1 Sep 2026 the then single daily run started 4.9 to 11.6 hour
 Thu 3 Sep 2026 GitHub started 7 of the 36 half-hourly slots then configured (at 09:51, 13:36, 13:54, 14:35, 18:05, 21:02 and
 23:17 UTC); on Fri 4 Sep 2026 none of the first 8 slots (05:20 to 08:50 UTC) had started by 08:57 UTC, so the
 site still showed the 3 Sep holdings file although the fund had published the 4 Sep file at about 00:02 UTC; by
-21:30 UTC that day 6 of the first 34 slots had run.
+21:30 UTC that day 6 of the first 34 slots had run. On Sat 5 Sep 2026 the 00:23 UTC build fetched the fund's new
+file but refused it as future-dated: it was dated Tue 8 Sep, the NYSE trading day after Labor Day, and the rule
+then in force allowed only the next weekday (Mon 7 Sep), so the site showed the 4 Sep file (Thursday's close)
+until the rule was corrected later that day.
 The build reads the cron lines from pages.yml at build time and publishes them in api/build.json (schedules,
 testedSchedule, refreshTrigger, and which slot fired in `schedule`) together with that dated observation
 (scheduleNote, a constant in scripts/build-pages.js — update it when a newer one is measured); the page's About
@@ -89,15 +92,17 @@ weekday schedule]: no newer build has been served to this page since <time> (the
 build.json for up to 10 min), so every figure on this page is as of that build. Nothing on this page can start a
 build; a new snapshot appears after a push, after a requested build, or when GitHub starts one of the scheduled
 slots, and it skips most of them" and, once Build history has been read, how many runs GitHub started in the
-last 24 hours ("at least N" when every listed run falls inside them, since only 20 are read). Holdings file: build.json publishes holdingsFileExpectedByUtc = 00:30
-(the fund's file for a weekday was live at about 00:02 UTC on 1–4 Sep 2026); when the snapshot's file is
-older than the newest weekday file that should exist (Friday's on a weekend) the status line says "the fund's
-file dated <D> is normally published by 00:30 UTC; this snapshot was built before it and shows the <F> file",
-or, for a build made after that time, "… still shows the <F> file: the fund had not published a newer one when
-the build fetched, or the fetch failed". US market holidays come from a fixed NYSE list for 2026–2027 in
-index.html (US_MARKET_HOLIDAYS): on a holiday, and on the day after it (whose file would carry the holiday's
-close), the line instead says which holiday it is and that how FilePoint dates its file around one has not
-been observed, so no file is expected with confidence. The About line states the rule with the published numbers.
+last 24 hours ("at least N" when every listed run falls inside them, since only 20 are read). Holdings file: build.json publishes holdingsFileExpectedByUtc = 00:30.
+FilePoint publishes the file priced at a NYSE trading day's close at about 00:02 UTC on the next calendar day,
+Saturdays included, and dates it to the next trading day (observed 1–5 Sep 2026; on Sat 5 Sep the file priced
+at the Fri 4 Sep close was dated Tue 8 Sep, the trading day after Labor Day). index.html computes the newest
+file that should exist from a fixed NYSE closure list for 2026–2027 (US_MARKET_HOLIDAYS; beyond it every weekday
+counts as a trading day until the list is extended; pabrai.js carries the same list as NYSE_CLOSURES for the
+build's acceptance rule). When the snapshot's file is older, the status line says "the fund's file dated <D>
+(priced at the <T> close) is normally published by 00:30 UTC on <P>; this snapshot was built before it and
+shows the <F> file", or, for a build made after that time, "… still shows the <F> file: the fund had not
+published a newer one when the build fetched, the fetch failed, or the build refused the file (the Pabrai
+tab's file line says which)". The About line states the rule with the published numbers.
 Mixed set: when a JSON file's bytes do not match the digest build.json publishes for it (normally the CDN still
 serving an earlier build's file) the status line says so on every tab. Build stamp: the build writes its commit
 into index.html as a meta tag; when that differs from build.json's commit, the CDN paired one build's page with
@@ -342,7 +347,7 @@ HOW IT WORKS
 - If Investments is not run every weekday, several days' net changes are merged under "Changes". They are not
   proof of exact execution dates/prices; a callout says when the interval spans more than one weekday (a
   Friday → Monday pair of files is not flagged).
-- The holdings file is dated the next weekday and priced at the previous NAV date; its NetAssets equals the
+- The holdings file is priced at the previous NAV date and dated the next NYSE trading day after it; its NetAssets equals the
   official NAV × the file's own SharesOutstanding to the cent. The page asserts a pricing date on one of two
   proofs: "exact" (the NAV file reports the same unit count, or none, and NetAssets equals rounded NAV × units
   within one hundred-thousandth of NetAssets, or one dollar, whichever is larger — about $3,000 at the fund's
@@ -502,9 +507,9 @@ dates, 13F fallback and N-PORT note re-checked 4 Sep 2026)
   next business day, and pabrai.js models all eleven federal holidays; the check is therefore quarterly and about two months
   behind, and the trust's reports for other months belong to other series and are skipped. The comparison
   holds the N-PORT against the first saved FilePoint file dated 1–4 calendar days after the report date whose
-  NetAssets per unit equals the official NAV dated the report date (normally the file dated the next weekday;
-  after a market holiday a later one; the proof is printed on the page, and a file whose per-unit value does
-  not match is never used); only when no NAV for the report date is available is the next-weekday file taken,
+  NetAssets per unit equals the official NAV dated the report date (normally the file dated the next NYSE
+  trading day; the proof is printed on the page, and a file whose per-unit value does not match is never
+  used); only when no NAV for the report date is available is the next-trading-day file taken,
   flagged as unproven. Rows are paired by 9-character CUSIP, else by the national number inside the N-PORT
   ISIN (FilePoint's CUSIP column carries a SEDOL for most foreign names, and the N-PORT has no CUSIP for
   them), else by the first two words of the issuer name when that is unique on both sides — taken from the
@@ -620,7 +625,7 @@ IF SOMETHING GOES WRONG
   = no usable file was received: the fund's server did not respond, or its response did not parse as a valid
   holdings file (schema, row dates, totals, CUSIPs). "the official holdings file was fetched but rejected
   (<reason>) — showing …" = a valid file was received but refused: stale (more than 5 calendar days old),
-  future-dated beyond the next weekday, dated earlier than the file already saved, or an older revision
+  future-dated beyond the next NYSE trading day, dated earlier than the file already saved, or an older revision
   (earlier Last-Modified) of a file date already saved. It is not saved. In both cases the page shows the last
   accepted file and its date, and the file line says "not re-confirmed".
 - "pricing date of the holdings file is not asserted — <reason>" = neither reconciliation proof held. The reason
@@ -685,6 +690,9 @@ hand. Where to change it when it is:
 - The 24 Aug 2026 series check (20 of 23 closes) and the 4 Sep 2026 re-check of the ten US-listed series (111
   closes, three dividend adjustments): SOURCES above and CHECK_23 / CHECK_US / MARKET_DISCLOSURES in marketfg.js.
 - The 23 Aug 2026 CNN comparison (0.88 correlation, 8.9-point mean gap): SOURCES above only.
+- The NYSE closure lists for 2026–2027 (US_MARKET_HOLIDAYS in index.html, NYSE_CLOSURES in pabrai.js) and the
+  FilePoint dating rule they serve (next trading day; observed once across a holiday, Labor Day 2026): GITHUB
+  PAGES and HOW IT WORKS above. Extend both lists before 2028.
 - The Avanza column, the flags and the sec13f notes in data/config.json: hand notes; the flags follow the fund's
   30 Jun 2026 N-PORT and should be re-read against each new one.
 

@@ -35,6 +35,8 @@ const {
   summarizeNportCheck,
   summarizeWagnUnitFlow,
   validateWagnHoldingsFreshness,
+  nextTradingDay,
+  nyseClosure,
 } = require('../pabrai');
 
 const WAGN_HEADER = 'Date,Account,StockTicker,CUSIP,SecurityName,Shares,Price,MarketValue,Weightings,NetAssets,SharesOutstanding,CreationUnits,MoneyMarketFlag';
@@ -97,7 +99,7 @@ test('WAGN parser validates schema and retains CUSIP, fund shares and provenance
   assert.match(snap.source.sha256, /^[0-9a-f]{64}$/);
 });
 
-test('WAGN freshness accepts only the immediately next weekday across a weekend', () => {
+test('WAGN freshness accepts only the immediately next trading day across a weekend', () => {
   const friday = validateWagnHoldingsFreshness('2026-08-31', '2026-08-28T23:59:59.000Z');
   const saturday = validateWagnHoldingsFreshness('2026-08-31', '2026-08-29T14:31:00.000Z');
   const sunday = validateWagnHoldingsFreshness('2026-08-31', '2026-08-30T09:15:00.000Z');
@@ -109,6 +111,25 @@ test('WAGN freshness accepts only the immediately next weekday across a weekend'
   );
   assert.ok(friday.futureDateAccepted && saturday.futureDateAccepted && sunday.futureDateAccepted);
   assert.equal(saturday.maximumFutureDate, '2026-08-31');
+});
+
+test('WAGN freshness accepts the file dated the trading day after a market holiday', () => {
+  // Sat 5 Sep 2026 00:02 UTC: FilePoint published the file priced at Fri 4 Sep's close dated Tue 8 Sep (Labor Day skipped)
+  const saturday = validateWagnHoldingsFreshness('2026-09-08', '2026-09-05T00:28:21.905Z');
+  assert.equal(saturday.maximumFutureDate, '2026-09-08');
+  assert.ok(saturday.futureDateAccepted);
+  assert.equal(validateWagnHoldingsFreshness('2026-09-08', '2026-09-07T10:00:00.000Z').maximumFutureDate, '2026-09-08', 'on the holiday itself');
+  assert.equal(validateWagnHoldingsFreshness('2026-09-08', '2026-09-08T00:10:00.000Z').ageDays, 0);
+  assert.throws(
+    () => validateWagnHoldingsFreshness('2026-09-09', '2026-09-05T00:28:21.905Z'),
+    /unsupported future date \(2026-09-09; checked 2026-09-05; next allowed trading day 2026-09-08\)/,
+  );
+  assert.equal(nextTradingDay('2026-09-04'), '2026-09-08');
+  assert.equal(nextTradingDay('2026-12-31'), '2027-01-04', '1 Jan 2027 is a closure');
+  assert.equal(nextTradingDay('2026-04-02'), '2026-04-06', 'Good Friday 2026 is a closure but not a federal holiday');
+  assert.equal(nextTradingDay('2026-10-09'), '2026-10-12', 'Columbus Day is a federal holiday but the NYSE is open');
+  assert.equal(nyseClosure('2026-09-07'), 'Labor Day');
+  assert.equal(nextTradingDay('2028-06-30'), '2028-07-03', 'beyond the list only weekends are skipped');
 });
 
 test('WAGN freshness rejects arbitrary future dates and preserves the stale boundary', () => {
@@ -753,7 +774,7 @@ test('N-PORT filings are selected newest report date first, amendment before ori
   assert.match(q3.note, /filed 52 days after its period end.*probably appear before the deadline/);
   assert.doesNotMatch(q3.note, /releases it|makes it public 60 days/, 'no sentence may claim SEC withholds the report');
   assert.equal(nextNportOpportunity('2026-06-30').observedLagDays, null, 'no lag claim without a measured one');
-  assert.match(q3.snapshotDateNote, /normally the FilePoint file dated 1 Oct 2026 .* proving its NetAssets per unit against the official NAV of 30 Sept 2026/);
+  assert.match(q3.snapshotDateNote, /normally the FilePoint file dated 1 Oct 2026, the next NYSE trading day, .* proving its NetAssets per unit against the official NAV of 30 Sept 2026/);
   const q1 = nextNportOpportunity('2026-12-31');
   assert.deepEqual([q1.reportDate, q1.dueDate, q1.filingDeadline, q1.snapshotDate], ['2027-03-31', '2027-05-30', '2027-06-01', '2027-04-01'], '30 May 2027 is a Sunday and 31 May is Memorial Day');
   const q2 = nextNportOpportunity('2026-03-31');
@@ -767,7 +788,7 @@ test('N-PORT comparison pairs by CUSIP, then ISIN national number, then issuer n
   const parsed = parseNportPrimary(nportXml());
   const snapshots = [nportSnapshot('2026-08-20'), nportSnapshot('2026-07-01')];
   const { expectedDate, snapshot, selection } = selectSnapshotForNport(snapshots, '2026-06-30', { navHistory: NAV_HISTORY });
-  assert.equal(expectedDate, '2026-07-01', 'the file dated the next weekday is normally the one priced as of the report date');
+  assert.equal(expectedDate, '2026-07-01', 'the file dated the next NYSE trading day is normally the one priced as of the report date');
   assert.equal(snapshot.date, '2026-07-01');
   assert.equal(selection.rule, 'nav-reconciled', 'chosen by proof against the NAV of the report date, not by its date');
   assert.deepEqual(selection.pricingDateProof, { navDate: '2026-06-30', nav: 16.11, mode: 'exact', perUnit: 16.11, fundShares: 13000000, navFileShares: 13000000, unitChange: 0, fileDate: '2026-07-01' });
@@ -821,13 +842,13 @@ test('without a saved file priced as of the report date the N-PORT check says so
   assert.equal(summarizeNportCheck({ ok: false, fetchError: '403 Forbidden' }), 'SEC N-PORT unavailable (403 Forbidden)');
   // without any NAV history the old date rule is the fallback, and the reason says the pricing date could not be proven
   const dated = compareNportWithSnapshot(parsed, null, { cashLike: ['FXFXX'], selection: selectSnapshotForNport([nportSnapshot('2026-08-20')], '2026-06-30').selection });
-  assert.equal(dated.reason, 'no saved holdings file dated 2026-07-01, the next weekday after 2026-06-30, and no official NAV dated 2026-06-30 was available to prove another file\'s pricing date (no saved file is dated within those four days)');
+  assert.equal(dated.reason, 'no saved holdings file dated 2026-07-01, the next NYSE trading day after 2026-06-30, and no official NAV dated 2026-06-30 was available to prove another file\'s pricing date (no saved file is dated within those four days)');
 });
 
 test('the file for an N-PORT is chosen by its NAV-proven pricing date, so a market holiday or a missed capture cannot mislead', () => {
   // 31 Dec 2026 report: 1 Jan 2027 is a holiday, the first file is dated Monday 4 Jan 2027 and priced as of 31 Dec
   const holiday = selectSnapshotForNport([nportSnapshot('2027-01-04', { netAssets: 16.50 * 13000000 })], '2026-12-31', { navHistory: [{ date: '2026-12-31', nav: 16.50 }, { date: '2027-01-04', nav: 16.62 }] });
-  assert.equal(holiday.expectedDate, '2027-01-01', 'the date rule alone would demand a file that cannot exist');
+  assert.equal(holiday.expectedDate, '2027-01-04', 'the date rule skips the 1 Jan closure; the proof still decides');
   assert.equal(holiday.snapshot.date, '2027-01-04');
   assert.equal(holiday.selection.rule, 'nav-reconciled');
   assert.equal(holiday.selection.pricingDateProof.navDate, '2026-12-31');
@@ -939,7 +960,7 @@ test('the newest public Pabrai N-PORT is found among the trust filings, preferri
   assert.deepEqual(result.snapshotRange, { first: '2026-08-20', last: '2026-08-20', count: 1 });
   assert.deepEqual([result.nextOpportunity.reportDate, result.nextOpportunity.dueDate, result.nextOpportunity.filingDeadline, result.nextOpportunity.snapshotDate], ['2026-09-30', '2026-11-29', '2026-11-30', '2026-10-01']);
   assert.equal(result.nextOpportunity.observedLagDays, 52, 'the displayed report was filed 52 days after its period end');
-  assert.match(result.summary, /no saved holdings file dated 2026-07-01, the next weekday after 2026-06-30, and no official NAV dated 2026-06-30 was available/);
+  assert.match(result.summary, /no saved holdings file dated 2026-07-01, the next NYSE trading day after 2026-06-30, and no official NAV dated 2026-06-30 was available/);
   assert.ok(!JSON.stringify(result).includes('<edgarSubmission'), 'the API result never carries raw XML');
   // what the check cost and how it identified itself, never the contact value
   assert.equal(result.documentsOpened, 3);
