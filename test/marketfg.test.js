@@ -291,7 +291,7 @@ test('Yahoo acquisition retries the independent chart host without changing the 
 
 test('the newest close Yahoo lists without a value is filled from the listing venue only when it is dated exactly that day', async () => {
   const { fillVenueGap, VENUE_CLOSE_SOURCES } = require('../marketfg');
-  assert.deepEqual(Object.keys(VENUE_CLOSE_SOURCES), ['London-listed']);
+  assert.deepEqual(Object.keys(VENUE_CLOSE_SOURCES), ['London-listed', 'Stockholm-listed']);
   const originalFetch = global.fetch;
   const rows = [{ date: '2026-09-02', close: 90.88 }, { date: '2026-09-03', close: 91.1 }];
   const base = { symbol: 'IHYG.L', venue: 'London-listed', currency: 'EUR', rows, lastDate: '2026-09-03', missingCloseDates: ['2026-08-31', '2026-09-04'] };
@@ -327,9 +327,42 @@ test('the newest close Yahoo lists without a value is filled from the listing ve
     assert.equal(calls.length, 0);
     // a venue without a source is left alone
     assert.equal((await fillVenueGap({ ...base, venue: 'Xetra-listed' })).venueFill, undefined);
+    // Stockholm: Nasdaq Stockholm's chart for the wanted day, identity by ISIN, currency from the last-sale string
+    const xact = { symbol: 'XACT-SVERIGE.ST', venue: 'Stockholm-listed', currency: 'SEK', rows: [{ date: '2026-09-03', close: 774 }], lastDate: '2026-09-03', missingCloseDates: ['2026-09-04'] };
+    const nordic = (isin, rows) => lse({ data: { chartData: { orderbookId: 'TX1678', isin, symbol: 'XACT Sverige', lastSalePrice: 'SEK 777.30' }, CP: rows } });
+    calls.length = 0;
+    global.fetch = async url => { calls.push(String(url)); return nordic('SE0001056045', [{ z: { dateTime: '2026-09-03', close: '774.00' } }, { z: { dateTime: '2026-09-04', close: '777.30' } }]); };
+    const stockholm = await fillVenueGap(xact);
+    assert.equal(calls[0], 'https://api.nasdaq.com/api/nordic/instruments/TX1678/chart?assetClass=ETF&fromDate=2026-09-04&toDate=2026-09-04&lang=en');
+    assert.deepEqual(stockholm.rows[1], { date: '2026-09-04', close: 777.3 });
+    assert.equal(stockholm.venueFill.filled, true);
+    assert.equal(stockholm.venueFill.currency, 'SEK');
+    assert.equal(stockholm.venueFill.isin, 'SE0001056045');
+    global.fetch = async () => nordic('SE0007491287', [{ z: { dateTime: '2026-09-04', close: '777.30' } }]);
+    assert.match((await fillVenueGap(xact)).venueFill.reason, /identity mismatch: SE0007491287/);
+    global.fetch = async () => nordic('SE0001056045', [{ z: { dateTime: '2026-09-03', close: '774.00' } }]);
+    assert.match((await fillVenueGap(xact)).venueFill.reason, /newest close is dated 2026-09-03, not 2026-09-04/);
+    // the index and the fund NAV series are not exchange lines: no orderbook, no fill
+    assert.match((await fillVenueGap({ ...xact, symbol: '^OMXSBGI' })).venueFill.reason, /no Nasdaq Stockholm orderbook is configured/);
+    assert.equal((await fillVenueGap({ ...xact, symbol: '0P0001C87Y.ST', venue: 'Stockholm fund NAV' })).venueFill, undefined);
     // a failing request leaves the series untouched with the reason
     global.fetch = async () => { throw new Error('boom'); };
     assert.match((await fillVenueGap(base)).venueFill.reason, /venue request failed: boom/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('a venue request has its own deadline and honours the outer abort signal', async () => {
+  const { fetchWithTimeout } = require('../marketfg');
+  const originalFetch = global.fetch;
+  global.fetch = (url, init) => new Promise((resolve, reject) => { init.signal.addEventListener('abort', () => reject(init.signal.reason || new Error('aborted'))); });
+  try {
+    await assert.rejects(fetchWithTimeout('https://example.invalid/x', {}, 20), /no answer within 0 s/);
+    const outer = new AbortController();
+    const pending = fetchWithTimeout('https://example.invalid/y', {}, 5000, outer.signal);
+    outer.abort(new Error('outer deadline'));
+    await assert.rejects(pending, /outer deadline/);
   } finally {
     global.fetch = originalFetch;
   }
@@ -919,12 +952,13 @@ test('series carry a proper instrument name and type, Yahoo\'s own name alongsid
   assert.match(MARKET_DISCLOSURES.ustech.verified, /all six were checked again on 4 Sep 2026: name and every close from 20 Aug to 3 Sep 2026 verified to the cent against Nasdaq \(the ETFs\) or Cboe’s published daily history \(\^VIX, \^VXN\)/);
   assert.match(MARKET_DISCLOSURES.usa.verified, /every series of this market was among the 23 series .* and checked again on 4 Sep 2026/);
   assert.match(MARKET_DISCLOSURES.global.verified, /ACWI, \^VIX and IEF were checked again on 4 Sep 2026/);
-  assert.match(MARKET_DISCLOSURES.global.verified, /the four London-listed series have had no later check$/);
+  assert.match(MARKET_DISCLOSURES.global.verified, /HYLD\.L, CORP\.L, WSML\.L and IWDA\.L were checked again on 5 Sep 2026: names and ISINs, and every close from 20 Aug to 4 Sep 2026, to the cent against the London Stock Exchange and FT$/);
   assert.match(MARKET_DISCLOSURES.crypto.verified, /IEF, HYG and LQD were among the 23 series .* and checked again on 4 Sep 2026/);
-  assert.match(MARKET_DISCLOSURES.crypto.verified, /the seven crypto pairs were not among those 23 series and have had no second-source check$/);
-  for (const key of ['sweden', 'europe']) assert.match(MARKET_DISCLOSURES[key].verified, /among the 23 series .*; no later check$/, key);
-  for (const key of ['sweden', 'europe']) assert.doesNotMatch(MARKET_DISCLOSURES[key].verified, /4 Sep 2026/, key + ' has no US-listed series');
-  assert.doesNotMatch(Object.values(MARKET_DISCLOSURES).map(d => d.verified).join('\n'), /have not had it/);
+  assert.match(MARKET_DISCLOSURES.crypto.verified, /on 5 Sep 2026 their identity and every UTC daily close from 20 Aug to 4 Sep 2026 were checked against CoinMarketCap/);
+  assert.match(MARKET_DISCLOSURES.sweden.verified, /checked again on 5 Sep 2026: .* against Nasdaq’s own index history \(OMXSBGI, to the cent\), Nasdaq Stockholm’s instrument data and Avanza \(the three XACT ETFs, to the cent\) and Carnegie Fonder’s published NAVs/);
+  assert.match(MARKET_DISCLOSURES.europe.verified, /checked again on 5 Sep 2026: .* against Deutsche Börse’s Xetra price history \(SXRQ\.DE, EXSE\.DE and EXSA\.DE, exact at three decimals\), STOXX Ltd’s own series/);
+  for (const key of ['sweden', 'europe']) assert.doesNotMatch(MARKET_DISCLOSURES[key].verified, /4 Sep 2026:/, key + ' has no US-listed series');
+  assert.doesNotMatch(Object.values(MARKET_DISCLOSURES).map(d => d.verified).join('\n'), /have not had it|no later check|no second-source check/);
   assert.match(MARKET_DISCLOSURES.ustech.note, /after the retrospective rule searches, the replication test, the diagnostic battery and the Europe lockbox activation, none of which covers it/);
   assert.match(MARKET_DISCLOSURES.ustech.note, /FG-X2-FITTED-V1 \(28 Aug 2026\), a deliberately overfit fitted lookup/, 'the one study that does include US Tech is named');
   assert.doesNotMatch(MARKET_DISCLOSURES.ustech.note, /no rule search, replication, diagnostic battery or lockbox in research\/ covers it/);
