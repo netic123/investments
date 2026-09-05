@@ -12,14 +12,14 @@ const net = require('net');
 const vm = require('vm');
 const crypto = require('crypto');
 const { spawn, execFileSync } = require('child_process');
-const { isQuarterEndDate, reconcileWagnHoldingsToNav, secUserAgent, summarizeNportCheck, validateWagnHoldingsFreshness } = require('../pabrai');
+const { impliedUnitsFromNav, isQuarterEndDate, nextTradingDay, reconcileWagnHoldingsToNav, secUserAgent, summarizeNportCheck, validateWagnHoldingsFreshness } = require('../pabrai');
 const { collectSpecSymbols, hashPublicDecision, hashPublishedScoreHistory } = require('../marketfg');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, '_site');
 const API_OUT = path.join(OUT, 'api');
 const ENDPOINTS = ['config', 'holdings', 'dalal', 'nport', 'nav', 'perf', 'quotes', 'marketfg'];
-const EXPECTED_FILES = ['.nojekyll', 'index.html', 'api/build.json', ...ENDPOINTS.map(name => `api/${name}.json`)].sort();
+const EXPECTED_FILES = ['.nojekyll', 'index.html', 'api/build.json', 'api/trades.xml', ...ENDPOINTS.map(name => `api/${name}.json`)].sort();
 const PUBLIC_POSITION_KEYS = ['currency', 'entry', 'fundTicker', 'nextReport', 'nextReportApprox', 'nextReportNote', 'secTicker', 'ticker', 'yahoo'];
 const PUBLIC_EXPANDING_SIGNAL_KEYS = [
   'action', 'actionMeaning', 'availableAtUtc', 'cashModel',
@@ -639,6 +639,51 @@ async function loadPreviousPublishedSnapshots() {
   return { snapshots, previousCount };
 }
 
+// ---- the trades as an Atom feed (api/trades.xml): one entry per file-to-file interval with a change, newest first, so a
+// feed reader can tell the visitor when the fund's file shows a trade. Every line is the same share-count difference the
+// page shows; the entry's time is the capture time of the newer file.
+const SITE_URL = 'https://netic123.github.io/investments/';
+const xmlEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+const dmy = iso => { const [y, m, d] = String(iso).split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1, d)); return isNaN(dt) ? String(iso) : dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
+const fmtN = n => new Intl.NumberFormat('en-GB').format(Math.round(n));
+// The pricing date of a saved file: the official NAV of the previous rate date (at most four days earlier) whose value makes
+// NetAssets a whole number of units, and the file's own count when it reports one (mirrors pricingOf in index.html).
+function pricingDateOf(snap, navHistory) {
+  if (!snap || !snap.date || !Array.isArray(navHistory)) return null;
+  const rows = navHistory.filter(r => r && r.date && Number.isFinite(r.nav) && r.date < snap.date && (Date.parse(`${snap.date}T00:00:00Z`) - Date.parse(`${r.date}T00:00:00Z`)) / 864e5 <= 4).sort((a, b) => a.date.localeCompare(b.date));
+  const nav = rows[rows.length - 1]; if (!nav) return null;
+  const r = impliedUnitsFromNav(snap.netAssets, nav.nav); if (!r.implied) return null;
+  if (Number.isFinite(snap.sharesOutstanding) && snap.sharesOutstanding > 0 && Math.abs(snap.sharesOutstanding - r.units) >= 0.5) return null;
+  return nav.date;
+}
+const ACTION_WORD = { INCREASE: 'Bought more', DECREASE: 'Reduced', NEW: 'New position', 'SOLD OUT': 'Sold out' };
+function tradesFeedXml(holdings, nav, { generatedAt, siteUrl = SITE_URL } = {}) {
+  const H = holdings || {}, log = Array.isArray(H.log) ? H.log : [], snaps = Array.isArray(H.snapshots) ? H.snapshots : [];
+  const byDate = Object.fromEntries(snaps.map(s => [s.date, s])), navHistory = (nav && Array.isArray(nav.history)) ? nav.history : [];
+  const dates = [...new Set(snaps.map(s => s.date))].sort();
+  const entries = [];
+  for (let i = dates.length - 1; i > 0; i--) {
+    const from = dates[i - 1], to = dates[i];
+    const items = log.filter(c => c.from === from && c.to === to && !c.cashLike).sort((a, b) => (b.absValue || 0) - (a.absValue || 0));
+    const cash = log.filter(c => c.from === from && c.to === to && c.cashLike);
+    const a = byDate[from], b = byDate[to];
+    const unitsFrom = a && Number.isFinite(a.sharesOutstanding) ? a.sharesOutstanding : null, unitsTo = b && Number.isFinite(b.sharesOutstanding) ? b.sharesOutstanding : null;
+    const units = unitsFrom != null && unitsTo != null ? unitsTo - unitsFrom : null;
+    if (!items.length && !units && !cash.length) continue;
+    const pa = pricingDateOf(a, navHistory), pb = pricingDateOf(b, navHistory);
+    const session = pa && pb ? (nextTradingDay(pa) === pb ? `${dmy(pb)} session` : `${dmy(pa)} → ${dmy(pb)} closes`) : `files ${dmy(from)} → ${dmy(to)}`;
+    const lines = items.map(c => `${ACTION_WORD[c.kind] || c.kind}: ${c.ticker} ${c.delta > 0 ? '+' : ''}${fmtN(c.delta)} shares (${c.pct > 0 ? '+' : ''}${Number(c.pct).toFixed(1)}%), ≈ $${fmtN(c.approxUsd)} at the file’s value, now ${fmtN(c.sharesTo)}`);
+    if (units) lines.push(`WAGN units ${units > 0 ? 'created' : 'redeemed'}: ${fmtN(Math.abs(units))} (${fmtN(unitsFrom)} → ${fmtN(unitsTo)})`);
+    for (const c of cash) lines.push(`Cash-like (not a trade): ${c.ticker} ${c.delta > 0 ? '+' : '−'}$${fmtN(Math.abs(c.approxUsd))}`);
+    const title = `${session}: ${items.length ? items.map(c => `${ACTION_WORD[c.kind] || c.kind} ${c.ticker} ${c.delta > 0 ? '+' : ''}${fmtN(c.delta)}`).join('; ') : 'no change in any holding'}`;
+    const basis = pa && pb ? `Between the fund’s daily files dated ${dmy(from)} and ${dmy(to)}, priced at the ${dmy(pa)} and ${dmy(pb)} closes.` : `Between the fund’s daily files dated ${dmy(from)} and ${dmy(to)}.`;
+    const captured = b && b.source && b.source.capturedAt ? b.source.capturedAt : generatedAt;
+    entries.push({ id: `tag:netic123.github.io,2026:investments/trades/${from}/${to}`, title, updated: captured, content: `${lines.join('\n')}\n\n${basis} Share-count changes between two official files after removing moves proportional to a unit creation or redemption; not trade tickets, so the exact time and price are unknown.` });
+  }
+  const updated = generatedAt || (entries[0] && entries[0].updated) || '1970-01-01T00:00:00Z';
+  return `<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">\n<title>Pabrai Wagons ETF — what Pabrai bought and sold</title>\n<subtitle>Share-count changes between the fund’s daily holdings files, from an independent, unofficial dashboard; one entry per file-to-file interval with a change; rebuilt at each build</subtitle>\n<id>tag:netic123.github.io,2026:investments/trades</id>\n<link href="${xmlEsc(siteUrl)}#pabrai" rel="alternate"/>\n<link href="${xmlEsc(siteUrl)}api/trades.xml" rel="self"/>\n<updated>${xmlEsc(updated)}</updated>\n<author><name>netic123</name></author>\n${entries.map(e => `<entry>\n<id>${xmlEsc(e.id)}</id>\n<title>${xmlEsc(e.title)}</title>\n<link href="${xmlEsc(siteUrl)}#pabrai" rel="alternate"/>\n<updated>${xmlEsc(e.updated)}</updated>\n<content type="text">${xmlEsc(e.content)}</content>\n</entry>`).join('\n')}\n</feed>\n`;
+}
+
 function prepareOutput() {
   assert(path.dirname(OUT) === ROOT && path.basename(OUT) === '_site', 'refusing to clean an unexpected output path');
   fs.rmSync(OUT, { recursive: true, force: true });
@@ -661,7 +706,7 @@ function artifactFiles(dir, prefix = '') {
   return files.sort();
 }
 
-const DIGESTED_FILES = ['index.html', ...ENDPOINTS.map(name => `api/${name}.json`)];
+const DIGESTED_FILES = ['index.html', ...ENDPOINTS.map(name => `api/${name}.json`), 'api/trades.xml'];
 
 function artifactDigests(dir, relatives) {
   return Object.fromEntries(relatives.map(relative => [
@@ -676,6 +721,7 @@ function verifyArtifact(forbiddenSecrets, commit) {
     JSON.parse(fs.readFileSync(path.join(OUT, relative), 'utf8'));
   }
   verifyStaticPage(fs.readFileSync(path.join(OUT, 'index.html'), 'utf8'), commit);
+  assert(fs.readFileSync(path.join(OUT, 'api', 'trades.xml'), 'utf8').startsWith('<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">'), 'api/trades.xml is not an Atom feed');
   for (const secret of forbiddenSecrets) {
     for (const relative of actual) {
       const bytes = fs.readFileSync(path.join(OUT, relative));
@@ -867,6 +913,7 @@ async function main() {
     fs.writeFileSync(path.join(OUT, 'index.html'), staticPageHtml(sourceHtml, build.commit), 'utf8');
     fs.writeFileSync(path.join(OUT, '.nojekyll'), '', 'utf8');
     for (const name of ENDPOINTS) writeJson(path.join(API_OUT, `${name}.json`), data[name]);
+    fs.writeFileSync(path.join(API_OUT, 'trades.xml'), tradesFeedXml(data.holdings, data.nav, { generatedAt: build.generatedAt }), 'utf8');
     // SHA-256 of the exact bytes just written for index.html and every
     // api/*.json except build.json itself, which cannot carry its own digest
     // (the empty .nojekyll marker is the only other published file and is not
@@ -890,10 +937,10 @@ async function main() {
 }
 
 module.exports = {
-  DIGESTED_FILES, ENDPOINTS, HOLDINGS_FILE_EXPECTED_BY_UTC, PUBLISHED_HOLDINGS_URL, SCHEDULE_NOTE, SCHEDULE_WINDOW_UTC,
+  DIGESTED_FILES, ENDPOINTS, EXPECTED_FILES, HOLDINGS_FILE_EXPECTED_BY_UTC, PUBLISHED_HOLDINGS_URL, SCHEDULE_NOTE, SCHEDULE_WINDOW_UTC,
   SNAPSHOT_STALE_AFTER_HOURS, SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE, STATIC_CSP_DIRECTIVES,
   artifactDigests, assertPublishedHoldingsUrl, checkInlineScript, describeCron, inlineScript, mergeSnapshots,
-  refreshTriggerSentence, staticCsp, staticPageHtml, testedScheduleSlot, usableSnapshots, verifyStaticPage, workflowSchedules,
+  pricingDateOf, refreshTriggerSentence, staticCsp, staticPageHtml, testedScheduleSlot, tradesFeedXml, usableSnapshots, verifyStaticPage, workflowSchedules,
 };
 
 if (require.main === module) main().catch(error => {
