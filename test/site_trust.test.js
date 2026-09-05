@@ -319,7 +319,7 @@ test('the Pabrai tab states file capture and confirmation, cash rows, currencies
   assert.match(html, /D\.nextFilingSource==='computed'/);
   assert.match(html, /a date typed into the configuration, used because SEC could not be fetched/);
   assert.match(html, /that date has passed, so a newer 13F may exist/);
-  assert.match(html, /sec13f&&sec13f\.reportable===false \? `<span class="muted">not in the 13F — \$\{esc\(sec13f\.note\)\}<\/span>`/);
+  assert.match(html, /sec13f&&sec13f\.reportable===false \? `<span class="muted" title="\$\{esc\(sec13f\.note\)\}">not in the 13F — cannot be listed there<\/span>`/);
   assert.match(html, /no 13F data exists for this listing/);
   for (const [ticker, entry] of Object.entries(config.names)) {
     assert.ok(entry.sec13f && typeof entry.sec13f.reportable === 'boolean' && typeof entry.sec13f.note === 'string' && entry.sec13f.note.length > 0, `config.names['${ticker}'].sec13f`);
