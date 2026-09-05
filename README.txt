@@ -69,7 +69,8 @@ the one inline block, by its SHA-256 hash; style-src 'unsafe-inline' and fonts.g
 fonts.gstatic.com; connect-src the site itself, https://data.sec.gov and https://api.github.com; img-src the
 site and data: URIs; base-uri, form-action and object-src 'none'. What a visitor's browser actually contacts
 (the page footer says the same, and test/site_trust.test.js checks that every connect-src host is named
-there): the site's own JSON files on every page load, on Reload snapshot and on the 10-minute re-check;
+there): the site's own JSON files on every page load and on the 10-minute re-check (a "Reload snapshot" button
+did the same until 5 Sep 2026; it was removed because the re-check and a browser reload cover it);
 Google Fonts for the typefaces; data.sec.gov (SEC's EDGAR submissions index) on a page load and, at most once an
 hour, on a 10-minute re-check that loads a newer snapshot, while the published snapshot carries the manually
 verified 13F fallback — whichever tab the visitor
@@ -117,13 +118,15 @@ serving an earlier build's file) the status line says so on every tab. Build sta
 into index.html as a meta tag; when that differs from build.json's commit, the CDN paired one build's page with
 another's data, and the status line says so and asks for a reload in a few minutes.
 
-"Reload snapshot" re-downloads the JSON files skipping the browser cache (cache: no-store). It cannot bypass
+The 10-minute re-check re-downloads the JSON files skipping the browser cache (cache: no-store); the public page
+has had no reload button since 5 Sep 2026 (the local app's Update button still exists). It cannot bypass
 the Pages CDN, which keeps each file for up to 10 minutes (Cache-Control max-age=600) and ignores query
 strings; the status line therefore shows the served copy's age from the Age header ("CDN copy N s old",
-advancing while the page holds it) and reports one of "newer snapshot loaded", "no newer snapshot was served
-(the CDN may hold a copy for up to 10 min)", "same build re-loaded", "first snapshot loaded", "the CDN served
-an older snapshot (built …) than the one already loaded; kept the loaded one" or "the served files do not all match
-one build.json (normally the CDN still serving an earlier build's file); kept the consistent set already loaded". Consistency is checked, not assumed: the page
+advancing while the page holds it, in the line's tooltip) and, when a re-check keeps the loaded set, says why:
+"the CDN served an older snapshot (built …) than the one already loaded; kept the loaded one" or "the served
+files do not all match one build.json (normally the CDN still serving an earlier build's file); kept the
+consistent set already loaded" (the local app's manual Update also reports "newer snapshot loaded", "no newer
+snapshot was served (the CDN may hold a copy for up to 10 min)", "same build re-loaded" or "first snapshot loaded"). Consistency is checked, not assumed: the page
 hashes every api/*.json it loads (SHA-256 of the bytes) against build.json's files map, re-fetches build.json
 and the disagreeing files once, keeps a previously loaded consistent set over a mixed one, never replaces the
 loaded set with an older build.json, and on a first load that is still mixed warns "a file's bytes do not match the
@@ -413,7 +416,7 @@ HOW IT WORKS
   the time with seconds, and every source shows when it was fetched). The automatic 10-minute refresh is
   gentler: it reuses daily series that are less than 15 minutes old. Crypto excludes the current UTC date;
   equity markets use their configured exchange-local daily bars. Identical numbers after an Update are therefore
-  normal until another eligible daily observation is available. On GitHub Pages, Reload snapshot re-downloads
+  normal until another eligible daily observation is available. On GitHub Pages the 10-minute re-check re-downloads
   the published JSON through the Pages CDN, which may still serve the previous deployment for up to 10 minutes
   (see GITHUB PAGES); upstream sources are fetched by the
   workflow, not by the visitor's browser.
@@ -701,7 +704,7 @@ IF SOMETHING GOES WRONG
   (see GITHUB PAGES).
 - "a file's bytes do not match the SHA-256 that build.json publishes for it …; figures may not match" = the first
   load got a mixed set even
-  after one retry; Reload snapshot a few minutes later.
+  after one retry; reload the page a few minutes later.
 - "SEC automatic refresh unavailable at build/update time (<reason>) — official filing manually verified <date>"
   = the SEC request or XML validation failed; the reason names the failed request, and api/build.json
   dalalVerification and secContact record it (see SOURCES for the User-Agent record). "SEC automatic refresh
