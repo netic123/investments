@@ -295,8 +295,9 @@ footer p{margin:0 0 .5em}
   <div id="changes"></div>
   <div class="sec-head sub"><h2>Trade history</h2><span class="note" id="histNote">—</span></div>
   <div id="history"></div>
-  <div class="sec-head sub"><h2>How each position was built</h2><span class="note" id="buildNote">—</span></div>
+  <div class="sec-head sub"><h2>How each position was built, and how it has gone</h2><span class="note" id="buildNote">—</span></div>
   <div class="cards" id="buildCards"></div>
+  <p class="hint">Prices are the fund’s own file closes: the close of the day a change appeared and the latest file’s close, not execution prices. Result = shares traded × (price now − price then), in USD at the file’s own conversion and in SEK at the snapshot’s USD/SEK quote; “vs not trading” reads the same way for a sale (what the sale avoided or missed). A holding no longer in the latest file has no later price. Moves that were only proportional to a unit creation or redemption are not trades and are left out.</p>
   <details class="more"><summary>Full change log — every share-count change, as a table</summary><div id="log"></div></details>
 </section>
 
@@ -1163,7 +1164,7 @@ function renderHoldings(H,Q){
     : !C.length ? digest+latestHead+flowCallout+`<div class="empty">No change in any holding (${sess.proven?sess.label:span}).</div>`+cashLine+basis
     : digest+latestHead+gapCallout+flowCallout+tradesTable(C,L)+cashLine+basis;
   renderTradeHistory(H,LOG,CASHLOG,byDate);
-  renderBuildUp(H);
+  renderBuildUp(H,LOG,Q);
   const cashLog = CASHLOG.length ? `<div class="muted" style="font-size:.82rem;margin-top:8px">Cash-like rows not listed as trades: ${CASHLOG.map(c=>`${fmtDate(c.from)} → ${fmtDate(c.to)} ${esc(c.ticker)} ${c.delta>0?'+':''}${fmt(c.delta)} (${pct(c.pct,1)})`).join('; ')}.</div>` : '';
   $('#log').innerHTML = (LOG.length ? changesTable(LOG,true) : '<div class="empty">Empty.</div>')+cashLog;
 
@@ -1246,13 +1247,18 @@ function renderTradeHistory(H,LOG,CASHLOG,byDate){
   $('#histNote').textContent = rows.length ? `${fmt(rows.length)} file-to-file interval${rows.length===1?'':'s'} since the ${fmtDate(dates[0])} file` : '—';
 }
 // Each holding whose share count changed over the saved files: a line of shares per saved file (one point per file, in
-// file order; the tooltip lists the dates), first → last, the change in shares and its approximate value at the latest
-// file's price for that holding. Cash-like rows are left out; a holding whose count never changed is not shown.
-function renderBuildUp(H){
+// file order; the tooltip lists the dates), first → last, and how its trades have gone at the fund's own file prices —
+// the close of the day a change appeared (the file dated the next trading day carries that close) and the latest file's
+// close, so never execution prices. Result = shares traded × (price now − price then): USD at the file's own conversion
+// per share, SEK at the snapshot's USD/SEK quote. Only the listed trades count (a move proportional to a unit creation or
+// redemption is not a trade). Cash-like rows are left out; a holding whose count never changed is not shown; a holding no
+// longer in the latest file has no later price, so its result is not computed.
+function renderBuildUp(H,LOG,Q){
   const cards=$('#buildCards'), note=$('#buildNote'); if(!cards) return;
   const snaps=[...(H.snapshots||[])].filter(s=>s&&s.date&&s.rows).sort((a,b)=>a.date.localeCompare(b.date));
   if(snaps.length<2){ cards.innerHTML='<div class="empty">Only one file saved so far.</div>'; note.textContent='—'; return; }
-  const L=snaps[snaps.length-1], tickers=new Set();
+  const L=snaps[snaps.length-1], byDate=Object.fromEntries(snaps.map(s=>[s.date,s])), tickers=new Set();
+  const usdSek=Q&&Q['USDSEK=X']&&Number.isFinite(Q['USDSEK=X'].price)&&Q['USDSEK=X'].price>0 ? Q['USDSEK=X'].price : null;
   for(const s of snaps) for(const t of Object.keys(s.rows)) if(!isCashLike(t)) tickers.add(t);
   const series=[];
   for(const t of tickers){
@@ -1260,18 +1266,35 @@ function renderBuildUp(H){
     const first=pts[0].shares, last=pts[pts.length-1].shares;
     if(pts.every(p=>Math.abs(p.shares-first)<0.5)) continue;
     const priced=[...pts].reverse().find(p=>p.shares&&p.mv), px=priced?priced.mv/priced.shares:0;
-    series.push({t,pts,first,last,usd:(last-first)*px,pxDate:priced?priced.date:null});
+    const rowAt=d=>{ const s=byDate[d]; return s&&s.rows[t]&&s.rows[t].shares&&Number.isFinite(s.rows[t].price) ? s.rows[t] : null; };
+    const nowRow=rowAt(L.date), usdNow=nowRow?nowRow.mv/nowRow.shares:null, pxNow=nowRow?nowRow.price:null;
+    let result=0, pricedTrades=0, unpriced=0, buyShares=0, buyCost=0, sellShares=0, sellProceeds=0;
+    for(const c of (LOG||[]).filter(c=>c.ticker===t)){
+      // a sale that emptied the row has no price in the newer file: the older file, which still held it, gives that day's close
+      const r=rowAt(c.to)||(c.delta<0?rowAt(c.from):null);
+      if(!r){ unpriced++; continue; }
+      if(c.delta>0){ buyShares+=c.delta; buyCost+=c.delta*r.price; } else { sellShares+=-c.delta; sellProceeds+=-c.delta*r.price; }
+      if(usdNow!=null){ result+=c.delta*(usdNow-r.mv/r.shares); pricedTrades++; }
+    }
+    series.push({t,pts,first,last,usd:(last-first)*px,pxDate:priced?priced.date:null,avgBuy:buyShares?buyCost/buyShares:null,avgSell:sellShares?sellProceeds/sellShares:null,buyShares,sellShares,pxNow,result:usdNow!=null&&pricedTrades?result:null,unpriced});
   }
   series.sort((a,b)=>Math.abs(b.usd)-Math.abs(a.usd));
   const spark=pts=>{ const W=160,HH=40, mx=Math.max(...pts.map(p=>p.shares))||1, n=pts.length;
     const xs=pts.map((p,i)=>2+(n>1?i/(n-1):0)*(W-4)), ys=pts.map(p=>HH-3-(p.shares/mx)*(HH-6));
     const d=pts.map((p,i)=>(i?'L':'M')+xs[i].toFixed(1)+' '+ys[i].toFixed(1)).join(' ');
     return `<svg viewBox="0 0 ${W} ${HH}" width="${W}" height="${HH}" aria-hidden="true" style="display:block;max-width:100%"><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${xs[n-1].toFixed(1)}" cy="${ys[n-1].toFixed(1)}" r="2.6" fill="var(--accent)"/></svg>`; };
+  const money2=(v,t)=>`${fmt(v,2)}${ccyOf(t)?' '+esc(ccyOf(t)):''}`;
+  const since=(from,to)=>{ const r=to/from*100-100; return `<span class="${cls(r)}">${pct(r,1)}</span>`; };
   cards.innerHTML = series.map(s=>{ const d=s.last-s.first, kind=!s.first?'New position':!s.last?'Sold out':d>0?'Bought more':'Reduced';
     const tip=s.pts.map(p=>`${fmtDate(p.date)}: ${fmt(p.shares)}`).join('\n')+(s.pxDate?`\nvalue at the ${fmtDate(s.pxDate)} file’s price`:'');
-    return `<div class="card" style="padding:12px 14px" title="${esc(tip)}"><div class="hd" style="margin-bottom:6px"><span class="tick">${esc(s.t)}</span><span style="font-size:.9rem">${esc(nameOf(s.t))}</span><span class="badge ${d>0?'b-buy':'b-sell'}">${kind}</span></div>${spark(s.pts)}<div style="font-size:.78rem;color:var(--muted);margin-top:4px">${fmt(s.first)} → ${fmt(s.last)} shares over ${fmt(s.pts.length)} files · <span class="${cls(d)}">${d>0?'+':''}${fmt(d)}${s.first?' ('+pct(d/s.first*100,1)+')':''}</span> · ≈ ${s.usd<0?'−':'+'}$${fmt(Math.abs(s.usd)/1e6,2)}M</div></div>`; }).join('')
+    const gone=[];
+    if(s.avgBuy!=null) gone.push(`bought ${fmt(s.buyShares)} at avg ${money2(s.avgBuy,s.t)}${s.pxNow!=null?` → now ${money2(s.pxNow,s.t)} (${since(s.avgBuy,s.pxNow)})`:''}`);
+    if(s.avgSell!=null) gone.push(`sold ${fmt(s.sellShares)} at avg ${money2(s.avgSell,s.t)}${s.pxNow!=null?` → now ${money2(s.pxNow,s.t)} (${since(s.avgSell,s.pxNow)})`:' · no later price in the fund’s files'}`);
+    const usdStr=v=>Math.abs(v)>=1e6?'$'+fmt(Math.abs(v)/1e6,2)+'M':'$'+fmt(Math.abs(v)/1e3,0)+'k', sekStr=v=>Math.abs(v)>=1e6?fmt(Math.abs(v)/1e6,1)+' MSEK':fmt(Math.abs(v)/1e3,0)+' kSEK';
+    const res = s.result!=null ? ` · <span class="${cls(s.result)}">${s.result<0?'−':'+'}${usdStr(s.result)}</span>${usdSek?` (${s.result<0?'−':'+'}${sekStr(s.result*usdSek)})`:''} vs not trading` : '';
+    return `<div class="card" style="padding:12px 14px" title="${esc(tip)}"><div class="hd" style="margin-bottom:6px"><span class="tick">${esc(s.t)}</span><span style="font-size:.9rem">${esc(nameOf(s.t))}</span><span class="badge ${d>0?'b-buy':'b-sell'}">${kind}</span></div>${spark(s.pts)}<div style="font-size:.78rem;color:var(--muted);margin-top:4px">${fmt(s.first)} → ${fmt(s.last)} shares over ${fmt(s.pts.length)} files · <span class="${cls(d)}">${d>0?'+':''}${fmt(d)}${s.first?' ('+pct(d/s.first*100,1)+')':''}</span> · ≈ ${s.usd<0?'−':'+'}$${fmt(Math.abs(s.usd)/1e6,2)}M</div>${gone.length?`<div style="font-size:.78rem;color:var(--muted);margin-top:3px">${gone.join(' · ')}${res}${s.unpriced?' · '+fmt(s.unpriced)+' change'+(s.unpriced===1?'':'s')+' without a file price':''}</div>`:''}</div>`; }).join('')
     || '<div class="empty">No holding’s share count changed over the saved files.</div>';
-  note.textContent=`${fmt(series.length)} holdings changed · files ${fmtDate(snaps[0].date)} → ${fmtDate(L.date)} · one point per saved file`;
+  note.textContent=`${fmt(series.length)} holdings changed · files ${fmtDate(snaps[0].date)} → ${fmtDate(L.date)} · prices are the fund’s file closes${usdSek?' · SEK at '+fmt(usdSek,2)+' USD/SEK':''}`;
 }
 // The badge column is the kind of share-count change between two files (NEW / SOLD OUT / INCREASE / DECREASE), not a signal.
 // "vs pro-rata" needs the unit flow over the interval; where a file reports no unit count, the count implied from
