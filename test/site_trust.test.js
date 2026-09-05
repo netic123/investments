@@ -787,8 +787,12 @@ test('the build publishes an Atom feed of the trades: one entry per interval wit
   // the seven-day digest nets each holding over the window and is skipped when the window is one interval
   assert.match(html, /<b>Last 7 days<\/b>/);
   // the build-up cards: one point per saved file, cash-like rows left out, unchanged holdings not shown
-  assert.match(html, /<h2>How each position was built<\/h2>/);
-  assert.match(html, /function renderBuildUp\(H\)/);
+  assert.match(html, /<h2>How each position was built, and how it has gone<\/h2>/);
+  assert.match(html, /function renderBuildUp\(H,LOG,Q\)/);
+  // trades are priced at the fund's file closes, never called execution prices; a sale that emptied the row takes the older file's close
+  assert.match(html, /not execution prices\. Result = shares traded × \(price now − price then\)/);
+  assert.match(html, /const r=rowAt\(c\.to\)\|\|\(c\.delta<0\?rowAt\(c\.from\):null\);/);
+  assert.match(html, /result\+=c\.delta\*\(usdNow-r\.mv\/r\.shares\)/);
   assert.match(html, /if\(!isCashLike\(t\)\) tickers\.add\(t\);/);
   assert.match(html, /if\(pts\.every\(p=>Math\.abs\(p\.shares-first\)<0\.5\)\) continue;/);
   assert.match(html, /if\(intervals\.length<2\) return '';/);
