@@ -242,20 +242,36 @@ data/positions.public.json, which contains the three approved public tickers but
 personal entry prices; the complete private list is available only from the local server.
 
 TABS (top of the page)
-- Pabrai  = the default tab: what Mohnish Pabrai is doing, for the positions you follow yourself:
-  - Your focused stocks (from data/positions.local.json): WAGN's change in shares held vs the previous daily
-    file, Dalal Street's 13F position and its change vs the named prior filing, the Yahoo price in the listing
-    currency vs your entry, SEK price and next report. A ticker that a 13F structurally cannot show (a listing
-    only abroad, a money-market fund; config names[<ticker>].sec13f) says so instead of "not reported".
-  - Every change in shares held between the two latest saved files, with a callout stating the unit
-    creation/redemption when WAGN's units outstanding changed between them, a line stating what the cash-like
-    rows did (never listed as trades), plus the full log
-  - The whole ETF portfolio sorted by weight, with plain "Δ shares" columns, the price with its listing
-    currency code, and the "Avanza (SE broker)" column: whether the line can be bought through the Swedish
+- Pabrai  = the default tab: what Mohnish Pabrai is doing, plain first and the proofs folded away. Since 5 Sep 2026
+  the tab leads with the trades; every proof, caveat and source note is still on the page, inside a collapsed
+  block that opens on a click (the header's "how this file was checked", the trades' "what that means", the
+  13F's "Source, checks, and what a 13F leaves out", the whole N-PORT check, and the footer's "How to read
+  this tab"); the site-level About and browser-contact paragraphs under the tabs are collapsed the same way.
+  - What Pabrai bought and sold: every change in shares held between the two latest saved files, labelled
+    Bought more / Reduced / New position / Sold out (a share-count difference between two official files after
+    removing moves proportional to a unit creation or redemption — the footer says it is not a trade ticket),
+    dated by the closes the two files are priced at ("the 4 Sept 2026 session" when the files are consecutive
+    trading days, else the range of closes; the file dates when a pricing date cannot be proven), largest
+    first, with the shares now held and the weight; a one-line unit-flow callout when WAGN's units changed;
+    a line stating what the cash-like rows did (never listed as trades); then Trade history: one row per
+    file-to-file interval since the first saved file, newest first, the trades as chips (largest first), a
+    unit creation or redemption marked, "no change in any holding" stated where nothing moved, the cash-like
+    move in dollars. The full change log with every column (including "vs pro-rata") stays under "Full
+    change log".
+  - Your watchlist (from data/positions.local.json; the public site's three approved tickers): one card per
+    position — shares held in WAGN with the change vs the previous file (the dilution by a unit creation as a
+    tooltip on the badge), Dalal Street's 13F position and its change vs the named prior filing, the Yahoo
+    price in the listing currency with the SEK price, the next report, and (locally, when an entry price is
+    entered) the price return since your entry. A ticker that a 13F structurally cannot show (a listing only
+    abroad, a money-market fund; config names[<ticker>].sec13f) says "cannot be listed there", the reason in
+    a tooltip, instead of "not reported".
+  - The whole ETF portfolio sorted by weight, with plain "Δ shares" columns ("vs pro-rata" and "∝ unit flow"
+    as tooltips on the figures; an explanatory line under the table), the price with its listing currency code, and the "Avanza (SE broker)" column: whether the line can be bought through the Swedish
     retail broker Avanza (online / by phone / not available), a note checked by hand in the configuration, not
     fetched live and carrying no checked-on date
   - Fund performance vs S&P 500 (the fund's own month-end return table) and the NAV curve
-  - Dalal Street's manager-aggregated 13F — fetched from official SEC submissions + filing XML and validated by
+  - Dalal Street's manager-aggregated 13F — a one-line summary (value, count, next deadline, what a 13F
+    leaves out) above the table, the source paragraph collapsed under it — fetched from official SEC submissions + filing XML and validated by
     the build against the filing's own summary totals (declared row count and total value); the page says
     "fetched from SEC EDGAR and validated by this build", never that SEC verified anything. The config copy is a
     clearly labelled fallback only when SEC cannot be reached. A Pages build accepts only that exact dated
@@ -263,7 +279,8 @@ TABS (top of the page)
     and the page warns that a newer 13F may exist. The page never labels fallback as newly verified. While
     fallback is displayed, the visitor's browser also asks the CORS-enabled official SEC submissions endpoint
     whether a newer accession exists, and says so when that check could not run.
-  - Independent check — SEC N-PORT: the fund's own quarterly portfolio report to SEC, held against the saved
+  - Independent check — SEC N-PORT (collapsed; its summary line says whether the report is comparable yet or
+    which report the first comparison waits for): the fund's own quarterly portfolio report to SEC, held against the saved
     daily file proven to be priced as of the report date (share counts per position, with the matching method
     per row), or the statement that no such file is saved yet and when the first comparison becomes possible
   - Dates: the hand-maintained entries from data/config.json plus the fund's annual and semi-annual
@@ -336,9 +353,9 @@ HOW IT WORKS
   exit or a different share count. A holding whose share count did not change is never listed, even when a cash
   creation diluted its share per WAGN unit; a raw change that is proportional to the change in units
   outstanding (an in-kind basket; tolerance half a share or 0.5 % of the move) is skipped as an ETF flow, not a
-  trade. When units changed between the two files, a callout states the creation/redemption and a
-  "vs pro-rata" column restates each trade relative to deploying the flow in proportion to the previous
-  portfolio — context, not the headline. Files saved before 25 Aug 2026 (20 and 24 Aug) report no unit count;
+  trade. When units changed between the two files, a callout states the creation/redemption and
+  "vs pro-rata" (a column in the full change log, a tooltip on the figures elsewhere) restates each trade
+  relative to deploying the flow in proportion to the previous portfolio — context, not the headline. Files saved before 25 Aug 2026 (20 and 24 Aug) report no unit count;
   a count for them is implied from NetAssets ÷ the NAV of the previous rate date, accepted only when the
   quotient is within 0.01 of a whole number, and labelled "implied" wherever it appears (the Fund assets KPI
   splits the change since the first saved file into NAV change × unit flow on that basis); when no count can be
