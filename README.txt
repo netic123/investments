@@ -63,7 +63,8 @@ not the discarded attempt. A holiday and a feed gap look the same to that retry 
 The workflow first compiles the page's inline script without running it (a syntax error would leave the
 public page at "loading…" forever, so the build fails before any network work), then starts the local server
 temporarily on the GitHub runner, fetches and validates the eight public API responses, and publishes only
-_site/index.html, _site/.nojekyll and _site/api/*.json. The published index.html carries a
+_site/index.html, _site/.nojekyll, _site/api/*.json and _site/api/trades.xml (an Atom feed of the trades; see the
+Pabrai tab under TABS). The published index.html carries a
 Content-Security-Policy that the build adds and verifies in the artifact: default-src 'none'; script-src only
 the one inline block, by its SHA-256 hash; style-src 'unsafe-inline' and fonts.googleapis.com; font-src
 fonts.gstatic.com; connect-src the site itself, https://data.sec.gov and https://api.github.com; img-src the
@@ -165,9 +166,9 @@ not included in the deployed artifact.
 
 PROVENANCE AND BUILD HISTORY
 api/build.json names the commit, the trigger, the reason of a dispatch and the Actions run that produced the
-snapshot (runId, runUrl), and lists the SHA-256 of the exact bytes written for index.html and every api/*.json
+snapshot (runId, runUrl), and lists the SHA-256 of the exact bytes written for index.html, api/trades.xml and every api/*.json
 except build.json itself, which cannot carry its own digest (files; the empty .nojekyll is not hashed either).
-The workflow also runs actions/attest-build-provenance on index.html and every api/*.json, so GitHub signs a
+The workflow also runs actions/attest-build-provenance on index.html, api/trades.xml and every api/*.json, so GitHub signs a
 provenance statement binding each digest to that run and commit; anyone with a GitHub account can check a
 downloaded file after "gh auth login" with "gh attestation verify <file> --owner netic123" (the attestation
 API answers 401 without a login), or browse https://github.com/netic123/investments/attestations. The page's
@@ -269,7 +270,13 @@ TABS (top of the page)
     file-to-file interval since the first saved file, newest first, the trades as chips (largest first), a
     unit creation or redemption marked, "no change in any holding" stated where nothing moved, the cash-like
     move in dollars. The full change log with every column (including "vs pro-rata") stays under "Full
-    change log".
+    change log". Above the latest session a "Last 7 days" callout nets each holding's change over the
+    intervals whose closes fall within seven calendar days of the latest file's pricing date (skipped when that
+    window is the single latest interval). The same trades are published as an Atom feed, api/trades.xml: one
+    entry per file-to-file interval with a change, newest first, titled by the session ("4 Sept 2026 session:
+    Bought more ODL NO +64,507; …"), dated by the capture time of the newer file, with the unit flow and the
+    cash-like moves in the text; the "feed (Atom)" link in the section head points to it, and a feed reader that
+    polls it says when the fund's file shows a trade without anyone opening the page.
   - Your watchlist (from data/positions.local.json; the public site's three approved tickers): one card per
     position — shares held in WAGN with the change vs the previous file (the dilution by a unit creation as a
     tooltip on the badge), Dalal Street's 13F position and its change vs the named prior filing, the Yahoo

@@ -6,6 +6,7 @@
 <meta name="investments-mode" content="local">
 <title>Investments</title>
 <link rel="icon" href="data:,">
+<link rel="alternate" type="application/atom+xml" title="Pabrai trades" href="./api/trades.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap">
@@ -290,7 +291,7 @@ footer p{margin:0 0 .5em}
 <div class="panel" id="panel-pabrai" role="tabpanel" aria-labelledby="tab-pabrai">
 
 <section>
-  <div class="sec-head"><h2>What Pabrai bought and sold</h2><span class="note" id="chgNote">—</span></div>
+  <div class="sec-head"><h2>What Pabrai bought and sold</h2><span class="note" id="chgNote">—</span><a class="note" id="tradesFeed" href="./api/trades.xml" hidden style="margin-left:auto" title="An Atom feed of these trades: one entry per file-to-file interval with a change, rebuilt at each build. Subscribe in a feed reader to be told when the fund’s file shows a trade.">feed (Atom)</a></div>
   <div id="changes"></div>
   <div class="sec-head sub"><h2>Trade history</h2><span class="note" id="histNote">—</span></div>
   <div id="history"></div>
@@ -543,6 +544,7 @@ if(STATIC_BUILD){
   // No reload button on the public page (removed 5 Sep 2026): the page re-checks the published JSON files every 10 minutes
   // by itself, and a browser reload does the same. The element stays for the code paths that disable it during a live update.
   $('#btnRefresh').hidden=true;
+  $('#tradesFeed').hidden=false; // the feed exists only in the published build
 }
 
 // ---- owner live update (public site only). GitHub Pages has no server and the fund's files and Yahoo refuse
@@ -1121,10 +1123,31 @@ function renderHoldings(H,Q){
   const cashChange=list=>list.map(c=>`${isCashLike(c.ticker)?'money-market fund ':''}${esc(c.ticker)} ${c.delta>0?'+':''}${fmt(c.delta)} shares (${pct(c.pct,1)}, ≈ ${c.delta<0?'−':'+'}$${fmt(c.approxUsd)})`).join('; ');
   const cashLine = CASH.length ? `<p class="hint">Cash-like rows are not listed as trades: ${cashChange(CASH)} between these files.</p>` : '';
   const basis = P ? `<p class="hint">Share counts from the fund’s own daily files dated ${fmtDate(P.date)} and ${fmtDate(L.date)}${sess.proven?`, priced at the ${fmtDate(sess.from)} and ${fmtDate(sess.to)} closes`:''}, after leaving out moves that were only proportional to a unit creation or redemption. Not trade tickets: the exact time and price are unknown.</p>` : '';
-  $('#chgNote').textContent = P ? (sess.proven ? (sess.sessions===1 ? 'the '+sess.label+' session' : sess.label+' closes') : span) : '—';
+  // ---- the last seven days in one reading: each holding's net change over the intervals whose closes fall within seven
+  // calendar days of the latest file's pricing date (the file date when a pricing date is not proven), largest first;
+  // skipped when that window is the single latest interval, which the table below already shows
+  const digest=(()=>{
+    if(!P) return '';
+    const dates=[...(H.snapshotDates||[])].sort(), closeOf=d=>{ const p=pricingOf(byDate[d],NAV_DATA); return p?p.navDate:d; };
+    const end=closeOf(L.date), start=shiftDay(end,-7), intervals=[];
+    for(let i=1;i<dates.length;i++) if(closeOf(dates[i])>start) intervals.push([dates[i-1],dates[i]]);
+    if(intervals.length<2) return '';
+    const inWin=c=>intervals.some(([a,b])=>c.from===a&&c.to===b), agg={};
+    for(const c of LOG.filter(inWin)){ const a=agg[c.ticker]=agg[c.ticker]||{ticker:c.ticker,delta:0,usd:0,kinds:new Set()}; a.delta+=c.delta; a.usd+=c.delta>0?c.approxUsd:-c.approxUsd; a.kinds.add(c.kind); }
+    const rows=Object.values(agg).filter(a=>Math.abs(a.delta)>=0.5).sort((a,b)=>Math.abs(b.usd)-Math.abs(a.usd));
+    let units=0, unitsKnown=true; for(const [a,b] of intervals){ const f=unitFlowWithImplied(byDate[a],byDate[b],NAV_DATA); if(f.known) units+=f.delta; else unitsKnown=false; }
+    const cash=CASHLOG.filter(inWin).reduce((s,c)=>s+(c.delta>0?c.approxUsd:-c.approxUsd),0);
+    const word=a=> a.kinds.has('SOLD OUT')&&a.delta<0 ? 'Sold out' : a.kinds.has('NEW')&&a.delta>0 ? 'New position' : a.delta>0 ? 'Bought more' : 'Reduced';
+    const chips=rows.map(a=>`<span class="tchip ${a.delta>0?'buy':'sell'}" title="net ${a.delta>0?'+':''}${fmt(a.delta)} shares over the period, ≈ ${a.usd<0?'−':''}$${fmt(Math.abs(a.usd))} at the files’ values"><span class="k">${word(a)}</span>${esc(a.ticker)}<span class="n">${a.delta>0?'+':''}${fmt(a.delta)}</span></span>`);
+    if(unitsKnown&&units) chips.push(`<span class="tchip units" title="net WAGN units created or redeemed over the period; proportional moves are not listed as trades"><span class="k">units</span><span class="n">${units>0?'+':''}${fmt(units)}</span></span>`);
+    const first=closeOf(intervals[0][0]);
+    return `<div class="callout"><b>Last 7 days</b> <span class="muted">· ${fmtDate(first)} → ${fmtDate(end)} closes · ${fmt(intervals.length)} file intervals</span><div class="acts" style="display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:8px">${rows.length?chips.join(''):'<span class="muted">no change in any holding</span>'+(chips.length?' '+chips.join(''):'')}</div>${cash?`<div class="hint" style="margin-top:6px">Cash-like rows net ${cash<0?'−':'+'}$${fmt(Math.abs(cash)/1e6,2)}M over the period, not listed as trades.</div>`:''}</div>`;
+  })();
+  const latestHead = P ? `<p class="hint" style="margin:${digest?'14px':'0'} 0 8px;color:var(--ink)"><b>Latest session${sess.proven&&sess.sessions===1?': '+sess.label:''}</b> <span class="muted">(${sess.proven?sess.sub:'files '+span})</span></p>` : '';
+  $('#chgNote').textContent = P ? (sess.proven ? (sess.sessions===1 ? 'latest: the '+sess.label+' session' : 'latest: '+sess.label+' closes') : 'latest: '+span) : '—';
   $('#changes').innerHTML = !P ? '<div class="empty">Only one snapshot saved so far — changes appear from the next file day.</div>'
-    : !C.length ? flowCallout+`<div class="empty">No change in any holding (${sess.proven?sess.label:span}).</div>`+cashLine+basis
-    : gapCallout+flowCallout+tradesTable(C,L)+cashLine+basis;
+    : !C.length ? digest+latestHead+flowCallout+`<div class="empty">No change in any holding (${sess.proven?sess.label:span}).</div>`+cashLine+basis
+    : digest+latestHead+gapCallout+flowCallout+tradesTable(C,L)+cashLine+basis;
   renderTradeHistory(H,LOG,CASHLOG,byDate);
   const cashLog = CASHLOG.length ? `<div class="muted" style="font-size:.82rem;margin-top:8px">Cash-like rows not listed as trades: ${CASHLOG.map(c=>`${fmtDate(c.from)} → ${fmtDate(c.to)} ${esc(c.ticker)} ${c.delta>0?'+':''}${fmt(c.delta)} (${pct(c.pct,1)})`).join('; ')}.</div>` : '';
   $('#log').innerHTML = (LOG.length ? changesTable(LOG,true) : '<div class="empty">Empty.</div>')+cashLog;

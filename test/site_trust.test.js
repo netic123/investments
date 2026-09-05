@@ -731,9 +731,10 @@ test('build.json digests are the SHA-256 of the exact bytes written, for index.h
     fs.mkdirSync(path.join(dir, 'api'));
     fs.writeFileSync(path.join(dir, 'index.html'), '<p>x</p>');
     for (const name of build.ENDPOINTS) fs.writeFileSync(path.join(dir, 'api', `${name}.json`), `{"name":"${name}"}\n`);
+    fs.writeFileSync(path.join(dir, 'api', 'trades.xml'), '<feed/>\n');
     fs.writeFileSync(path.join(dir, 'api', 'build.json'), '{}\n');
     const files = build.artifactDigests(dir, build.DIGESTED_FILES);
-    assert.deepEqual(Object.keys(files), ['index.html', 'api/config.json', 'api/holdings.json', 'api/dalal.json', 'api/nport.json', 'api/nav.json', 'api/perf.json', 'api/quotes.json', 'api/marketfg.json']);
+    assert.deepEqual(Object.keys(files), ['index.html', 'api/config.json', 'api/holdings.json', 'api/dalal.json', 'api/nport.json', 'api/nav.json', 'api/perf.json', 'api/quotes.json', 'api/marketfg.json', 'api/trades.xml']);
     for (const [relative, digest] of Object.entries(files)) {
       assert.equal(digest, crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, relative))).digest('hex'));
     }
@@ -744,6 +745,42 @@ test('build.json digests are the SHA-256 of the exact bytes written, for index.h
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('the build publishes an Atom feed of the trades: one entry per interval with a change, newest first, dated by the newer file', () => {
+  const snaps = [
+    { date: '2026-09-03', netAssets: 297896435.64, sharesOutstanding: 18320814, source: { capturedAt: '2026-09-03T00:20:00Z' } },
+    { date: '2026-09-04', netAssets: 296253105.4, sharesOutstanding: 18400814, source: { capturedAt: '2026-09-04T00:12:00Z' } },
+    { date: '2026-09-08', netAssets: 300998929.82, sharesOutstanding: 18660814, source: { capturedAt: '2026-09-05T12:59:53Z' } },
+  ];
+  const log = [
+    { from: '2026-09-04', to: '2026-09-08', ticker: 'ODL NO', kind: 'INCREASE', delta: 64507, pct: 9.7, approxUsd: 660390, absValue: 660390, sharesTo: 727740 },
+    { from: '2026-09-04', to: '2026-09-08', ticker: 'FXFXX', kind: 'DECREASE', delta: -3236790, pct: -54, approxUsd: 3236790, absValue: 3236790, sharesTo: 2751515, cashLike: true },
+    { from: '2026-09-03', to: '2026-09-04', ticker: 'AMR & Co', kind: 'SOLD OUT', delta: -5, pct: -100, approxUsd: 1000, absValue: 1000, sharesTo: 0 },
+  ];
+  const nav = { history: [{ date: '2026-09-02', nav: 16.26 }, { date: '2026-09-03', nav: 16.1 }, { date: '2026-09-04', nav: 16.13 }] };
+  const xml = build.tradesFeedXml({ snapshots: snaps, log }, nav, { generatedAt: '2026-09-05T17:22:48Z' });
+  assert.ok(xml.startsWith('<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">'));
+  assert.match(xml, /<updated>2026-09-05T17:22:48Z<\/updated>\n<author>/);
+  const entries = [...xml.matchAll(/<entry>[\s\S]*?<\/entry>/g)].map(m => m[0]);
+  assert.equal(entries.length, 2);
+  assert.match(entries[0], /<title>4 Sept 2026 session: Bought more ODL NO \+64,507<\/title>/);
+  assert.match(entries[0], /<updated>2026-09-05T12:59:53Z<\/updated>/);
+  assert.match(entries[0], /Bought more: ODL NO \+64,507 shares \(\+9\.7%\), ≈ \$660,390 at the file’s value, now 727,740/);
+  assert.match(entries[0], /WAGN units created: 260,000 \(18,400,814 → 18,660,814\)/);
+  assert.match(entries[0], /Cash-like \(not a trade\): FXFXX −\$3,236,790/);
+  assert.match(entries[0], /priced at the 3 Sept 2026 and 4 Sept 2026 closes/);
+  assert.match(entries[0], /not trade tickets, so the exact time and price are unknown/);
+  assert.match(entries[1], /<title>3 Sept 2026 session: Sold out AMR &amp; Co -5<\/title>/, 'the newest entry comes first and text is XML-escaped');
+  assert.equal(build.pricingDateOf(snaps[2], nav.history), '2026-09-04');
+  assert.equal(build.pricingDateOf({ date: '2026-09-08', netAssets: 300000000, sharesOutstanding: 18660814 }, nav.history), null, 'a file whose NetAssets is not NAV x units has no proven pricing date');
+  assert.ok(build.EXPECTED_FILES.includes('api/trades.xml') && build.DIGESTED_FILES.includes('api/trades.xml'));
+  assert.match(fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pages.yml'), 'utf8'), /_site\/api\/trades\.xml/);
+  assert.match(html, /<link rel="alternate" type="application\/atom\+xml" title="Pabrai trades" href="\.\/api\/trades\.xml">/);
+  assert.match(html, /\$\('#tradesFeed'\)\.hidden=false;/);
+  // the seven-day digest nets each holding over the window and is skipped when the window is one interval
+  assert.match(html, /<b>Last 7 days<\/b>/);
+  assert.match(html, /if\(intervals\.length<2\) return '';/);
 });
 
 test('the record script keeps a durable copy of the published receipts and writes only when something is new', async () => {
