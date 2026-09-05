@@ -603,8 +603,14 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   assert.match(html, /<text class="n" x="100" y="98" text-anchor="middle">\$\{fmt\(v,1\)\}<\/text>/);
   assert.match(html, /\$\{fmt\(r\.value,1\)\}<\/div><div class="s">\$\{esc\(r\.label\)\}/);
   assert.match(html, /\$\{c\.score==null\?'—':fmt\(c\.score,1\)\}/);
-  assert.match(html, /\$\{fmt\(N\.value,1\)\}<\/span>`; \$\('#kFgSub'\)/);
-  assert.match(html, /\$\{fmt\(p\.value,1\)\}<\/span>` : '—';/);
+  assert.match(html, /<span class="fg-c\$\{fgBand\(N\.value,N\.bands\)\}">\$\{fmt\(N\.value,1\)\}<\/span>` : '—';/, 'the header strip');
+  assert.match(html, /\$\{fmt\(v,1\)\} \$\{esc\(N\.label\)\}<\/span> · as of \$\{fmtDate\(N\.asOf\)\}/, 'the market block summary');
+  // one Markets tab; a market hash opens it with that block expanded; the six blocks are collapsed details
+  assert.match(html, /<button role="tab" id="tab-markets" data-tab="markets"/);
+  assert.doesNotMatch(html, /id="tab-crypto"|id="tab-usa"/);
+  assert.match(html, /const TAB_HASH=\{pabrai:'',markets:'#markets'\};/);
+  assert.match(html, /const HASH_ALIAS=\{'#fear-greed':'#crypto','#krypto':'#crypto','#sverige':'#sweden','#europa':'#europe'\};/);
+  assert.match(html, /<details class="more market" id="panel-\$\{id\}"><summary id="\$\{id\}-summary">/);
   assert.match(html, /value=fmt\(row\.value,1\)\+' · '\+label/);
   assert.match(html, /Low \$\{fmt\(mn,1\)\} · high \$\{fmt\(mx,1\)\}/);
   assert.match(html, /const bandsOf=model=> Array\.isArray\(model&&model\.bands\)/);

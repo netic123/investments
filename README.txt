@@ -343,7 +343,13 @@ TABS (top of the page)
   - Dates: the hand-maintained entries from data/config.json plus the fund's annual and semi-annual
     shareholder reports (Forms N-CSR and N-CSRS) as SEC's submissions index lists them at build time
   Open directly: / or /#pabrai
-- Crypto, Sweden, USA, US Tech, Europe, Global = one repository-owned unified Fear & Greed model v3 (0–100),
+- Markets = the six Fear & Greed markets (Crypto, Sweden, USA, US Tech, Europe, Global) on one tab since 5 Sep
+            2026: the header shows each market's latest score, label and date (and how many indicators are carried),
+            each a button that opens that market's block below; the six blocks are collapsed by default and carry
+            exactly what the six tabs carried, with a summary line (market, score, label, as-of date). A market hash
+            (/#usa …, the old aliases too) opens the tab with that market expanded, and opening or closing a block by
+            hand keeps the address in step; /#markets opens the tab itself. The status line's "scores as of" names the
+            markets' scored dates. One repository-owned unified Fear & Greed model v3 (0–100),
             calculated by marketfg.js. Every tab uses the same six-component scoring engine. At each date, every raw
             component is ranked causally against all finite observations available for that component from the start
             of the current provider maximum-history response through that date. There is no rolling percentile window
@@ -387,7 +393,7 @@ TABS (top of the page)
             model paragraph, the Scale, the Series list, the disclosure and the research footer sit under one collapsed
             block ("The model, its series, what was checked, and the research record"), the carried-indicator rule under
             "what that means", and the header's definition sentence under "how the score is defined".
-            Open directly: /#crypto /#sweden /#usa /#ustech /#europe /#global
+            Open directly: /#markets, or /#crypto /#sweden /#usa /#ustech /#europe /#global for the tab with that market expanded
 - Crypto uses CRYPTO-BROAD-EW, a transparent daily-rebalanced equal-weight return index of BTC, ETH, SOL,
             XRP, ADA, DOGE and BNB. It is broader than BTC alone but is not literally every coin, market-cap
             weighted, investable or a point-in-time total-market history. Its breadth input compares two further
