@@ -333,6 +333,10 @@ TABS (top of the page)
             and Global rejected after costs; one Europe
             candidate on v2 failed replication and is still tracked in real time, on v2 — and this v3 score has had
             no rule search and no prospective test.
+            Since 5 Sep 2026 each tab shows the gauge, the comparison tiles, the indicators table and the chart; the
+            model paragraph, the Scale, the Series list, the disclosure and the research footer sit under one collapsed
+            block ("The model, its series, what was checked, and the research record"), the carried-indicator rule under
+            "what that means", and the header's definition sentence under "how the score is defined".
             Open directly: /#crypto /#sweden /#usa /#ustech /#europe /#global
 - Crypto uses CRYPTO-BROAD-EW, a transparent daily-rebalanced equal-weight return index of BTC, ETH, SOL,
             XRP, ADA, DOGE and BNB. It is broader than BTC alone but is not literally every coin, market-cap
