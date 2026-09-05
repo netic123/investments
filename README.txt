@@ -294,7 +294,10 @@ TABS (top of the page)
     file-to-file interval since the first saved file, newest first, the trades as chips (largest first), a
     unit creation or redemption marked, "no change in any holding" stated where nothing moved, the cash-like
     move in dollars. The full change log with every column (including "vs pro-rata") stays under "Full
-    change log". Above the latest session a "Last 7 days" callout nets each holding's change over the
+    change log". "How each position was built": one card per holding whose share count changed over the saved
+    files — a line of shares per saved file (one point per file, dates in the tooltip), first → last, the change
+    and its approximate value at that holding's latest file price; cash-like rows and unchanged holdings are left
+    out. Above the latest session a "Last 7 days" callout nets each holding's change over the
     intervals whose closes fall within seven calendar days of the latest file's pricing date (skipped when that
     window is the single latest interval). The same trades are published as an Atom feed, api/trades.xml: one
     entry per file-to-file interval with a change, newest first, titled by the session ("4 Sept 2026 session:

@@ -295,6 +295,8 @@ footer p{margin:0 0 .5em}
   <div id="changes"></div>
   <div class="sec-head sub"><h2>Trade history</h2><span class="note" id="histNote">—</span></div>
   <div id="history"></div>
+  <div class="sec-head sub"><h2>How each position was built</h2><span class="note" id="buildNote">—</span></div>
+  <div class="cards" id="buildCards"></div>
   <details class="more"><summary>Full change log — every share-count change, as a table</summary><div id="log"></div></details>
 </section>
 
@@ -1154,6 +1156,7 @@ function renderHoldings(H,Q){
     : !C.length ? digest+latestHead+flowCallout+`<div class="empty">No change in any holding (${sess.proven?sess.label:span}).</div>`+cashLine+basis
     : digest+latestHead+gapCallout+flowCallout+tradesTable(C,L)+cashLine+basis;
   renderTradeHistory(H,LOG,CASHLOG,byDate);
+  renderBuildUp(H);
   const cashLog = CASHLOG.length ? `<div class="muted" style="font-size:.82rem;margin-top:8px">Cash-like rows not listed as trades: ${CASHLOG.map(c=>`${fmtDate(c.from)} → ${fmtDate(c.to)} ${esc(c.ticker)} ${c.delta>0?'+':''}${fmt(c.delta)} (${pct(c.pct,1)})`).join('; ')}.</div>` : '';
   $('#log').innerHTML = (LOG.length ? changesTable(LOG,true) : '<div class="empty">Empty.</div>')+cashLog;
 
@@ -1234,6 +1237,34 @@ function renderTradeHistory(H,LOG,CASHLOG,byDate){
   }
   $('#history').innerHTML = rows.length ? `<ul class="trades">${rows.join('')}</ul>` : '<div class="empty">Only one file saved so far.</div>';
   $('#histNote').textContent = rows.length ? `${fmt(rows.length)} file-to-file interval${rows.length===1?'':'s'} since the ${fmtDate(dates[0])} file` : '—';
+}
+// Each holding whose share count changed over the saved files: a line of shares per saved file (one point per file, in
+// file order; the tooltip lists the dates), first → last, the change in shares and its approximate value at the latest
+// file's price for that holding. Cash-like rows are left out; a holding whose count never changed is not shown.
+function renderBuildUp(H){
+  const cards=$('#buildCards'), note=$('#buildNote'); if(!cards) return;
+  const snaps=[...(H.snapshots||[])].filter(s=>s&&s.date&&s.rows).sort((a,b)=>a.date.localeCompare(b.date));
+  if(snaps.length<2){ cards.innerHTML='<div class="empty">Only one file saved so far.</div>'; note.textContent='—'; return; }
+  const L=snaps[snaps.length-1], tickers=new Set();
+  for(const s of snaps) for(const t of Object.keys(s.rows)) if(!isCashLike(t)) tickers.add(t);
+  const series=[];
+  for(const t of tickers){
+    const pts=snaps.map(s=>({date:s.date,shares:s.rows[t]?s.rows[t].shares:0,mv:s.rows[t]?s.rows[t].mv:0}));
+    const first=pts[0].shares, last=pts[pts.length-1].shares;
+    if(pts.every(p=>Math.abs(p.shares-first)<0.5)) continue;
+    const priced=[...pts].reverse().find(p=>p.shares&&p.mv), px=priced?priced.mv/priced.shares:0;
+    series.push({t,pts,first,last,usd:(last-first)*px,pxDate:priced?priced.date:null});
+  }
+  series.sort((a,b)=>Math.abs(b.usd)-Math.abs(a.usd));
+  const spark=pts=>{ const W=160,HH=40, mx=Math.max(...pts.map(p=>p.shares))||1, n=pts.length;
+    const xs=pts.map((p,i)=>2+(n>1?i/(n-1):0)*(W-4)), ys=pts.map(p=>HH-3-(p.shares/mx)*(HH-6));
+    const d=pts.map((p,i)=>(i?'L':'M')+xs[i].toFixed(1)+' '+ys[i].toFixed(1)).join(' ');
+    return `<svg viewBox="0 0 ${W} ${HH}" width="${W}" height="${HH}" aria-hidden="true" style="display:block;max-width:100%"><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${xs[n-1].toFixed(1)}" cy="${ys[n-1].toFixed(1)}" r="2.6" fill="var(--accent)"/></svg>`; };
+  cards.innerHTML = series.map(s=>{ const d=s.last-s.first, kind=!s.first?'New position':!s.last?'Sold out':d>0?'Bought more':'Reduced';
+    const tip=s.pts.map(p=>`${fmtDate(p.date)}: ${fmt(p.shares)}`).join('\n')+(s.pxDate?`\nvalue at the ${fmtDate(s.pxDate)} file’s price`:'');
+    return `<div class="card" style="padding:12px 14px" title="${esc(tip)}"><div class="hd" style="margin-bottom:6px"><span class="tick">${esc(s.t)}</span><span style="font-size:.9rem">${esc(nameOf(s.t))}</span><span class="badge ${d>0?'b-buy':'b-sell'}">${kind}</span></div>${spark(s.pts)}<div style="font-size:.78rem;color:var(--muted);margin-top:4px">${fmt(s.first)} → ${fmt(s.last)} shares over ${fmt(s.pts.length)} files · <span class="${cls(d)}">${d>0?'+':''}${fmt(d)}${s.first?' ('+pct(d/s.first*100,1)+')':''}</span> · ≈ ${s.usd<0?'−':'+'}$${fmt(Math.abs(s.usd)/1e6,2)}M</div></div>`; }).join('')
+    || '<div class="empty">No holding’s share count changed over the saved files.</div>';
+  note.textContent=`${fmt(series.length)} holdings changed · files ${fmtDate(snaps[0].date)} → ${fmtDate(L.date)} · one point per saved file`;
 }
 // The badge column is the kind of share-count change between two files (NEW / SOLD OUT / INCREASE / DECREASE), not a signal.
 // "vs pro-rata" needs the unit flow over the interval; where a file reports no unit count, the count implied from
