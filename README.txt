@@ -88,9 +88,11 @@ build still publishes; the page then labels the pricing date as not asserted and
 api/build.json records the outcome as navReconciliation and navReconciliationMode ("exact", "per-share" or
 null). A DailyNAV file that lags the historical NAV file (a newer rate without a unit count) does not fail the
 build; it only limits which proof is available. GitHub Pages is static: it does not keep server.js running.
-Every public figure is as of the build time in the status line — "snapshot built <time> (<age>) · CDN copy
-N s old · page loaded <time>[ · checked <time>]", in the visitor's local time with the zone abbreviation that
-applied at each instant — and changes only on the next successful deployment. Three warnings come from the
+Every public figure is as of the build time in the status line — "data as of the <D> close · built <time>
+(<age>)" (since 5 Sep 2026; the <D> is the holdings file's proven pricing date on the Pabrai tab and the market's
+last scored bar on a Fear & Greed tab; the full record "snapshot built <time> (<age>) · CDN copy N s old · page
+loaded <time>[ · checked <time>]" is the line's tooltip), in the visitor's local time with the zone abbreviation
+that applied at each instant — and changes only on the next successful deployment. Three warnings come from the
 snapshot alone and show on every tab, and a fourth from the page's own build stamp. Age: api/build.json publishes snapshotStaleAfterHours = 3, applied while
 the daytime weekday schedule is active (scheduleWindowUtc: Mon–Fri 05:05–23:20 UTC), and
 snapshotStaleAfterHoursOffSchedule = 30 for weekends and nights; past the applicable threshold the status line
