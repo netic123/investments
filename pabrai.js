@@ -1250,12 +1250,12 @@ function selectNportFilings(submissions, expectedCik) {
 // snapshot the report can be held against. Normally that is the file dated the
 // next NYSE trading day (4 Jan 2027 for the 31 Dec 2026 report, 1 Jan being a
 // closure), but the file is still chosen by proof, not by date:
-//   nav-reconciled   the earliest saved file dated 1-5 calendar days after the
+//   nav-reconciled   the earliest saved file dated 1-4 calendar days after the
 //                    report date whose NetAssets per unit equals the official
 //                    NAV dated the report date (reconcileWagnHoldingsToNav
 //                    against options.navHistory);
 //   unproven         only when no NAV for the report date is available: the
-//                    file dated the next weekday, flagged as unproven;
+//                    file dated the next NYSE trading day, flagged as unproven;
 // otherwise no snapshot, with the candidates tried and why. Legacy receipts
 // without a unit count (saved before 2026-08-25) cannot be proven.
 function selectSnapshotForNport(snapshots, reportDate, options = {}) {
