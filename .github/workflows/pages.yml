@@ -198,6 +198,36 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
 
+  kick-ticker:
+    # The ticker chain (ticker.yml) is the clock GitHub's schedule does not
+    # keep; if it died, this restarts it after a successful build.
+    # scripts/ticker.js --kick-only dispatches a new chain only when none is
+    # alive and the "ticker" environment has a wait timer of at least ten
+    # minutes; otherwise it says so in the log and does nothing.
+    name: Restart the ticker if it stopped
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22.19.0'
+          package-manager-cache: false
+
+      - name: Start a chain when none is alive
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TICKER_ENVIRONMENT: ticker
+        run: node scripts/ticker.js --kick-only
+
   record:
     # The WAGN receipt history otherwise lives only in the chain of Pages
     # deployments (each build imports the previously published holdings.json).

@@ -31,7 +31,8 @@ The build reads the cron lines from pages.yml at build time and publishes them i
 testedSchedule, refreshTrigger, and which slot fired in `schedule`) together with that dated observation
 (scheduleNote, a constant in scripts/build-pages.js — update it when a newer one is measured); the page's About
 line prints both, and the status line states the snapshot's age instead of promising a next build. The owner
-decided against an external cron (see EXTERNAL CRON). Fear & Greed bars for a trading day enter the first
+decided against an external cron (see EXTERNAL CRON); since 5 Sep 2026 the ticker chain keeps the clock instead
+(see AUTOMATIC UPDATES). Fear & Greed bars for a trading day enter the first
 build after that exchange's local midnight, because only completed source-local dates are scored.
 
 The test suite (about four minutes; three research suites that are pinned to the freeze machine are excluded)
@@ -245,6 +246,27 @@ each one runs behind any build already in progress (the workflow's concurrency g
 the suite only when a tested run of the same commit exists, and api/build.json records trigger
 "workflow_dispatch" with the reason, which the page's About line shows. GitHub's own schedules keep running
 either way; when both fire, the later one queues behind the earlier.
+
+AUTOMATIC UPDATES (the ticker)
+GitHub starts this repository's scheduled runs late and skips most slots (GITHUB PAGES), so since 5 Sep 2026 a
+second workflow, .github/workflows/ticker.yml, keeps the clock as a chain of runs: each run waits on the "ticker"
+environment's wait timer (Settings → Environments → ticker; the timer is the period), then scripts/ticker.js
+reads the published api/build.json, holdings.json and nav.json, asks the fund's server for its holdings file
+(HEAD: ETag and Last-Modified) and its DailyNAV file (the rate date), and dispatches pages.yml with
+skip_tests=true — honoured only when a tested run of the commit exists — when the fund serves a holdings file
+with a different ETag than the snapshot carries, a NAV file dated after the snapshot's NAV, or the snapshot is
+older than three hours (so quotes and market bars move on); never when a build is already queued or running.
+It then dispatches the next run of the chain, unless another run is already waiting, queued or running, or the
+environment has no wait timer of at least ten minutes — then it says so in the run and stops, so a missing or
+mis-set timer cannot become a tight loop. A workflow_dispatch sent with the repository's own GITHUB_TOKEN does
+create a run (GitHub's documented exception to "the token does not trigger workflows"), so the chain needs no
+personal token and no third party. If a run fails the chain stops; every successful Pages build restarts it
+(the kick-ticker job runs scripts/ticker.js --kick-only), and so does starting the Ticker workflow by hand from
+the Actions tab. Each run creates a deployment record for the ticker environment (GitHub does that for any job
+that names an environment); a waiting run costs nothing and a tick costs about twenty seconds of runner time,
+free for a public repository. The ticker's builds appear in Build history as "on request" and in the About line
+as "on request (ticker: <why>)". The scheduled slots stay as a fallback. Until the environment exists the chain
+cannot run: each kick prints the instruction and stops.
 
 YOUR FOCUSED WATCHLIST
 Copy data/positions.example.json to data/positions.local.json and enter display ticker, exact WAGN ticker
