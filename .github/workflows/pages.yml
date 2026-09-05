@@ -304,6 +304,8 @@ jobs:
           [ -n "$want" ] || echo "::warning::this build published no digest for api/holdings.json; importing the served file unverified"
           node scripts/record-holdings-history.js published-holdings.json --target data/snapshots.json
           rm -f published-holdings.json
+          # the 13F quarter the build appended to api/dalal.json (a newly filed 13F) is persisted the same way
+          node scripts/dalal-13f-history.js --from-published "$PUBLISHED_API/dalal.json" || echo "::warning::the 13F history could not be updated from the published dalal.json; the next record run tries again"
 
       - name: Commit and push new receipts
         shell: bash
@@ -311,9 +313,9 @@ jobs:
           set -euo pipefail
           git config user.name "netic123"
           git config user.email "155821030+netic123@users.noreply.github.com"
-          git add data/snapshots.json
+          git add data/snapshots.json data/dalal13f-history.json
           if git diff --cached --quiet; then
-            echo "no new receipts (data/snapshots.json already carries the published history)"
+            echo "no new receipts or 13F quarters (the committed files already carry the published history)"
             exit 0
           fi
           git commit -m "Record WAGN holdings history $(date -u +%F) [skip ci]"

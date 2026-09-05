@@ -20,6 +20,7 @@ const {
   THIRTEEN_F_DE_MINIMIS,
   validateWagnHoldingsFreshness,
 } = require('./pabrai');
+const { mergeCurrent, readHistory: readDalalHistory } = require('./scripts/dalal-13f-history');
 
 const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
@@ -364,9 +365,15 @@ async function getPerf() {
 }
 
 // ---------- Dalal Street 13F ----------
+// Every quarter since the first filing (data/dalal13f-history.json, scripts/dalal-13f-history.js), with the filing this
+// call fetched and validated appended when the file lacks it; absent (not an empty list) when the file cannot be read.
+function dalalHistory(live) {
+  try { return mergeCurrent(readDalalHistory(), live).quarters; } catch { return undefined; }
+}
 async function getDalalStreet() {
   try {
-    return await fetchDalalStreet13f(config.dalalStreet, { timeoutMs: 30000 });
+    const live = await fetchDalalStreet13f(config.dalalStreet, { timeoutMs: 30000 });
+    return { ...live, history: dalalHistory(live) };
   } catch (error) {
     // SEC's archive host answers 403 to the default User-Agent from some
     // networks (not from GitHub's runners since 2 Sep 2026) and rate-limits
@@ -398,6 +405,8 @@ async function getDalalStreet() {
       })),
       fetchError: String(error && error.message || error),
       fetchedAt: new Date().toISOString(),
+      // the committed quarterly history still renders; the manual copy is not appended to it
+      history: dalalHistory(null),
     };
   }
 }

@@ -1,0 +1,3274 @@
+{
+ "cik": "0001549575",
+ "managerName": "Dalal Street, LLC",
+ "source": "SEC EDGAR Form 13F-HR filings of Dalal Street, LLC; see each quarter's sourceUrl",
+ "quarters": [
+  {
+   "reportDate": "2012-03-31",
+   "filed": "2012-05-11",
+   "accession": "0001546927-12-000017",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154692712000017/0001546927-12-000017-index.html",
+   "format": "text",
+   "managerName": null,
+   "entries": 8,
+   "totalValueUsd": 324748000,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK OF AMERICA CORPORATION",
+     "title": "COM",
+     "putCall": null,
+     "shares": 7502000,
+     "valueUsd": 71794000
+    },
+    {
+     "cusip": "14055X102",
+     "issuer": "CAPITALSOURCE INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 2162900,
+     "valueUsd": 14275000
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1807510,
+     "valueUsd": 66064000
+    },
+    {
+     "cusip": "38141G104",
+     "issuer": "GOLDMAN SACHS GROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 506130,
+     "valueUsd": 62947000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1840100,
+     "valueUsd": 20959000
+    },
+    {
+     "cusip": "723443107",
+     "issuer": "PINNACLE AIRL CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1964185,
+     "valueUsd": 2652000
+    },
+    {
+     "cusip": "73755L107",
+     "issuer": "POTASH CORP SASK INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 793000,
+     "valueUsd": 36232000
+    },
+    {
+     "cusip": "880779103",
+     "issuer": "TEREX CORP NEW",
+     "title": "COM",
+     "putCall": null,
+     "shares": 2214460,
+     "valueUsd": 49825000
+    }
+   ],
+   "receipts": {
+    "primary": "6c2a9d074f2f6ad539ea778be0884d1c86e77dd36300bbe1f2b5a78ec63e038d"
+   }
+  },
+  {
+   "reportDate": "2012-06-30",
+   "filed": "2012-08-10",
+   "accession": "0001546927-12-000045",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154692712000045/0001546927-12-000045-index.html",
+   "format": "text",
+   "managerName": null,
+   "entries": 6,
+   "totalValueUsd": 240562000,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK OF AMERICA CORPORATION",
+     "title": "COM",
+     "putCall": null,
+     "shares": 7502000,
+     "valueUsd": 61366000
+    },
+    {
+     "cusip": "165167107",
+     "issuer": "CHESAPEAKE ENERGY CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1005000,
+     "valueUsd": 18693000
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1807510,
+     "valueUsd": 49544000
+    },
+    {
+     "cusip": "37045V100",
+     "issuer": "GENERAL MTRS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 2237000,
+     "valueUsd": 44114000
+    },
+    {
+     "cusip": "38141G104",
+     "issuer": "GOLDMAN SACHS GROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 506130,
+     "valueUsd": 48518000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1840100,
+     "valueUsd": 18327000
+    }
+   ],
+   "receipts": {
+    "primary": "79f7a00f5bfda4383a34acfa7b13cb516a55e110edab796412d8d0c3903a898a"
+   }
+  },
+  {
+   "reportDate": "2012-09-30",
+   "filed": "2012-11-13",
+   "accession": "0001546927-12-000070",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154692712000070/0001546927-12-000070-index.html",
+   "format": "text",
+   "managerName": null,
+   "entries": 6,
+   "totalValueUsd": 273451780,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK OF AMERICA CORPORATION",
+     "title": "COM",
+     "putCall": null,
+     "shares": 7502000,
+     "valueUsd": 66242660
+    },
+    {
+     "cusip": "165167107",
+     "issuer": "CHESAPEAKE ENERGY CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 2983817,
+     "valueUsd": 56304630
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1807000,
+     "valueUsd": 59125040
+    },
+    {
+     "cusip": "37045V100",
+     "issuer": "GENERAL MTRS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 2283650,
+     "valueUsd": 51953040
+    },
+    {
+     "cusip": "38141G104",
+     "issuer": "GOLDMAN SACHS GROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 198863,
+     "valueUsd": 22606750
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1840100,
+     "valueUsd": 17219660
+    }
+   ],
+   "receipts": {
+    "primary": "4da23284980a14a79e55a4848e887b195fd87efcb84bd0118ca8fc0be5d6660c"
+   }
+  },
+  {
+   "reportDate": "2012-12-31",
+   "filed": "2013-05-06",
+   "accession": "0001546927-13-000069",
+   "form": "13F-HR/A",
+   "amended": true,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154692713000069/0001546927-13-000069-index.html",
+   "format": "text",
+   "managerName": null,
+   "entries": 7,
+   "totalValueUsd": 333124920,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK OF AMERICA CORPORATION",
+     "title": "COM",
+     "putCall": null,
+     "shares": 7502000,
+     "valueUsd": 87098220
+    },
+    {
+     "cusip": "165167107",
+     "issuer": "CHESAPEAKE ENERGY CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 3155971,
+     "valueUsd": 52452240
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1807000,
+     "valueUsd": 71484920
+    },
+    {
+     "cusip": "37045V100",
+     "issuer": "GENERAL MTRS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 2083750,
+     "valueUsd": 60074510
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W EXP 07/10/201",
+     "putCall": null,
+     "shares": 1241823,
+     "valueUsd": 15510370
+    },
+    {
+     "cusip": "38141G104",
+     "issuer": "GOLDMAN SACHS GROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 196863,
+     "valueUsd": 25111840
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 2095281,
+     "valueUsd": 21392820
+    }
+   ],
+   "receipts": {
+    "primary": "e5480d39f7caac59fe40ca80952165071a7dc70d4dbf98c170caeb11ea1501c7"
+   }
+  },
+  {
+   "reportDate": "2013-03-31",
+   "filed": "2013-05-13",
+   "accession": "0001546927-13-000077",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154692713000077/0001546927-13-000077-index.html",
+   "format": "text",
+   "managerName": null,
+   "entries": 6,
+   "totalValueUsd": 339564850,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK OF AMERICA CORPORATION",
+     "title": "COM",
+     "putCall": null,
+     "shares": 7502000,
+     "valueUsd": 91374360
+    },
+    {
+     "cusip": "165167107",
+     "issuer": "CHESEPEAKE ENERGY CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 3214250,
+     "valueUsd": 65602840
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1560000,
+     "valueUsd": 69014400
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W EXP 07/10/201",
+     "putCall": null,
+     "shares": 5928876,
+     "valueUsd": 69901450
+    },
+    {
+     "cusip": "38141G104",
+     "issuer": "GOLDMAN SACHS GROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 141863,
+     "valueUsd": 20875140
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG GROUP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 2095281,
+     "valueUsd": 22796660
+    }
+   ],
+   "receipts": {
+    "primary": "ee86c8e98d204377ada069dfd08c146cf72c5c197366c4fc445b8761bee22c40"
+   }
+  },
+  {
+   "reportDate": "2013-06-30",
+   "filed": "2013-08-12",
+   "accession": "0001546927-13-000141",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154692713000141/0001546927-13-000141-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 6,
+   "totalValueUsd": 421255000,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK OF AMERICA CORPORATION",
+     "title": "COM",
+     "putCall": null,
+     "shares": 7502000,
+     "valueUsd": 96476000
+    },
+    {
+     "cusip": "165167107",
+     "issuer": "CHESAPEAKE ENERGY CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 3268145,
+     "valueUsd": 66605000
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1560000,
+     "valueUsd": 74833000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "* W EXP 07/10/201",
+     "putCall": null,
+     "shares": 5928876,
+     "valueUsd": 96937000
+    },
+    {
+     "cusip": "38141G104",
+     "issuer": "GOLDMAN SACHS GROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 141863,
+     "valueUsd": 21457000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 5070000,
+     "valueUsd": 64947000
+    }
+   ],
+   "receipts": {
+    "primary": "e55cc704552d3062a5e59ed25cb97a13eca81fc0936158a068e93acc216098cc",
+    "informationTable": "c8a9c6eb2cad5d92f82fcedf6d89a574f6e5acb62df84fe1ad41ab0511486f10"
+   }
+  },
+  {
+   "reportDate": "2013-09-30",
+   "filed": "2013-11-12",
+   "accession": "0001546927-13-000203",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154692713000203/0001546927-13-000203-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 6,
+   "totalValueUsd": 459677000,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK OF AMERICA CORPORATION",
+     "title": "COM",
+     "putCall": null,
+     "shares": 7502000,
+     "valueUsd": 103528000
+    },
+    {
+     "cusip": "165167107",
+     "issuer": "CHESAPEAKE ENERGY CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 3268145,
+     "valueUsd": 84580000
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1560000,
+     "valueUsd": 75676000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "* W EXP 07/10/201",
+     "putCall": null,
+     "shares": 5928876,
+     "valueUsd": 110277000
+    },
+    {
+     "cusip": "38141G104",
+     "issuer": "GOLDMAN SACHS GROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 141863,
+     "valueUsd": 22444000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 5070000,
+     "valueUsd": 63172000
+    }
+   ],
+   "receipts": {
+    "primary": "5cd77770e5d718aba6679f42d5ecfa61cbda9a88166d0fa35035702e9a2e3731",
+    "informationTable": "5453938fedc803cbb5cd93404c3c808ec5f51f49aaf629e0075ae0b64ff85759"
+   }
+  },
+  {
+   "reportDate": "2013-12-31",
+   "filed": "2014-02-13",
+   "accession": "0001546927-14-000056",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154692714000056/0001546927-14-000056-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 6,
+   "totalValueUsd": 543920000,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK OF AMERICA CORPORATION",
+     "title": "COM",
+     "putCall": null,
+     "shares": 7401000,
+     "valueUsd": 115234000
+    },
+    {
+     "cusip": "165167107",
+     "issuer": "CHESAPEAKE ENERGY CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 3268145,
+     "valueUsd": 88697000
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1560000,
+     "valueUsd": 81292000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "* W EXP 07/10/201",
+     "putCall": null,
+     "shares": 5929529,
+     "valueUsd": 137091000
+    },
+    {
+     "cusip": "38141G104",
+     "issuer": "GOLDMAN SACHS GROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 106863,
+     "valueUsd": 18943000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 6333296,
+     "valueUsd": 102663000
+    }
+   ],
+   "receipts": {
+    "primary": "fca82bc7fa748fc7ca020b753b6caaa0260925b13c833246ca66d2e5df848be0",
+    "informationTable": "8997fdc77e967ad23725d7a0a58928b321edcfe81869b382f564c1fc8d9c660c"
+   }
+  },
+  {
+   "reportDate": "2014-03-31",
+   "filed": "2014-05-13",
+   "accession": "0001549575-14-000002",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957514000002/0001549575-14-000002-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 8,
+   "totalValueUsd": 464073000,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK OF AMERICA CORPORATION",
+     "title": "COM",
+     "putCall": null,
+     "shares": 4875000,
+     "valueUsd": 83850000
+    },
+    {
+     "cusip": "084670702",
+     "issuer": "BERKSHIRE HATHAWAY INC DEL",
+     "title": "CL B NEW",
+     "putCall": null,
+     "shares": 7025,
+     "valueUsd": 878000
+    },
+    {
+     "cusip": "165167107",
+     "issuer": "CHESAPEAKE ENERGY CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 3262545,
+     "valueUsd": 83586000
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM NEW",
+     "putCall": null,
+     "shares": 1420000,
+     "valueUsd": 67592000
+    },
+    {
+     "cusip": "37045V100",
+     "issuer": "GENERAL MTRS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 23305,
+     "valueUsd": 802000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "* W EXP 7/10/201",
+     "putCall": null,
+     "shares": 5935015,
+     "valueUsd": 103329000
+    },
+    {
+     "cusip": "38141G104",
+     "issuer": "GOLDMAN SACHS GROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 106863,
+     "valueUsd": 17510000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 6333296,
+     "valueUsd": 106526000
+    }
+   ],
+   "receipts": {
+    "primary": "ecc881c22f043bc8d6c6e0dbdd6e892458ee6b6a656bbb502fe914d41237080a",
+    "informationTable": "870ddd339c5c07f20ff71b9ee5a03a7938299e5a3ac73ebbc3410c460f6ffd1f"
+   }
+  },
+  {
+   "reportDate": "2014-06-30",
+   "filed": "2014-08-13",
+   "accession": "0001549575-14-000006",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957514000006/0001549575-14-000006-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 9,
+   "totalValueUsd": 480775000,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK OF AMERICA CORPORATION",
+     "title": "COM",
+     "putCall": null,
+     "shares": 4875000,
+     "valueUsd": 74929000
+    },
+    {
+     "cusip": "084670702",
+     "issuer": "BERKSHIRE HATHAWAY INC DEL",
+     "title": "CL B",
+     "putCall": null,
+     "shares": 7025,
+     "valueUsd": 889000
+    },
+    {
+     "cusip": "165167107",
+     "issuer": "CHESAPEAKE ENERGY CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 668000,
+     "valueUsd": 20761000
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1420000,
+     "valueUsd": 66882000
+    },
+    {
+     "cusip": "37045V100",
+     "issuer": "GENERAL MTRS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 23305,
+     "valueUsd": 846000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "* W EXP 7/10/201",
+     "putCall": null,
+     "shares": 5935015,
+     "valueUsd": 110154000
+    },
+    {
+     "cusip": "38141G104",
+     "issuer": "GOLDMAN SACHS GROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 106863,
+     "valueUsd": 17893000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 6333296,
+     "valueUsd": 115646000
+    },
+    {
+     "cusip": "693483109",
+     "issuer": "POSCO",
+     "title": "SPONSORED ADR",
+     "putCall": null,
+     "shares": 977634,
+     "valueUsd": 72775000
+    }
+   ],
+   "receipts": {
+    "primary": "3fb30b67532fc0ccec4e325a5ca5a042965795ee929e92186d9b10bc3e224e5a",
+    "informationTable": "b0446d103c21951c014f6c738dfae07bf99ddb58e4823aff0374b053e33fd812"
+   }
+  },
+  {
+   "reportDate": "2014-09-30",
+   "filed": "2014-11-12",
+   "accession": "0001549575-14-000010",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957514000010/0001549575-14-000010-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 9,
+   "totalValueUsd": 413951000,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK AMER CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 4504000,
+     "valueUsd": 76793000
+    },
+    {
+     "cusip": "084670702",
+     "issuer": "BERKSHIRE HATHAWAY INC DEL",
+     "title": "CL B",
+     "putCall": null,
+     "shares": 7025,
+     "valueUsd": 970000
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1420000,
+     "valueUsd": 73584000
+    },
+    {
+     "cusip": "37045V100",
+     "issuer": "GENERAL MTRS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 23305,
+     "valueUsd": 744000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W Exp 7/10/201",
+     "putCall": null,
+     "shares": 5935015,
+     "valueUsd": 85820000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 6333296,
+     "valueUsd": 104689000
+    },
+    {
+     "cusip": "693483109",
+     "issuer": "POSCO",
+     "title": "SPONSORED ADR",
+     "putCall": null,
+     "shares": 932634,
+     "valueUsd": 70787000
+    },
+    {
+     "cusip": "92939D104",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 41144,
+     "valueUsd": 407000
+    },
+    {
+     "cusip": "92939D203",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "UNIT",
+     "putCall": null,
+     "shares": 14711,
+     "valueUsd": 157000
+    }
+   ],
+   "receipts": {
+    "primary": "ef680fd68c1ede15e0a69795f1102d2b03f97d96dc194953158b5955ff9ece9b",
+    "informationTable": "b81d4b5446c99fe7b3c58566c634c9abbcf830586b76a6c7e2719004fd1e2ab3"
+   }
+  },
+  {
+   "reportDate": "2014-12-31",
+   "filed": "2015-02-12",
+   "accession": "0001549575-15-000002",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957515000002/0001549575-15-000002-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 11,
+   "totalValueUsd": 552408000,
+   "rows": [
+    {
+     "cusip": "060505104",
+     "issuer": "BANK AMER CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 3146000,
+     "valueUsd": 56282000
+    },
+    {
+     "cusip": "084670702",
+     "issuer": "BERKSHIRE HATHAWAY INC DEL",
+     "title": "CL B",
+     "putCall": null,
+     "shares": 7025,
+     "valueUsd": 1055000
+    },
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1269000,
+     "valueUsd": 68666000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13908569,
+     "valueUsd": 161061000
+    },
+    {
+     "cusip": "37045V100",
+     "issuer": "GENERAL MTRS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 23762,
+     "valueUsd": 830000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W Exp 7/10/201",
+     "putCall": null,
+     "shares": 5935175,
+     "valueUsd": 100898000
+    },
+    {
+     "cusip": "38259P706",
+     "issuer": "GOOGLE INC",
+     "title": "CL C",
+     "putCall": null,
+     "shares": 69000,
+     "valueUsd": 36322000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 6333296,
+     "valueUsd": 100256000
+    },
+    {
+     "cusip": "693483109",
+     "issuer": "POSCO",
+     "title": "Sponsored ADR",
+     "putCall": null,
+     "shares": 301770,
+     "valueUsd": 19256000
+    },
+    {
+     "cusip": "92939D104",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "COM SHS",
+     "putCall": null,
+     "shares": 245670,
+     "valueUsd": 2521000
+    },
+    {
+     "cusip": "92939D203",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "UNIT",
+     "putCall": null,
+     "shares": 453538,
+     "valueUsd": 5261000
+    }
+   ],
+   "receipts": {
+    "primary": "0eea155a482b22baacf07bd810fa275e022ae0ba88d17e90020ecbf8a2f30042",
+    "informationTable": "1150ab7eb2e08b7c50d451990487e4ea44577a6c826e2702640b06c31ed33d0e"
+   }
+  },
+  {
+   "reportDate": "2015-03-31",
+   "filed": "2015-05-12",
+   "accession": "0001549575-15-000004",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957515000004/0001549575-15-000004-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 8,
+   "totalValueUsd": 535876000,
+   "rows": [
+    {
+     "cusip": "172967424",
+     "issuer": "CITIGROUP INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 53000,
+     "valueUsd": 2731000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13800220,
+     "valueUsd": 225082000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W Exp 7/10/201",
+     "putCall": null,
+     "shares": 5986470,
+     "valueUsd": 117634000
+    },
+    {
+     "cusip": "38259P706",
+     "issuer": "GOOGLE INC",
+     "title": "CL C",
+     "putCall": null,
+     "shares": 69000,
+     "valueUsd": 37812000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 6333296,
+     "valueUsd": 80180000
+    },
+    {
+     "cusip": "693483109",
+     "issuer": "POSCO",
+     "title": "Sponsored ADR",
+     "putCall": null,
+     "shares": 983680,
+     "valueUsd": 53768000
+    },
+    {
+     "cusip": "92939D104",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "COM SHS",
+     "putCall": null,
+     "shares": 310386,
+     "valueUsd": 3104000
+    },
+    {
+     "cusip": "92939D203",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "UNIT 06/11/2019",
+     "putCall": null,
+     "shares": 1485188,
+     "valueUsd": 15565000
+    }
+   ],
+   "receipts": {
+    "primary": "20078d6fa11f22305c6bbb7f42dc194b7edd24d2a62e94543ede142f8c066b46",
+    "informationTable": "ed9cdcfac41343109268e73a0c6976ddec359bbd873eda6893f862fd903b3892"
+   }
+  },
+  {
+   "reportDate": "2015-06-30",
+   "filed": "2015-08-11",
+   "accession": "0001549575-15-000007",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957515000007/0001549575-15-000007-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 7,
+   "totalValueUsd": 474619000,
+   "rows": [
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13800220,
+     "valueUsd": 200517000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W EXP 7/10/201",
+     "putCall": null,
+     "shares": 5988977,
+     "valueUsd": 95524000
+    },
+    {
+     "cusip": "38259P706",
+     "issuer": "GOOGLE INC",
+     "title": "CL C",
+     "putCall": null,
+     "shares": 69188,
+     "valueUsd": 36013000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 6333296,
+     "valueUsd": 74226000
+    },
+    {
+     "cusip": "693483109",
+     "issuer": "POSCO",
+     "title": "SPONSORED ADR",
+     "putCall": null,
+     "shares": 982280,
+     "valueUsd": 48220000
+    },
+    {
+     "cusip": "92939D104",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "COM SHS",
+     "putCall": null,
+     "shares": 310386,
+     "valueUsd": 3231000
+    },
+    {
+     "cusip": "92939D203",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "UNIT 06/11/2019",
+     "putCall": null,
+     "shares": 1485288,
+     "valueUsd": 16888000
+    }
+   ],
+   "receipts": {
+    "primary": "ca5b3b6ab01436406c828a7bcf889e32893c14bff3e071c8c411fc7babc17f66",
+    "informationTable": "26137344a51df82b56554d6df015a3da538c95b0446356f4df116db201a91c90"
+   }
+  },
+  {
+   "reportDate": "2015-09-30",
+   "filed": "2015-11-12",
+   "accession": "0001549575-15-000010",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957515000010/0001549575-15-000010-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 7,
+   "totalValueUsd": 377078000,
+   "rows": [
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13794920,
+     "valueUsd": 182231000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W EXP 7/10/201",
+     "putCall": null,
+     "shares": 5990747,
+     "valueUsd": 79198000
+    },
+    {
+     "cusip": "38259P706",
+     "issuer": "GOOGLE INC",
+     "title": "CL C",
+     "putCall": null,
+     "shares": 69188,
+     "valueUsd": 42095000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 6333296,
+     "valueUsd": 19253000
+    },
+    {
+     "cusip": "693483109",
+     "issuer": "POSCO",
+     "title": "SPONSORED ADR",
+     "putCall": null,
+     "shares": 982280,
+     "valueUsd": 34399000
+    },
+    {
+     "cusip": "92939D104",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "COM SHS",
+     "putCall": null,
+     "shares": 310386,
+     "valueUsd": 3222000
+    },
+    {
+     "cusip": "92939D203",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "UNIT 06/11/2019",
+     "putCall": null,
+     "shares": 1485288,
+     "valueUsd": 16680000
+    }
+   ],
+   "receipts": {
+    "primary": "78ab96a1e822502f8ba716c5ef50b33e7bb38116dc69ae8c94b20e22f429bec8",
+    "informationTable": "dddc7d4685d945eba36623ac5dd798ff0300814b684af3a27278c89913d112e0"
+   }
+  },
+  {
+   "reportDate": "2015-12-31",
+   "filed": "2016-02-12",
+   "accession": "0001549575-16-000012",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957516000012/0001549575-16-000012-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 7,
+   "totalValueUsd": 379059000,
+   "rows": [
+    {
+     "cusip": "02079K107",
+     "issuer": "ALPHABET INC",
+     "title": "CAP STK CL C",
+     "putCall": null,
+     "shares": 69188,
+     "valueUsd": 52505000
+    },
+    {
+     "cusip": "084670702",
+     "issuer": "BERKSHIRE HATHAWAY INC DEL",
+     "title": "CL B",
+     "putCall": null,
+     "shares": 87006,
+     "valueUsd": 11488000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13787920,
+     "valueUsd": 192893000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W EXP 7/10/201",
+     "putCall": null,
+     "shares": 5986448,
+     "valueUsd": 97543000
+    },
+    {
+     "cusip": "440694305",
+     "issuer": "HORSEHEAD HLDG CORP",
+     "title": "COM",
+     "putCall": null,
+     "shares": 6333296,
+     "valueUsd": 12983000
+    },
+    {
+     "cusip": "92939D104",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "COM SHS",
+     "putCall": null,
+     "shares": 247870,
+     "valueUsd": 2469000
+    },
+    {
+     "cusip": "92939D203",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "UNIT 06/11/2019",
+     "putCall": null,
+     "shares": 895374,
+     "valueUsd": 9178000
+    }
+   ],
+   "receipts": {
+    "primary": "ec2dc706abf9acc1a631a0504fb58fc207f8d7ec23c0432a67b43adcbbf6a40c",
+    "informationTable": "7f918bbaba9ae015c5b553b8462817f187b1051fad4c6d255af5362c21fa712e"
+   }
+  },
+  {
+   "reportDate": "2016-03-31",
+   "filed": "2016-05-13",
+   "accession": "0001549575-16-000015",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957516000015/0001549575-16-000015-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 8,
+   "totalValueUsd": 345109000,
+   "rows": [
+    {
+     "cusip": "02079K107",
+     "issuer": "ALPHABET INC",
+     "title": "CAP STK CL C",
+     "putCall": null,
+     "shares": 69188,
+     "valueUsd": 51542000
+    },
+    {
+     "cusip": "084670702",
+     "issuer": "BERKSHIRE HATHAWAY INC DEL",
+     "title": "CL B",
+     "putCall": null,
+     "shares": 72506,
+     "valueUsd": 10287000
+    },
+    {
+     "cusip": "N3167Y103",
+     "issuer": "FERRARI N V",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1277192,
+     "valueUsd": 53122000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13785930,
+     "valueUsd": 111115000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W Exp 7/10/201",
+     "putCall": null,
+     "shares": 5986448,
+     "valueUsd": 81775000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 530653,
+     "valueUsd": 26517000
+    },
+    {
+     "cusip": "92939D104",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "COM SHS",
+     "putCall": null,
+     "shares": 35890,
+     "valueUsd": 360000
+    },
+    {
+     "cusip": "92939D203",
+     "issuer": "WL ROSS HLDG CORP",
+     "title": "UNIT 06/11/2019",
+     "putCall": null,
+     "shares": 990534,
+     "valueUsd": 10391000
+    }
+   ],
+   "receipts": {
+    "primary": "8b61bbdebd87189fd5fe468dc2da0867e277d20782e9fb199748ea70d364c0bf",
+    "informationTable": "a69a53d3846fc8d4bd70d37393f3c29cd4ccebbedee75b0956ad8baa0651e949"
+   }
+  },
+  {
+   "reportDate": "2016-06-30",
+   "filed": "2016-08-12",
+   "accession": "0001549575-16-000018",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957516000018/0001549575-16-000018-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 7,
+   "totalValueUsd": 296267000,
+   "rows": [
+    {
+     "cusip": "N00985106",
+     "issuer": "AERCAP HOLDINGS NV",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 624160,
+     "valueUsd": 20966000
+    },
+    {
+     "cusip": "02079K107",
+     "issuer": "ALPHABET INC",
+     "title": "CAP STK CL C",
+     "putCall": null,
+     "shares": 69188,
+     "valueUsd": 47885000
+    },
+    {
+     "cusip": "084670702",
+     "issuer": "BERKSHIRE HATHAWAY INC DEL",
+     "title": "CL B",
+     "putCall": null,
+     "shares": 72500,
+     "valueUsd": 10497000
+    },
+    {
+     "cusip": "N3167Y103",
+     "issuer": "FERRARI N V",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1069038,
+     "valueUsd": 43527000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13784930,
+     "valueUsd": 84364000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W EXP 07/10/201",
+     "putCall": null,
+     "shares": 5984447,
+     "valueUsd": 62657000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 529113,
+     "valueUsd": 26371000
+    }
+   ],
+   "receipts": {
+    "primary": "9646582e075fff3cbab8d7ae2aaa8ff8673a6e3488efd1b10eed62a11b15fff6",
+    "informationTable": "f5c89904f530ba2a60e1756b9af28a9d3e6a3a67cb0994cdc6432706a50ea986"
+   }
+  },
+  {
+   "reportDate": "2016-09-30",
+   "filed": "2016-11-10",
+   "accession": "0001549575-16-000021",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957516000021/0001549575-16-000021-index.html",
+   "format": "xml",
+   "note": "a CUSIP in this filing is shorter than nine characters as filed (cusipAsFiled); it was left-padded with zeros",
+   "managerName": "Dalal Street, LLC",
+   "entries": 8,
+   "totalValueUsd": 338144000,
+   "rows": [
+    {
+     "cusip": "N00985106",
+     "issuer": "AERCAP HOLDINGS NV",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 624160,
+     "valueUsd": 24024000
+    },
+    {
+     "cusip": "02079K107",
+     "issuer": "ALPHABET INC",
+     "title": "CAP STK CL C",
+     "putCall": null,
+     "shares": 69188,
+     "valueUsd": 53779000
+    },
+    {
+     "cusip": "084670702",
+     "cusipAsFiled": "84670702",
+     "issuer": "BERKSHIRE HATHAWAY INC DEL",
+     "title": "CL B",
+     "putCall": null,
+     "shares": 47400,
+     "valueUsd": 6848000
+    },
+    {
+     "cusip": "N3167Y103",
+     "issuer": "FERRARI N V",
+     "title": "COM",
+     "putCall": null,
+     "shares": 675138,
+     "valueUsd": 35075000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13771930,
+     "valueUsd": 88140000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W EXP 7/10/201",
+     "putCall": null,
+     "shares": 5984447,
+     "valueUsd": 83543000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 529113,
+     "valueUsd": 26815000
+    },
+    {
+     "cusip": "844741108",
+     "issuer": "SOUTHWEST AIRLS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 512220,
+     "valueUsd": 19920000
+    }
+   ],
+   "receipts": {
+    "primary": "9a1677bf7a8ec2c93a82b5f4b286799bbd9e7fb437634e1c03790f843c612b9c",
+    "informationTable": "788d56121b09a0d16b5a1ec311b526d53c53b5c7364a79107b0b2eafa718deb6"
+   }
+  },
+  {
+   "reportDate": "2016-12-31",
+   "filed": "2017-02-13",
+   "accession": "0001549575-17-000003",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957517000003/0001549575-17-000003-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 7,
+   "totalValueUsd": 347088000,
+   "rows": [
+    {
+     "cusip": "N00985106",
+     "issuer": "AERCAP HOLDINGS NV",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 671685,
+     "valueUsd": 27949000
+    },
+    {
+     "cusip": "02079K107",
+     "issuer": "ALPHABET INC",
+     "title": "CAP STK CL C",
+     "putCall": null,
+     "shares": 69188,
+     "valueUsd": 53401000
+    },
+    {
+     "cusip": "N3167Y103",
+     "issuer": "FERRARI N V",
+     "title": "COM",
+     "putCall": null,
+     "shares": 398138,
+     "valueUsd": 23222000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 11971930,
+     "valueUsd": 109184000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "*W EXP 7/10/201",
+     "putCall": null,
+     "shares": 5578837,
+     "valueUsd": 95733000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 529113,
+     "valueUsd": 22598000
+    },
+    {
+     "cusip": "844741108",
+     "issuer": "SOUTHWEST AIRLS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 300975,
+     "valueUsd": 15001000
+    }
+   ],
+   "receipts": {
+    "primary": "9d34abee8863733ba1e479efad87d1cb161ac4c9fa567b9457ad2779cca98a58",
+    "informationTable": "26966a62578536738a64c68b4ed833faa28572adc2ec6518eda6fea925760b2b"
+   }
+  },
+  {
+   "reportDate": "2017-03-31",
+   "filed": "2017-05-12",
+   "accession": "0001549575-17-000006",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957517000006/0001549575-17-000006-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 7,
+   "totalValueUsd": 388956000,
+   "rows": [
+    {
+     "cusip": "N00985106",
+     "issuer": "AERCAP HOLDINGS NV",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 819185,
+     "valueUsd": 37658000
+    },
+    {
+     "cusip": "02079K107",
+     "issuer": "ALPHABET INC",
+     "title": "CAP STK CL C",
+     "putCall": null,
+     "shares": 66228,
+     "valueUsd": 54940000
+    },
+    {
+     "cusip": "N3167Y103",
+     "issuer": "FERRARI N V",
+     "title": "COM",
+     "putCall": null,
+     "shares": 398138,
+     "valueUsd": 29701000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 12922130,
+     "valueUsd": 141239000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "W Exp 7/10/201",
+     "putCall": null,
+     "shares": 6053822,
+     "valueUsd": 108073000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 27002,
+     "valueUsd": 1165000
+    },
+    {
+     "cusip": "844741108",
+     "issuer": "SOUTHWEST AIRLS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 300975,
+     "valueUsd": 16180000
+    }
+   ],
+   "receipts": {
+    "primary": "7e5283f9ec54006e68e9173f8e1d9a10af160ba9b9896d04a5196980effe68f1",
+    "informationTable": "1a8a271b3a882c73806ce750ab115468a4d2b3b33ba6e73332d164dcd8ff8134"
+   }
+  },
+  {
+   "reportDate": "2017-06-30",
+   "filed": "2017-08-11",
+   "accession": "0001549575-17-000009",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957517000009/0001549575-17-000009-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 6,
+   "totalValueUsd": 404505000,
+   "rows": [
+    {
+     "cusip": "N00985106",
+     "issuer": "AERCAP HOLDINGS NV",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 999935,
+     "valueUsd": 46427000
+    },
+    {
+     "cusip": "02079K107",
+     "issuer": "ALPHABET INC",
+     "title": "CAP STK CL C",
+     "putCall": null,
+     "shares": 66228,
+     "valueUsd": 60183000
+    },
+    {
+     "cusip": "N3167Y103",
+     "issuer": "FERRARI N V",
+     "title": "COM",
+     "putCall": null,
+     "shares": 398138,
+     "valueUsd": 34125000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13109310,
+     "valueUsd": 139352000
+    },
+    {
+     "cusip": "37045V126",
+     "issuer": "GENERAL MTRS CO",
+     "title": "W Exp 7/10/201",
+     "putCall": null,
+     "shares": 6079051,
+     "valueUsd": 105715000
+    },
+    {
+     "cusip": "844741108",
+     "issuer": "SOUTHWEST AIRLS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 300975,
+     "valueUsd": 18703000
+    }
+   ],
+   "receipts": {
+    "primary": "c0dada8f541307a36916e11a125e8c1d278876cb6409820dafe49f63029eace6",
+    "informationTable": "a5ca34c650513ba6785d6085b6966ea62d3ca34112f34262c738752cff21c560"
+   }
+  },
+  {
+   "reportDate": "2017-09-30",
+   "filed": "2017-11-13",
+   "accession": "0001549575-17-000014",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957517000014/0001549575-17-000014-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 5,
+   "totalValueUsd": 412685000,
+   "rows": [
+    {
+     "cusip": "N00985106",
+     "issuer": "AERCAP HOLDINGS NV",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 1047160,
+     "valueUsd": 53520000
+    },
+    {
+     "cusip": "02079K107",
+     "issuer": "ALPHABET INC",
+     "title": "CAP STK CL C",
+     "putCall": null,
+     "shares": 66228,
+     "valueUsd": 63520000
+    },
+    {
+     "cusip": "N3167Y103",
+     "issuer": "FERRARI N V",
+     "title": "COM",
+     "putCall": null,
+     "shares": 398138,
+     "valueUsd": 44008000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13109310,
+     "valueUsd": 234788000
+    },
+    {
+     "cusip": "844741108",
+     "issuer": "SOUTHWEST AIRLS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 300975,
+     "valueUsd": 16849000
+    }
+   ],
+   "receipts": {
+    "primary": "106df2ee130b322aec681dca5c706ae548402b090b66e0f31c864e4ed35aad4c",
+    "informationTable": "91e22df95d049dd23060f293dc55924cc31cec55581fc70dd97362bd0ed7d07f"
+   }
+  },
+  {
+   "reportDate": "2017-12-31",
+   "filed": "2018-02-13",
+   "accession": "0001549575-18-000003",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957518000003/0001549575-18-000003-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 5,
+   "totalValueUsd": 385825000,
+   "rows": [
+    {
+     "cusip": "N00985106",
+     "issuer": "AERCAP HOLDINGS NV",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 807721,
+     "valueUsd": 42494000
+    },
+    {
+     "cusip": "02079K107",
+     "issuer": "ALPHABET INC",
+     "title": "CAP STK CL C",
+     "putCall": null,
+     "shares": 45828,
+     "valueUsd": 47954000
+    },
+    {
+     "cusip": "N3167Y103",
+     "issuer": "FERRARI N V",
+     "title": "COM",
+     "putCall": null,
+     "shares": 398138,
+     "valueUsd": 41808000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13109310,
+     "valueUsd": 233870000
+    },
+    {
+     "cusip": "844741108",
+     "issuer": "SOUTHWEST AIRLS CO",
+     "title": "COM",
+     "putCall": null,
+     "shares": 300975,
+     "valueUsd": 19699000
+    }
+   ],
+   "receipts": {
+    "primary": "4949d77f804e16f96de3a9c7672244a8baf987298a914fabd847e66768066716",
+    "informationTable": "d6e2734447755c7cfe0a9d20cbba34b6dbebbaa5e4a4cc9efcaa66a3832a3cf0"
+   }
+  },
+  {
+   "reportDate": "2018-03-31",
+   "filed": "2018-05-14",
+   "accession": "0001549575-18-000005",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957518000005/0001549575-18-000005-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 2,
+   "totalValueUsd": 316763000,
+   "rows": [
+    {
+     "cusip": "N3167Y103",
+     "issuer": "FERRARI N V",
+     "title": "COM",
+     "putCall": null,
+     "shares": 398138,
+     "valueUsd": 47760000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13109310,
+     "valueUsd": 269003000
+    }
+   ],
+   "receipts": {
+    "primary": "5aa78e5785bb8c1037ef20f73b8a0b6dac35cba10902da2aafa00de562d134f8",
+    "informationTable": "6b9ad823aa2fb945f6c6d901dba1c24cd10ebe631b1237e1a753e4b1fd5f4ee2"
+   }
+  },
+  {
+   "reportDate": "2018-06-30",
+   "filed": "2018-08-13",
+   "accession": "0001549575-18-000007",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957518000007/0001549575-18-000007-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 2,
+   "totalValueUsd": 301789000,
+   "rows": [
+    {
+     "cusip": "N3167Y103",
+     "issuer": "FERRARI N V",
+     "title": "COM",
+     "putCall": null,
+     "shares": 398138,
+     "valueUsd": 54154000
+    },
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13109310,
+     "valueUsd": 247635000
+    }
+   ],
+   "receipts": {
+    "primary": "02ebbf6346a3f53f30907e1e79481ce22bff34add9ea7be8e8e6c2ea53478e87",
+    "informationTable": "6d5ac5d7eb77071a63aa5c3c94e40c5ce6fd51e18ba74ed7723754ceedad56f7"
+   }
+  },
+  {
+   "reportDate": "2018-09-30",
+   "filed": "2018-11-13",
+   "accession": "0001549575-18-000013",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957518000013/0001549575-18-000013-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 1,
+   "totalValueUsd": 229544000,
+   "rows": [
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13109310,
+     "valueUsd": 229544000
+    }
+   ],
+   "receipts": {
+    "primary": "0f7046b848d0cdca5fdf7c6709084808e8d986027a23021ea11585ef47d3e5ad",
+    "informationTable": "a1307a572c406b8b32d7650f5c1e84012bf3dc060453b53edb2460be05441e89"
+   }
+  },
+  {
+   "reportDate": "2018-12-31",
+   "filed": "2019-02-13",
+   "accession": "0001549575-19-000003",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957519000003/0001549575-19-000003-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 2,
+   "totalValueUsd": 206754000,
+   "rows": [
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13098390,
+     "valueUsd": 189403000
+    },
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 546847,
+     "valueUsd": 17351000
+    }
+   ],
+   "receipts": {
+    "primary": "c27adde1bff9d2bb107d24be68a46205ad0464ecdb7ed410322ad7de531ec346",
+    "informationTable": "46c354dadfbc0bc18617433c33f3993e4ff12ee0eb8dd97e4da4177f32967eb2"
+   }
+  },
+  {
+   "reportDate": "2019-03-31",
+   "filed": "2019-05-14",
+   "accession": "0001549575-19-000005",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957519000005/0001549575-19-000005-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 2,
+   "totalValueUsd": 264841000,
+   "rows": [
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 13105047,
+     "valueUsd": 194610000
+    },
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1699265,
+     "valueUsd": 70231000
+    }
+   ],
+   "receipts": {
+    "primary": "74e9061860146c418f7e29e05da38071353f98ae52f36037bf744384e2597482",
+    "informationTable": "b431e6e3073ac82994b5d76baec697d3fb7b5065cc67e662d8ca91ad6c5663d3"
+   }
+  },
+  {
+   "reportDate": "2019-06-30",
+   "filed": "2019-08-13",
+   "accession": "0001549575-19-000008",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957519000008/0001549575-19-000008-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 294142000,
+   "rows": [
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 12866047,
+     "valueUsd": 177809000
+    },
+    {
+     "cusip": "384313508",
+     "issuer": "GRAFTECH INTL LTD",
+     "title": "COM",
+     "putCall": null,
+     "shares": 4123538,
+     "valueUsd": 47421000
+    },
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1785745,
+     "valueUsd": 68912000
+    }
+   ],
+   "receipts": {
+    "primary": "0adee8e04c0e13a11fa1f17c4cb5efb032e57b61d5f921e296bd7cafaf401a59",
+    "informationTable": "04274a0045bc951b11bff18d183bc0e6d96da2982c865b3a1841e1fe6bed40eb"
+   }
+  },
+  {
+   "reportDate": "2019-09-30",
+   "filed": "2019-11-13",
+   "accession": "0001549575-19-000010",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957519000010/0001549575-19-000010-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 261282000,
+   "rows": [
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 8757463,
+     "valueUsd": 113409000
+    },
+    {
+     "cusip": "384313508",
+     "issuer": "GRAFTECH INTL LTD",
+     "title": "COM",
+     "putCall": null,
+     "shares": 5547101,
+     "valueUsd": 71003000
+    },
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1793935,
+     "valueUsd": 76870000
+    }
+   ],
+   "receipts": {
+    "primary": "cfed4c192ef178e65f72a819c8145f6bcb2995cdf3e058258415d8da018d5386",
+    "informationTable": "0d9e3a28427c9b545c4678f87f7d325e7b883e87f1924a3e2cd5cb3f7af9e487"
+   }
+  },
+  {
+   "reportDate": "2019-12-31",
+   "filed": "2020-02-13",
+   "accession": "0001549575-20-000002",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957520000002/0001549575-20-000002-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 271228000,
+   "rows": [
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 8250711,
+     "valueUsd": 121203000
+    },
+    {
+     "cusip": "384313508",
+     "issuer": "GRAFTECH INTL LTD",
+     "title": "COM",
+     "putCall": null,
+     "shares": 4450134,
+     "valueUsd": 51711000
+    },
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1828076,
+     "valueUsd": 98314000
+    }
+   ],
+   "receipts": {
+    "primary": "02986488758aae601e3bcb6db3d2325f52c9e7a640cd5a3b7269d0a08f85f940",
+    "informationTable": "2c6d9601604461727aae0a4f67d5c18750c36267c806d2e7bc1b311b17342b6e"
+   }
+  },
+  {
+   "reportDate": "2020-03-31",
+   "filed": "2020-05-14",
+   "accession": "0001549575-20-000005",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957520000005/0001549575-20-000005-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 2,
+   "totalValueUsd": 80774000,
+   "rows": [
+    {
+     "cusip": "N31738102",
+     "issuer": "FIAT CHRYSLER AUTOMOBILES N",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 680045,
+     "valueUsd": 4889000
+    },
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1804199,
+     "valueUsd": 75885000
+    }
+   ],
+   "receipts": {
+    "primary": "e17c2cd9f2270a2a5601cd05e1d6d1341dc7d8bb6ade41534e60b8046295e8cd",
+    "informationTable": "ccbcaa3cbc12e6b97426839bd7a26e25b2e1594ad91b30f4cf672f132c78e4f6"
+   }
+  },
+  {
+   "reportDate": "2020-06-30",
+   "filed": "2020-08-13",
+   "accession": "0001549575-20-000010",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957520000010/0001549575-20-000010-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 2,
+   "totalValueUsd": 147737000,
+   "rows": [
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1820248,
+     "valueUsd": 93779000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 4733118,
+     "valueUsd": 53958000
+    }
+   ],
+   "receipts": {
+    "primary": "b4210e564ba1e38fb36496c80da07f3c36d9045e86e403e35345d1b1c622a200",
+    "informationTable": "18859c55b8b7d4a353d1d9be253a4a328b8e67706e0cd1863893badb728771be"
+   }
+  },
+  {
+   "reportDate": "2020-09-30",
+   "filed": "2020-11-13",
+   "accession": "0001549575-20-000012",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957520000012/0001549575-20-000012-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 2,
+   "totalValueUsd": 149143000,
+   "rows": [
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1820322,
+     "valueUsd": 85482000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 4733118,
+     "valueUsd": 63661000
+    }
+   ],
+   "receipts": {
+    "primary": "d7bba28ac246ed23f8aeee3dac29a0a734255e3fd3ed497dc13ac6f00f6dfa38",
+    "informationTable": "a2df02e682e30cbf2bd5cee30df04b99cca64c14b91a86a360ccb3fc1b694b65"
+   }
+  },
+  {
+   "reportDate": "2020-12-31",
+   "filed": "2021-02-12",
+   "accession": "0001549575-21-000004",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957521000004/0001549575-21-000004-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 2,
+   "totalValueUsd": 206334000,
+   "rows": [
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1820322,
+     "valueUsd": 136852000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 4733149,
+     "valueUsd": 69482000
+    }
+   ],
+   "receipts": {
+    "primary": "2910720f2ac4f9e035f79b851cff676aaa5ba7f9b5006b11b691bfd4dec9a739",
+    "informationTable": "04de5761cbb16c8f1dbac6db878c2a8ece68fe23499723aa12dc1a7666f68545"
+   }
+  },
+  {
+   "reportDate": "2021-03-31",
+   "filed": "2021-05-14",
+   "accession": "0001549575-21-000008",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957521000008/0001549575-21-000008-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 262037000,
+   "rows": [
+    {
+     "cusip": "01609W102",
+     "issuer": "ALIBABA GROUP HLDG LTD",
+     "title": "SPONSORED ADS",
+     "putCall": null,
+     "shares": 168843,
+     "valueUsd": 38282000
+    },
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1552000,
+     "valueUsd": 136902000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 4733118,
+     "valueUsd": 86853000
+    }
+   ],
+   "receipts": {
+    "primary": "2182ca534af372dfce1cecccc2645466ce7b74881f5e90f4620c94b713e816d3",
+    "informationTable": "df49117a03f3306f0c608f3426939f41870a057e24f9ad7bd1577b6a5aea1d9e"
+   }
+  },
+  {
+   "reportDate": "2021-06-30",
+   "filed": "2021-08-13",
+   "accession": "0001549575-21-000010",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957521000010/0001549575-21-000010-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 277651000,
+   "rows": [
+    {
+     "cusip": "01609W102",
+     "issuer": "ALIBABA GROUP HLDG LTD",
+     "title": "SPONSORED ADS",
+     "putCall": null,
+     "shares": 258721,
+     "valueUsd": 58673000
+    },
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1552000,
+     "valueUsd": 131889000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 4733118,
+     "valueUsd": 87089000
+    }
+   ],
+   "receipts": {
+    "primary": "21d5a97cf0c265026894c9be82ed5bf172b8bf3ef1dffb8806349d3fb7c31703",
+    "informationTable": "1a463d5a7c6ff00a0e541b7bdc4ae7c4cd68764a3f4781b4a2a6106fa11a16b9"
+   }
+  },
+  {
+   "reportDate": "2021-09-30",
+   "filed": "2021-11-12",
+   "accession": "0001549575-21-000013",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957521000013/0001549575-21-000013-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 190770000,
+   "rows": [
+    {
+     "cusip": "01609W102",
+     "issuer": "ALIBABA GROUP HLDG LTD",
+     "title": "SPONSORED ADS",
+     "putCall": null,
+     "shares": 57347,
+     "valueUsd": 8490000
+    },
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1579150,
+     "valueUsd": 112088000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 4733118,
+     "valueUsd": 70192000
+    }
+   ],
+   "receipts": {
+    "primary": "97552366861dad9a5d2134bf98d0f34d49c202b9b2356f18d5fd4569e64cb271",
+    "informationTable": "fe82afdd1fe0e32c498654c7c7ca0be2d8aba5e72e13c89df1bfcda076f0cf50"
+   }
+  },
+  {
+   "reportDate": "2021-12-31",
+   "filed": "2022-02-14",
+   "accession": "0001549575-22-000005",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957522000005/0001549575-22-000005-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 216627000,
+   "rows": [
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1823812,
+     "valueUsd": 169888000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 3522118,
+     "valueUsd": 46739000
+    }
+   ],
+   "receipts": {
+    "primary": "9079a55255f571e597f960622e62aa3f55ef19bd4d625575b849fc4f8aec812e",
+    "informationTable": "7ba7117a6e26ab045f326565753a6004914361b2b6583c61b4d4c57cb48376c9"
+   }
+  },
+  {
+   "reportDate": "2022-03-31",
+   "filed": "2022-05-13",
+   "accession": "0001549575-22-000010",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957522000010/0001549575-22-000010-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 142290000,
+   "rows": [
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1823812,
+     "valueUsd": 142057000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 18451,
+     "valueUsd": 233000
+    }
+   ],
+   "receipts": {
+    "primary": "f06693d3e13960dc559e8354d6361e4db8c897548e753ba2e1965a0f450e5e1e",
+    "informationTable": "bb1e97fd9413fcfc82e953605c02e1d37d0acaddf0e1a55283f98d75ba97af03"
+   }
+  },
+  {
+   "reportDate": "2022-06-30",
+   "filed": "2022-08-12",
+   "accession": "0001549575-22-000013",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957522000013/0001549575-22-000013-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 100838000,
+   "rows": [
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1823812,
+     "valueUsd": 100820000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 3375,
+     "valueUsd": 18000
+    }
+   ],
+   "receipts": {
+    "primary": "4251d53ef7145d79069ec68f38efd8fb438043a8693cb9becf59e75f921813c7",
+    "informationTable": "625ffb325ab960448484022522fe088ab1582ae797d57f1f5832e916fbd9e0c2"
+   }
+  },
+  {
+   "reportDate": "2022-09-30",
+   "filed": "2022-11-14",
+   "accession": "0001549575-22-000016",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "thousands of dollars as filed, stored in dollars",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957522000016/0001549575-22-000016-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 4,
+   "totalValueUsd": 98776000,
+   "rows": [
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1823812,
+     "valueUsd": 91373000
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 3375,
+     "valueUsd": 30000
+    },
+    {
+     "cusip": "112585104",
+     "issuer": "BROOKFIELD ASSET MGMT INC",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 180303,
+     "valueUsd": 7373000
+    }
+   ],
+   "receipts": {
+    "primary": "4edbbc14d4bff05671ec55e7eff3b5a7b73490e461c2d44a6b1369166aa0b937",
+    "informationTable": "96d4cd988b85aff7496cc90e0fc7d898b88d2b96b522c1fa57e59e9e77efafa7"
+   }
+  },
+  {
+   "reportDate": "2022-12-31",
+   "filed": "2023-02-14",
+   "accession": "0001549575-23-000004",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957523000004/0001549575-23-000004-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 5,
+   "totalValueUsd": 120558334,
+   "rows": [
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1860812,
+     "valueUsd": 93003384
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 3375,
+     "valueUsd": 39926
+    },
+    {
+     "cusip": "113004105",
+     "issuer": "BROOKFIELD ASSET MANAGMT LTD",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 178077,
+     "valueUsd": 5105468
+    },
+    {
+     "cusip": "11271J107",
+     "issuer": "BROOKFIELD CORP",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 712319,
+     "valueUsd": 22409556
+    }
+   ],
+   "receipts": {
+    "primary": "12aa6bfd742c667738d1304563ae625e1fb545149e8590f105e8d5b727f0ea5a",
+    "informationTable": "7ad7896aa8979915045cb75f261da6cf5716aca03d1d9c51b3c1df55feaf516f"
+   }
+  },
+  {
+   "reportDate": "2023-03-31",
+   "filed": "2023-05-12",
+   "accession": "0001549575-23-000008",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957523000008/0001549575-23-000008-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 121274277,
+   "rows": [
+    {
+     "cusip": "595112103",
+     "issuer": "MICRON TECHNOLOGY INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1592134,
+     "valueUsd": 96069366
+    },
+    {
+     "cusip": "81752R100",
+     "issuer": "SERITAGE GROWTH PPTYS",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 3375,
+     "valueUsd": 26561
+    },
+    {
+     "cusip": "11271J107",
+     "issuer": "BROOKFIELD CORP",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 772579,
+     "valueUsd": 25178350
+    }
+   ],
+   "receipts": {
+    "primary": "fe3538eb2ab5019ae603372077fa5b00aa6ca504b1fe7418f863153197be7fcf",
+    "informationTable": "c60453fcad0f06d189627b1b9e283310c9ddd9752d7b99455ee2cea14257bce7"
+   }
+  },
+  {
+   "reportDate": "2023-06-30",
+   "filed": "2023-08-11",
+   "accession": "0001549575-23-000014",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957523000014/0001549575-23-000014-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 2,
+   "totalValueUsd": 73402592,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 362649,
+     "valueUsd": 59605020
+    },
+    {
+     "cusip": "20854L108",
+     "issuer": "CONSOL ENERGY INC NEW",
+     "title": "COM",
+     "putCall": null,
+     "shares": 203474,
+     "valueUsd": 13797572
+    }
+   ],
+   "receipts": {
+    "primary": "4a74df197bc3b5faf530e96b87b856097bf17769c9652bb45a014a5f6a284d01",
+    "informationTable": "26aedb78e2f6db72ec880c3091302b5722e4455a48d26c1fc55b6444c2fcf538"
+   }
+  },
+  {
+   "reportDate": "2023-09-30",
+   "filed": "2023-11-13",
+   "accession": "0001549575-23-000017",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957523000017/0001549575-23-000017-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 169629696,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 441510,
+     "valueUsd": 114673440
+    },
+    {
+     "cusip": "03940R107",
+     "issuer": "ARCH RESOURCES INC",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 78238,
+     "valueUsd": 13352097
+    },
+    {
+     "cusip": "20854L108",
+     "issuer": "CONSOL ENERGY INC NEW",
+     "title": "COM",
+     "putCall": null,
+     "shares": 396570,
+     "valueUsd": 41604159
+    }
+   ],
+   "receipts": {
+    "primary": "94088dad930921ded1645254f159aea78f2ba51248af04210f35a6771d31b24c",
+    "informationTable": "3d46b133be52b04fa430144bb689c128a3205fb059b6ffc8f725f7d32bbac302"
+   }
+  },
+  {
+   "reportDate": "2023-12-31",
+   "filed": "2024-02-14",
+   "accession": "0001549575-24-000005",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957524000005/0001549575-24-000005-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 4,
+   "totalValueUsd": 248125343,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 394313,
+     "valueUsd": 133640624
+    },
+    {
+     "cusip": "03940R107",
+     "issuer": "ARCH RESOURCES INC",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 234994,
+     "valueUsd": 38994904
+    },
+    {
+     "cusip": "20854L108",
+     "issuer": "CONSOL ENERGY INC NEW",
+     "title": "COM",
+     "putCall": null,
+     "shares": 369007,
+     "valueUsd": 37096274
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 629712,
+     "valueUsd": 38393541
+    }
+   ],
+   "receipts": {
+    "primary": "2b25a6dfc5a94d17848a581fb0154370eea7b9c0d3484e0cef8a453a77f296b8",
+    "informationTable": "7286c6730631c06db054d0fe69db0acf425e26e15af1ac79b495be021e8a834b"
+   }
+  },
+  {
+   "reportDate": "2024-03-31",
+   "filed": "2024-05-14",
+   "accession": "0001549575-24-000007",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957524000007/0001549575-24-000007-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 4,
+   "totalValueUsd": 215703152,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 404357,
+     "valueUsd": 133910969
+    },
+    {
+     "cusip": "03940R107",
+     "issuer": "ARCH RESOURCES INC",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 140308,
+     "valueUsd": 22560123
+    },
+    {
+     "cusip": "20854L108",
+     "issuer": "CONSOL ENERGY INC NEW",
+     "title": "COM",
+     "putCall": null,
+     "shares": 366007,
+     "valueUsd": 30656746
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 470763,
+     "valueUsd": 28575314
+    }
+   ],
+   "receipts": {
+    "primary": "e695272be1428411ed2e77adad8dcb74baff620fb22c231812696a046c96bc39",
+    "informationTable": "23cba177c59ba3265a6381a7880053f66e4623be4f2e5c4d0774fd0f098d33ed"
+   }
+  },
+  {
+   "reportDate": "2024-06-30",
+   "filed": "2024-08-13",
+   "accession": "0001549575-24-000009",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957524000009/0001549575-24-000009-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 4,
+   "totalValueUsd": 232830310,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 448960,
+     "valueUsd": 125946800
+    },
+    {
+     "cusip": "03940R107",
+     "issuer": "ARCH RESOURCES INC",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 392388,
+     "valueUsd": 59733225
+    },
+    {
+     "cusip": "20854L108",
+     "issuer": "CONSOL ENERGY INC NEW",
+     "title": "COM",
+     "putCall": null,
+     "shares": 172038,
+     "valueUsd": 17553037
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 471519,
+     "valueUsd": 29597248
+    }
+   ],
+   "receipts": {
+    "primary": "bb20c34c12460d9246e78cc27346dc1781bfba944e6ccba4b5a511f2c02a5287",
+    "informationTable": "788695877c6abb177556953b80fb559c79a874c61ba7f09e5569d2b44cd6d2e1"
+   }
+  },
+  {
+   "reportDate": "2024-09-30",
+   "filed": "2024-11-13",
+   "accession": "0001549575-24-000013",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957524000013/0001549575-24-000013-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 5,
+   "totalValueUsd": 246895462,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 479698,
+     "valueUsd": 113295117
+    },
+    {
+     "cusip": "03940R107",
+     "issuer": "ARCH RESOURCES INC",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 31002,
+     "valueUsd": 4283236
+    },
+    {
+     "cusip": "20854L108",
+     "issuer": "CONSOL ENERGY INC NEW",
+     "title": "COM",
+     "putCall": null,
+     "shares": 770642,
+     "valueUsd": 80647685
+    },
+    {
+     "cusip": "Y1968P121",
+     "issuer": "DANAOS CORPORATION",
+     "title": "SHS",
+     "putCall": null,
+     "shares": 46590,
+     "valueUsd": 4041217
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 698407,
+     "valueUsd": 44628207
+    }
+   ],
+   "receipts": {
+    "primary": "64b08c801d69b5bfb96c2a7c4a083a94ce49de4abb7512d7a810372e77c67816",
+    "informationTable": "a77e91bc5b757175d179109d2d2b9223abfed354b7de67b90172c9799579d5d7"
+   }
+  },
+  {
+   "reportDate": "2024-12-31",
+   "filed": "2025-02-13",
+   "accession": "0001549575-25-000002",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957525000002/0001549575-25-000002-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 253439237,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 487251,
+     "valueUsd": 97508670
+    },
+    {
+     "cusip": "20854L108",
+     "issuer": "CONSOL ENERGY INC NEW",
+     "title": "COM",
+     "putCall": null,
+     "shares": 594950,
+     "valueUsd": 63469266
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1704670,
+     "valueUsd": 92461301
+    }
+   ],
+   "receipts": {
+    "primary": "39c3ba317cfc21fee2c0aa4803b371abdd2cb76b4e9ffe65ceb7128bece636ea",
+    "informationTable": "f0b5285f3ed3a3488286b9e89db3690f11a6efd46e6659fb2005236315fa7d63"
+   }
+  },
+  {
+   "reportDate": "2025-03-31",
+   "filed": "2025-05-14",
+   "accession": "0001549575-25-000004",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957525000004/0001549575-25-000004-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 4,
+   "totalValueUsd": 234824008,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 414616,
+     "valueUsd": 51930654
+    },
+    {
+     "cusip": "G65431127",
+     "issuer": "NOBLE CORP PLC",
+     "title": "ORD SHS A",
+     "putCall": null,
+     "shares": 1728744,
+     "valueUsd": 40971233
+    },
+    {
+     "cusip": "G9460G101",
+     "issuer": "VALARIS LTD",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 1427564,
+     "valueUsd": 56046163
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1799580,
+     "valueUsd": 85875958
+    }
+   ],
+   "receipts": {
+    "primary": "69370468dc85aab85862fdc7f2332dfc294ec9a55280a08c2449beb2d487b204",
+    "informationTable": "8c4b412cb81e8c7b540751129afa61375d6645a2993cc5d5e05b55ec52a78e2e"
+   }
+  },
+  {
+   "reportDate": "2025-06-30",
+   "filed": "2025-08-13",
+   "accession": "0001549575-25-000006",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957525000006/0001549575-25-000006-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 5,
+   "totalValueUsd": 271601546,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 460327,
+     "valueUsd": 51777581
+    },
+    {
+     "cusip": "05329W102",
+     "issuer": "AUTONATION INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 61000,
+     "valueUsd": 12117650
+    },
+    {
+     "cusip": "G65431127",
+     "issuer": "NOBLE CORP PLC",
+     "title": "ORD SHS A",
+     "putCall": null,
+     "shares": 1728744,
+     "valueUsd": 45898153
+    },
+    {
+     "cusip": "G9460G101",
+     "issuer": "VALARIS LTD",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 1883777,
+     "valueUsd": 79325849
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1799745,
+     "valueUsd": 82482313
+    }
+   ],
+   "receipts": {
+    "primary": "818cba7b5499d8b0535a57a8e7e2318f09beb501bb29c721d8f15ac372d7b844",
+    "informationTable": "81ceb806dfd15d684854e855d2968860d644619fbe014896340e5c87f298cb6c"
+   }
+  },
+  {
+   "reportDate": "2025-09-30",
+   "filed": "2025-11-13",
+   "accession": "0001549575-25-000012",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957525000012/0001549575-25-000012-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 5,
+   "totalValueUsd": 336857377,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 532000,
+     "valueUsd": 87295880
+    },
+    {
+     "cusip": "G65431127",
+     "issuer": "NOBLE CORP PLC",
+     "title": "ORD SHS A",
+     "putCall": null,
+     "shares": 239000,
+     "valueUsd": 6758920
+    },
+    {
+     "cusip": "H8817H100",
+     "issuer": "TRANSOCEAN LTD",
+     "title": "REGISTERED SHS",
+     "putCall": null,
+     "shares": 24442332,
+     "valueUsd": 76260076
+    },
+    {
+     "cusip": "G9460G101",
+     "issuer": "VALARIS LTD",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 1066255,
+     "valueUsd": 52001256
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1799831,
+     "valueUsd": 114541245
+    }
+   ],
+   "receipts": {
+    "primary": "f904b8b8f7ccd108b1bfc7f573742ae748f902c3d1d845a4ff764718f74dc8a1",
+    "informationTable": "2d1dbaaf422795cff8cc8c9c666170253e479d8e21d81fa4bb212efcf16a8862"
+   }
+  },
+  {
+   "reportDate": "2025-12-31",
+   "filed": "2026-02-13",
+   "accession": "0001549575-26-000002",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957526000002/0001549575-26-000002-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 4,
+   "totalValueUsd": 402040227,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 543000,
+     "valueUsd": 108534840
+    },
+    {
+     "cusip": "H8817H100",
+     "issuer": "TRANSOCEAN LTD",
+     "title": "REGISTERED SHS",
+     "putCall": null,
+     "shares": 27040133,
+     "valueUsd": 111675749
+    },
+    {
+     "cusip": "G9460G101",
+     "issuer": "VALARIS LTD",
+     "title": "CL A",
+     "putCall": null,
+     "shares": 459098,
+     "valueUsd": 23138539
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1799831,
+     "valueUsd": 158691099
+    }
+   ],
+   "receipts": {
+    "primary": "fab05692acb5c68cceee0ceb6c2dfd6b77134d2e3139c25a98e05059de4b16f1",
+    "informationTable": "a7b09373f72ce200a0a38c5b30d6cafde18332765af7fae042fe09ab14d067d4"
+   }
+  },
+  {
+   "reportDate": "2026-03-31",
+   "filed": "2026-05-14",
+   "accession": "0001549575-26-000009",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957526000009/0001549575-26-000009-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 3,
+   "totalValueUsd": 422885142,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 579738,
+     "valueUsd": 119002819
+    },
+    {
+     "cusip": "H8817H100",
+     "issuer": "TRANSOCEAN LTD",
+     "title": "REGISTERED SHS",
+     "putCall": null,
+     "shares": 20392672,
+     "valueUsd": 135203415
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1810831,
+     "valueUsd": 168678908
+    }
+   ],
+   "receipts": {
+    "primary": "5204c59704fcc5f615d45dab5af01c7b70871c025f83ee177f939c686c20cb52",
+    "informationTable": "6cf41b5d9e2cd10cb2c013ed54ad716f8f8c156955ceb3c154536233705b68d9"
+   }
+  },
+  {
+   "reportDate": "2026-06-30",
+   "filed": "2026-08-13",
+   "accession": "0001549575-26-000015",
+   "form": "13F-HR",
+   "amended": false,
+   "valueUnit": "dollars as filed",
+   "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1549575/000154957526000015/0001549575-26-000015-index.html",
+   "format": "xml",
+   "managerName": "Dalal Street, LLC",
+   "entries": 4,
+   "totalValueUsd": 326749980,
+   "rows": [
+    {
+     "cusip": "020764106",
+     "issuer": "ALPHA METALLURGICAL RESOUR I",
+     "title": "COM",
+     "putCall": null,
+     "shares": 517194,
+     "valueUsd": 85305978
+    },
+    {
+     "cusip": "48581R205",
+     "issuer": "KASPI KZ JSC",
+     "title": "SPONSORED ADS",
+     "putCall": null,
+     "shares": 1702,
+     "valueUsd": 147461
+    },
+    {
+     "cusip": "H8817H100",
+     "issuer": "TRANSOCEAN LTD",
+     "title": "REGISTERED SHS",
+     "putCall": null,
+     "shares": 20398659,
+     "valueUsd": 99749443
+    },
+    {
+     "cusip": "93627C101",
+     "issuer": "WARRIOR MET COAL INC",
+     "title": "COM",
+     "putCall": null,
+     "shares": 1744050,
+     "valueUsd": 141547098
+    }
+   ],
+   "receipts": {
+    "primary": "1b595991096e27ef11f1a5661c1c35bb458e5c4a1a5d618d640ad366fcfb1fbb",
+    "informationTable": "7383ae425797db0c6df9b28b8fc877856afcf3f44f473d72c8b74ccb3ee7896c"
+   }
+  }
+ ]
+}
