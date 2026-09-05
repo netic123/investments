@@ -101,6 +101,12 @@ details.more .tablewrap{box-shadow:none}
 details.more footer{border-top:none;padding-top:0;margin-top:10px}
 .sec-head.sub{border-top:none;padding-top:26px;margin-bottom:10px}
 .sec-head.sub h2{font-size:1.1rem}
+details.market>summary{font-family:var(--f-body);font-size:.95rem;letter-spacing:0;text-transform:none;color:var(--ink);padding:12px 14px}
+.market-body section{padding-top:22px}
+.market-body>section:first-child{padding-top:6px}
+.market-body>section:first-child .sec-head{border-top:none;padding-top:0}
+.kpi.mkt{background:none;border:none;padding:0;margin:0;min-height:0;text-align:left;font:inherit;letter-spacing:0;text-transform:none;color:inherit;cursor:pointer;border-radius:var(--radius-sm)}
+.kpi.mkt:hover .l,.kpi.mkt:focus-visible .l{color:var(--accent)}
 .trades{list-style:none;margin:0;padding:0}
 .trades li{display:grid;grid-template-columns:170px 1fr;gap:6px 14px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:.9rem;align-items:baseline}
 .trades li:last-child{border-bottom:none}
@@ -135,7 +141,7 @@ footer p{margin:0 0 .5em}
 .tabs button.active{color:var(--ink);border-bottom-color:var(--accent)}
 .panel[hidden]{display:none}
 [hidden]{display:none!important}
-.panel.nodata .fg-data{display:none}
+.nodata .fg-data{display:none}
 @media (min-width:700px){ .fg-top{grid-template-columns:minmax(290px,1fr) 2fr} }
 
 /* Fear & Greed */
@@ -258,16 +264,15 @@ footer p{margin:0 0 .5em}
   <div>
     <h1>Investments</h1>
     <div class="filenote pabrai-only" id="fileDate" data-header-tabs="pabrai">—</div>
-    <div class="filenote fg-only" id="fgFileNote" data-header-tabs="crypto sweden usa ustech europe global" hidden>—</div>
+    <div class="filenote fg-only" id="fgFileNote" data-header-tabs="markets" hidden>—</div>
   </div>
   <div class="kpis pabrai-only" data-header-tabs="pabrai">
     <div class="kpi"><div class="l">Fund assets</div><div class="v mono" id="kNet">—</div><div class="s" id="kNetSub">&nbsp;</div></div>
     <div class="kpi"><div class="l">NAV</div><div class="v mono" id="kNav">—</div><div class="s" id="kNavSub">&nbsp;</div></div>
     <div class="kpi"><div class="l">WAGN market price</div><div class="v mono" id="kPx">—</div><div class="s" id="kPxSub">&nbsp;</div></div>
   </div>
-  <div class="kpis fg-only" data-header-tabs="crypto sweden usa ustech europe global" hidden>
-    <div class="kpi"><div class="l" title="The score of the benchmark’s last daily bar dated before the build day at its exchange; a bar dated the build day is left out until the next build day, even after the close, because the provider may still revise it. The model never moves intraday.">Fear &amp; Greed · latest close</div><div class="v mono" id="kFg">—</div><div class="s" id="kFgSub">&nbsp;</div></div>
-    <div class="kpi"><div class="l" id="kFgPrevL">Previous observation</div><div class="v mono" id="kFgPrev">—</div><div class="s" id="kFgPrevSub">&nbsp;</div></div>
+  <div class="kpis fg-only" id="marketsStrip" data-header-tabs="markets" hidden>
+    <div class="kpi"><div class="l" title="The score of the benchmark’s last daily bar dated before the build day at its exchange; a bar dated the build day is left out until the next build day, even after the close, because the provider may still revise it. The model never moves intraday.">Fear &amp; Greed · latest close</div><div class="s" style="margin-top:4px">six markets, one model — open one below</div></div>
   </div>
   <div class="actions">
     <span id="status">loading…</span>
@@ -280,12 +285,7 @@ footer p{margin:0 0 .5em}
 
 <nav class="tabs" id="tabs" role="tablist" aria-label="Views">
   <button role="tab" id="tab-pabrai" data-tab="pabrai" class="active" aria-selected="true" aria-controls="panel-pabrai">Pabrai</button>
-  <button role="tab" id="tab-crypto" data-tab="crypto" aria-selected="false" aria-controls="panel-crypto" tabindex="-1">Crypto</button>
-  <button role="tab" id="tab-sweden" data-tab="sweden" aria-selected="false" aria-controls="panel-sweden" tabindex="-1">Sweden</button>
-  <button role="tab" id="tab-usa" data-tab="usa" aria-selected="false" aria-controls="panel-usa" tabindex="-1">USA</button>
-  <button role="tab" id="tab-ustech" data-tab="ustech" aria-selected="false" aria-controls="panel-ustech" tabindex="-1">US Tech</button>
-  <button role="tab" id="tab-europe" data-tab="europe" aria-selected="false" aria-controls="panel-europe" tabindex="-1">Europe</button>
-  <button role="tab" id="tab-global" data-tab="global" aria-selected="false" aria-controls="panel-global" tabindex="-1">Global</button>
+  <button role="tab" id="tab-markets" data-tab="markets" aria-selected="false" aria-controls="panel-markets" tabindex="-1">Markets</button>
 </nav>
 
 <div class="panel" id="panel-pabrai" role="tabpanel" aria-labelledby="tab-pabrai">
@@ -370,7 +370,13 @@ footer p{margin:0 0 .5em}
 
 </div><!-- /panel-pabrai -->
 
-<div id="fgPanels"></div><!-- the Fear & Greed tabs (crypto + markets) are built by JS, see fgPanelHtml() -->
+<div class="panel" id="panel-markets" role="tabpanel" aria-labelledby="tab-markets" hidden>
+<section>
+  <div class="sec-head"><h2>Fear &amp; Greed, six markets</h2><span class="note" id="marketsNote">—</span></div>
+  <p class="hint" style="margin:0 0 12px">One model, six markets. The header shows each market’s latest score; open a market below for its gauge, comparison tiles, indicators, history and notes. Direct links: #crypto, #sweden, #usa, #ustech, #europe, #global.</p>
+  <div id="fgPanels"></div><!-- one collapsed block per market, built by JS (fgPanelHtml) -->
+</section>
+</div><!-- /panel-markets -->
 
 <!-- Site-level disclosures sit outside the tab panels so every tab, also one opened by a direct link, carries them. -->
 <section id="buildsSection">
@@ -745,8 +751,9 @@ function sharedWarnings(){
 function dataAsOf(onPabrai){
   if(!SNAPSHOT||!SNAPSHOT.data) return '';
   if(onPabrai){ const H=SNAPSHOT.data.holdings; if(!H||!H.latest) return ''; const c=holdingsNavCheck(H,SNAPSHOT.data.nav||null); return c.matched ? 'data as of the '+fmtDate(c.navDate)+' close' : 'fund file dated '+fmtDate(H.latest.date)+', pricing date not asserted'; }
-  const S=typeof FGS!=='undefined'&&FGS[document.body.dataset.tab], n=S&&S.norm&&!S.norm.error&&S.norm.stats&&S.norm.stats[0]&&S.norm.stats[0][1];
-  return n&&n.date ? 'score as of the '+fmtDate(n.date)+' close' : '';
+  if(typeof FGS==='undefined'||typeof FG_TABS==='undefined') return '';
+  const dates=[...new Set(FG_TABS.map(t=>{ const n=FGS[t.id]&&FGS[t.id].norm; return n&&!n.error?n.asOf:null; }).filter(Boolean))].sort();
+  return !dates.length ? '' : dates.length===1 ? 'scores as of the '+fmtDate(dates[0])+' close' : 'scores as of the '+fmtDate(dates[0])+' to '+fmtDate(dates[dates.length-1])+' closes';
 }
 // The build time, short when it is today in the visitor's zone (the tooltip and the About line carry the full stamp).
 const whenShort=iso=>{ const d=iso?new Date(iso):null; if(!d||isNaN(d)) return '—'; const t=new Date(); return d.toDateString()===t.toDateString() ? fmtInstant(d,{hour:'2-digit',minute:'2-digit'}) : whenFull(iso); };
@@ -1632,7 +1639,7 @@ function clearChartExplorer(svg,tip,live){
 
 function fgPanelHtml(t){
   const id=t.id;
-  return `<div class="panel" id="panel-${id}" role="tabpanel" aria-labelledby="tab-${id}" hidden>
+  return `<details class="more market" id="panel-${id}"><summary id="${id}-summary">${esc(t.tab)} — loading…</summary><div class="market-body">
 <section>
   <div class="sec-head"><h2 id="${id}-title">Fear &amp; Greed</h2><span class="note" id="${id}-note">—</span></div>
   <div id="${id}-error"></div>
@@ -1672,7 +1679,7 @@ ${t.kind==='market'?`<section class="fg-data">
     <footer id="${id}-footer"></footer>
   </details>
 </section>
-</div>`;
+</div></details>`;
 }
 // The expanding-history BUY/SELL research signal is computed and published (api/marketfg.json) but shown only in the
 // local app and to the owner: it has passed no prospective validation, and a coloured BUY/SELL reads as a recommendation.
@@ -1761,7 +1768,7 @@ function normMarket(M,model,fetchedAt){
   // marketfg.js counts per model computation; a build that discarded an attempt sent that many again, so say both
   const requests = Y&&Number.isFinite(Y.requests) ? ` The model computation behind this snapshot sent ${fmt(Y.requests)} Yahoo chart requests for ${Number.isFinite(Y.symbols)?fmt(Y.symbols)+' ':''}series${Number.isFinite(Y.fullHistoryRequests)&&Number.isFinite(Y.topUpRequests)?` (${fmt(Y.fullHistoryRequests)} full-history, ${fmt(Y.topUpRequests)} top-up${Number.isFinite(Y.retries)?', '+fmt(Y.retries)+' retries':''})`:''}${attempts&&allAttempts?`; the build itself made ${fmt(attempts)} attempts and sent ${fmt(allAttempts)} requests in all, because an earlier attempt was discarded and repeated (build.json lists why)`:''}.` : '';
   const footer=`<p><b>Who calculates this:</b> the repository’s own code (<span class="mono">marketfg.js</span>) from daily Yahoo Finance price histories; Yahoo supplies prices, not a score, and no third-party Fear &amp; Greed score (CoinMarketCap, Alternative.me, CNN) enters the calculation. Yahoo’s chart feed has no public API guarantee.${requests}</p><p><b>Descriptive indicator only.</b> ${SHOW_RESEARCH_SIGNAL?'The BUY/SELL research card above is an unvalidated research model shown in the local app and to the owner only.':studied+'This v3 score (expanding percentiles) has had no rule search and no prospective test, so no buy/sell signal is shown here; a separate research learner’s output is published in api/marketfg.json for auditing only.'}</p>`;
-  return { bands, value:v, label:M.label, title:`Fear & Greed — ${M.name} (own model)`, note:`${esc(asOfText)} · ${fetchedStr(fetchedAt)}`,
+  return { bands, value:v, label:M.label, asOf:M.asOf, carriedCount:carried.length, title:`Fear & Greed — ${M.name} (own model)`, note:`${esc(asOfText)} · ${fetchedStr(fetchedAt)}`,
     sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous observation · `:'')+'last bar before the build day, as of '+when,
     kpiSub:M.label+' · '+asOfText, prevLabel:'Previous observation', prev:row(P.close,P.closeDate),
     stats:[['Latest',now],['Previous observation',row(P.close,P.closeDate)],['1 week ago',row(P.week,P.weekDate)],['1 month ago',row(P.month,P.monthDate)],['1 year ago',row(P.year,P.yearDate)],['Yearly high',hi],['Yearly low',lo]],
@@ -1795,7 +1802,7 @@ function renderRuleCard(id,N,$i){
     <div class="muted" style="font-size:.85rem;margin-top:5px">Uses <b>all ${fmt(D.trainingRows)} matured training rows supplied to the learner</b> from ${fmtDate(D.trainingStart)} through ${fmtDate(D.trainingEnd)}; latest matured outcome ${fmtDate(D.latestMaturedOutcomeThrough)}. Usable score history ${fmtDate(D.historyStart)}–${fmtDate(D.historyEnd)} (${fmt(D.historyObservations)} observations; internally ${D.historyTruncated?'truncated':'not truncated'}). Selected Yahoo chart host${D.sourceHosts&&D.sourceHosts.length===1?'':'s'}: ${esc(sourceHosts)}${D.sourceHostFallbackUsed?' (fallback host used)':''}. The provider's claim to globally complete or immutable history is <b>not independently verified</b>.</div>
     <div class="muted" style="font-size:.82rem;margin-top:8px"><b>Not a trusted 2× model</b> (“2×” is the research programme’s wealth-doubling gate, which nothing here has passed). The learner pipeline is newly bound to the v3 full-history score and requires revalidation; historical forecasts used already-inspected, current-vintage data, cash is a zero-return development assumption and no qualifying prospective decision ledger has passed. The simulated replay state is not your holding, a broker fill or an execution record. Target limitation: ${esc(suitability)}. BUY/LONG or SELL/CASH is the model's mandatory 0%/100% target state, not proof of predictive value or investment advice.</div>`;
 }
-function setFg(id,norm){ FGS[id].norm=norm; renderFg(id); if(document.body.dataset.tab===id) updateFgHeader(id); }
+function setFg(id,norm){ FGS[id].norm=norm; renderFg(id); if(document.body.dataset.tab==='markets') renderMarketsStrip(); }
 
 function renderFg(id){
   const S=FGS[id], t=S.tab, panel=document.getElementById('panel-'+id), $i=s=>document.getElementById(id+'-'+s);
@@ -1803,6 +1810,7 @@ function renderFg(id){
   const N=S.norm;
   if(!N||N.error){
     panel.classList.add('nodata');
+    $i('summary').textContent = t.tab+' — not available';
     $i('title').textContent = 'Fear & Greed — '+t.tab;
     $i('error').innerHTML=`<div class="empty">Fear &amp; Greed could not be fetched${N&&N.error?' — '+esc(N.error):''}. The page retries every 10 minutes${STATIC_BUILD?', or reload the page':', or press Update'}.</div>`;
     $i('note').textContent='—'; $i('chartnote').textContent='—'; $i('label').textContent='—'; $i('sub').textContent='—'; $i('explnote').textContent='';
@@ -1813,6 +1821,7 @@ function renderFg(id){
   panel.classList.remove('nodata');
   const bands=N.bands, v=Math.max(0,Math.min(100,N.value)), b=fgBand(v,bands);
   $i('title').textContent=N.title; $i('note').innerHTML=N.note;
+  $i('summary').innerHTML=`${esc(t.tab)} · <span class="fg-c${b}">${fmt(v,1)} ${esc(N.label)}</span> · as of ${fmtDate(N.asOf)}${N.carriedCount?' · '+fmt(N.carriedCount)+' of '+fmt(N.total||6)+' indicators carried':''}`;
   $i('error').innerHTML=N.callouts.map(c=>`<div class="callout">${c}</div>`).join('');
   // gauge: five coloured bands, marker on the arc, the value in the middle
   const seg=bands.map(([lo,hi],i)=>{ const e=Math.min(100,Math.round((hi+0.1)*10)/10); const [x1,y1]=arcPt(lo+0.6,80),[x2,y2]=arcPt(e-0.6,80);
@@ -1884,40 +1893,53 @@ $('#fgPanels').addEventListener('click',e=>{ const b=e.target.closest('.range[da
   const id=b.closest('.range').dataset.fg; FGS[id].days=Number(b.dataset.days);
   b.closest('.range').querySelectorAll('button').forEach(x=>{ const on=x===b; x.classList.toggle('active',on); x.setAttribute('aria-pressed',String(on)); }); renderFgChart(id); });
 
-// header KPIs for the active Fear & Greed tab
-function updateFgHeader(id){
-  const S=FGS[id]; if(!S) return; const N=S.norm, t=S.tab;
-  $('#fgFileNote').innerHTML = `<b>Fear &amp; Greed for ${esc(t.forName)}</b> · six indicators from daily Yahoo prices, each ranked against its own history · the score of the last bar before the build day, never live <details class="plain"><summary>how the score is defined</summary><div class="body">Six indicators from daily Yahoo price data, each ranked 0–100 against its own history and averaged; the score is that of the benchmark’s last daily bar dated before the build day at its exchange — a bar dated the build day is left out until the next day, even after the close, because the provider may still revise it — never live.</div></details>`;
-  $('#kFgPrevL').textContent = N&&!N.error ? N.prevLabel : 'Previous observation';
-  if(!N||N.error){ $('#kFg').textContent='—'; $('#kFgSub').textContent=''; $('#kFgPrev').textContent='—'; $('#kFgPrevSub').textContent=''; return; }
-  $('#kFg').innerHTML=`<span class="fg-c${fgBand(N.value,N.bands)}">${fmt(N.value,1)}</span>`; $('#kFgSub').textContent=N.kpiSub;
-  const p=N.prev; $('#kFgPrev').innerHTML = p ? `<span class="fg-c${fgBand(p.value,N.bands)}">${fmt(p.value,1)}</span>` : '—';
-  $('#kFgPrevSub').textContent = p ? p.label+' · '+dayMon(p.date) : '';
+// The header on the Markets tab: one KPI per market (latest score, label and date, the carried count when any), each a
+// button that opens that market's block below; the note line carries the definition. A market not yet loaded shows so.
+function renderMarketsStrip(){
+  const strip=$('#marketsStrip'); if(!strip) return;
+  $('#fgFileNote').innerHTML = `<b>Fear &amp; Greed for six markets</b> · six indicators from daily Yahoo prices, each ranked against its own history · the score of the last bar before the build day, never live <details class="plain"><summary>how the score is defined</summary><div class="body">Six indicators from daily Yahoo price data, each ranked 0–100 against its own history and averaged; the score is that of the benchmark’s last daily bar dated before the build day at its exchange — a bar dated the build day is left out until the next day, even after the close, because the provider may still revise it — never live.</div></details>`;
+  strip.querySelectorAll('.kpi.mkt').forEach(el=>el.remove());
+  strip.insertAdjacentHTML('beforeend', FG_TABS.map(t=>{ const N=FGS[t.id].norm, ok=N&&!N.error;
+    const v = ok ? `<span class="fg-c${fgBand(N.value,N.bands)}">${fmt(N.value,1)}</span>` : '—';
+    const s = ok ? `${esc(N.label)} · ${dayMon(N.asOf)}${N.carriedCount?' · '+fmt(N.carriedCount)+' carried':''}` : (N&&N.error ? 'not available' : 'loading…');
+    return `<button type="button" class="kpi mkt" data-market="${t.id}" title="Open ${esc(t.tab)} below"><div class="l">${esc(t.tab)}</div><div class="v mono">${v}</div><div class="s">${s}</div></button>`; }).join(''));
+  const n=FG_TABS.filter(t=>FGS[t.id].norm&&!FGS[t.id].norm.error).length, note=$('#marketsNote');
+  if(note) note.textContent = n ? `${fmt(n)} of ${fmt(FG_TABS.length)} markets scored · one decimal · open a market for its notes` : '—';
 }
 
-// ---- tabs (empty hash opens Pabrai; every other view has a direct hash; old aliases still work)
-const TAB_HASH={pabrai:'',crypto:'#crypto',sweden:'#sweden',usa:'#usa',ustech:'#ustech',europe:'#europe',global:'#global'};
-const HASH_ALIAS={'#fear-greed':'crypto','#krypto':'crypto','#sverige':'sweden','#europa':'europe'};
-const tabFromHash=()=>{ const h=location.hash; if(HASH_ALIAS[h]) return HASH_ALIAS[h]; const e=Object.entries(TAB_HASH).find(([,v])=>v&&v===h); return e?e[0]:'pabrai'; };
-function showTab(id){
+// ---- tabs: Pabrai (empty hash) and Markets (#markets). A market hash (#usa …, the old aliases too) opens Markets with
+// that market's block expanded, and a block opened or closed by hand keeps the address in step.
+const TAB_HASH={pabrai:'',markets:'#markets'};
+const MARKET_HASH=Object.fromEntries(FG_TABS.map(t=>[t.hash,t.id]));
+const HASH_ALIAS={'#fear-greed':'#crypto','#krypto':'#crypto','#sverige':'#sweden','#europa':'#europe'};
+function routeFromHash(){ const h=HASH_ALIAS[location.hash]||location.hash; if(MARKET_HASH[h]) return {tab:'markets',market:MARKET_HASH[h]}; return {tab:h==='#markets'?'markets':'pabrai',market:null}; }
+function openMarket(id,scroll){ const d=document.getElementById('panel-'+id); if(!d) return; d.open=true; if(scroll) d.scrollIntoView({block:'start',behavior:'smooth'}); }
+function showTab(id,market){
   if(!Object.prototype.hasOwnProperty.call(TAB_HASH,id)) id='pabrai';
   document.body.dataset.tab=id;
   document.querySelectorAll('#tabs button').forEach(b=>{ const on=b.dataset.tab===id; b.classList.toggle('active',on); b.setAttribute('aria-selected',String(on)); b.tabIndex=on?0:-1; });
   document.querySelectorAll('.panel').forEach(p=>{ p.hidden = p.id!=='panel-'+id; });
   document.querySelectorAll('[data-header-tabs]').forEach(el=>{ el.hidden=!el.dataset.headerTabs.split(/\s+/).includes(id); });
-  document.title = id==='pabrai' ? 'Pabrai — Investments' : `Fear & Greed ${FGS[id].tab.tab} — Investments`;
-  const want=TAB_HASH[id]; if(location.hash!==want) history.replaceState(null,'',location.pathname+location.search+want);
-  if(FGS[id]) updateFgHeader(id);
+  const t = id==='markets' && market ? FG_TABS.find(x=>x.id===market) : null;
+  document.title = id==='pabrai' ? 'Pabrai — Investments' : t ? `Fear & Greed ${t.tab} — Investments` : 'Markets — Investments';
+  const want = t ? t.hash : TAB_HASH[id]; if(location.hash!==want) history.replaceState(null,'',location.pathname+location.search+want);
+  if(id==='markets'){ renderMarketsStrip(); if(t) openMarket(t.id,true); }
   STATUS_RENDER();
 }
+$('#marketsStrip').addEventListener('click',e=>{ const b=e.target.closest('.kpi[data-market]'); if(b) showTab('markets',b.dataset.market); });
+// toggle does not bubble: listen in the capture phase on the container
+$('#fgPanels').addEventListener('toggle',e=>{ const d=e.target; if(!d||!/^panel-/.test(d.id||'')) return; const t=FG_TABS.find(x=>x.id===d.id.slice(6)); if(!t) return;
+  const want = d.open ? t.hash : (location.hash===t.hash ? '#markets' : location.hash);
+  if(location.hash!==want) history.replaceState(null,'',location.pathname+location.search+want);
+  document.title = d.open ? `Fear & Greed ${t.tab} — Investments` : 'Markets — Investments'; },true);
 $('#tabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-tab]'); if(b) showTab(b.dataset.tab); });
 $('#tabs').addEventListener('keydown',e=>{
   const tabs=[...document.querySelectorAll('#tabs button[data-tab]')], i=tabs.indexOf(document.activeElement); if(i<0) return;
   const j = e.key==='ArrowRight'?(i+1)%tabs.length : e.key==='ArrowLeft'?(i-1+tabs.length)%tabs.length : e.key==='Home'?0 : e.key==='End'?tabs.length-1 : -1;
   if(j<0) return; e.preventDefault(); showTab(tabs[j].dataset.tab); tabs[j].focus();
 });
-window.addEventListener('hashchange',()=>showTab(tabFromHash()));
-showTab(tabFromHash());
+window.addEventListener('hashchange',()=>{ const r=routeFromHash(); showTab(r.tab,r.market); });
+{ const r=routeFromHash(); showTab(r.tab,r.market); }
 
 $('#navRange').addEventListener('click',e=>{ const b=e.target.closest('button[data-days]'); if(!b) return; NAV_DAYS=Number(b.dataset.days);
   document.querySelectorAll('#navRange button').forEach(x=>{ const on=x===b; x.classList.toggle('active',on); x.setAttribute('aria-pressed',String(on)); }); renderNavSpark(); });
