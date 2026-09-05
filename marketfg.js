@@ -32,6 +32,10 @@ const DEFAULTS = {
   // Score history is intentionally uncapped: the expanding learner and public
   // chart both retain the entire usable history for each market.
   fillDays: 7, timeoutMs: 25000, concurrency: 6,
+  // Fill the newest close Yahoo lists without a value from the listing venue's
+  // own published close (see fillVenueGap). Off by default so research replays
+  // keep Yahoo-only input; the public build and the local server turn it on.
+  fillVenueGaps: false,
 };
 const LABELS = [[0, 24.9, 'Extreme Fear'], [25, 44.9, 'Fear'], [45, 55.9, 'Neutral'], [56, 74.9, 'Greed'], [75, 100, 'Extreme Greed']];
 const LEGACY_LABELS = [[0, 24, 'Extreme Fear'], [25, 44, 'Fear'], [45, 55, 'Neutral'], [56, 74, 'Greed'], [75, 100, 'Extreme Greed']];
@@ -407,19 +411,69 @@ async function topUpRecentBars(series, signal, stats = null) {
   return { ...series, rows, lastDate: rows[rows.length - 1].date, topUp: { appended: extra.length, from: extra[0].date, to: extra[extra.length - 1].date, host: recent.sourceHost, range: TOP_UP_RANGE } };
 }
 
+// ---------- venue gap fill ----------
+// Yahoo sometimes lists a completed session with no close (missingCloseDates;
+// a feed gap, most often on London-, Xetra- and Stockholm-listed ETFs), and a
+// component that needs that series is then carried from an earlier bar. With
+// fillVenueGaps on, the newest such gap is filled from the listing venue's own
+// published close, and the fill is recorded on the series (venueFill) and on
+// the market (venueFills) so the page and build.json can say which bar came
+// from where. Only the newest missing date is filled, only when the venue's
+// newest close is dated exactly that day and in the series' currency, and the
+// value is the raw close: a new bar carries adjustment factor 1, and earlier
+// bars are never touched. Each venue source was checked against Yahoo on
+// 5 Sep 2026 (see MARKET_DISCLOSURES).
+const VENUE_CLOSE_SOURCES = Object.freeze({
+  'London-listed': Object.freeze({
+    name: 'London Stock Exchange instrument data (api.londonstockexchange.com)',
+    async latestClose(symbol, signal) {
+      const tidm = String(symbol).replace(/\.L$/, '');
+      const url = `https://api.londonstockexchange.com/api/gw/lse/instruments/alldata/${encodeURIComponent(tidm)}`;
+      const response = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const body = await response.json();
+      const close = Number(body && body.lastclose);
+      const date = String(body && body.lastclosedate || '').slice(0, 10);
+      if (!(close > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('no usable lastclose and lastclosedate');
+      if (String(body.tidm || '').toUpperCase() !== tidm.toUpperCase()) throw new Error(`identity mismatch: ${body.tidm}`);
+      return { date, close, currency: body.currency || null, isin: body.isin || null, url };
+    },
+  }),
+});
+async function fillVenueGap(series, signal, stats = null) {
+  if (!series || !Array.isArray(series.rows) || !series.rows.length) return series;
+  const source = VENUE_CLOSE_SOURCES[series.venue];
+  if (!source) return series;
+  const last = series.rows[series.rows.length - 1];
+  const missing = (series.missingCloseDates || []).filter(date => date > last.date);
+  if (!missing.length) return series;
+  const target = missing[missing.length - 1];
+  if (stats) stats.venueFillRequests = (stats.venueFillRequests || 0) + 1;
+  const note = reason => ({ ...series, venueFill: { filled: false, date: target, source: source.name, reason } });
+  let got;
+  try { got = await source.latestClose(series.symbol, signal); }
+  catch (error) { return note(`venue request failed: ${String(error && error.message || error)}`); }
+  if (got.date !== target) return note(`the venue's newest close is dated ${got.date}, not ${target}`);
+  if (got.currency && series.currency && got.currency !== series.currency) return note(`the venue quotes ${got.currency}, the series ${series.currency}`);
+  const rows = [...series.rows, { date: target, close: got.close }];
+  return { ...series, rows, lastDate: target, venueFill: { filled: true, date: target, close: got.close, source: source.name, url: got.url, isin: got.isin, currency: got.currency } };
+}
+
 // topUp is opt-in: every getMarketFearGreed caller asks for it (the local
 // server, the public build and the research replays that call it); only the
 // lockbox collectors, through getMarketFearGreedResearchHistory, keep the exact
 // single full-history request their frozen capture contracts expect.
 // A cache hit sends nothing and is counted as such.
-function getSeries(symbol, range, signal, topUp = false, stats = null) {
+function getSeries(symbol, range, signal, topUp = false, stats = null, fillGaps = false) {
   const withTopUp = range === 'max' && topUp;
-  const cacheKey = `${symbol}\u0000${range}${withTopUp ? '\u0000topup' : ''}`;
+  const withFill = withTopUp && fillGaps;
+  const cacheKey = `${symbol}\u0000${range}${withTopUp ? '\u0000topup' : ''}${withFill ? '\u0000fill' : ''}`;
   const hit = seriesCache.get(cacheKey);
   if (hit && Date.now() - hit.t < SERIES_TTL_MS) { if (stats) stats.cacheHits++; return hit.p; }
-  const acquire = withTopUp
+  const topped = withTopUp
     ? fetchSeries(symbol, range, signal, stats).then(s => topUpRecentBars(s, signal, stats))
     : fetchSeries(symbol, range, signal, stats);
+  const acquire = withFill ? topped.then(s => fillVenueGap(s, signal, stats)) : topped;
   const p = acquire.then(s => { lastGood.set(cacheKey, s); return s; }, e => {
     seriesCache.delete(cacheKey);
     const g = lastGood.get(cacheKey);
@@ -958,6 +1012,12 @@ function computeMarket(key, m, S, opt) {
       .map(symbol => [symbol, marketSources.get(symbol)])
       .filter(([, series]) => series && series.topUp && series.topUp.appended > 0)
       .map(([symbol, series]) => [symbol, { appended: series.topUp.appended, from: series.topUp.from, to: series.topUp.to }])),
+    // Which of this market's raw series had its newest missing close filled from the listing venue (see fillVenueGap),
+    // and which could not be (with why), so a carried component can be explained either way.
+    venueFills: Object.fromEntries([...new Set(Object.values(sym).flatMap(spec => collectSpecSymbols(spec)))]
+      .map(symbol => [symbol, marketSources.get(symbol)])
+      .filter(([, series]) => series && series.venueFill)
+      .map(([symbol, series]) => [symbol, series.venueFill])),
     ...(expandingSignal ? { expandingSignal } : {}),
     mapping: {
       barPolicy: opt.includeExpandingSignal && [...marketSources.values()].some(series => series && series.completedBeforeLocalDate)
@@ -1014,9 +1074,10 @@ async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
   // per symbol whenever the top-up is on, plus any 429/5xx or host-swap
   // retries; fetchStats counts the requests of this call alone.
   const topUp = !!includeExpandingSignal && opt.topUpRecentBars !== false;
+  const fillGaps = topUp && opt.fillVenueGaps === true;
   const stats = newFetchStats();
   try {
-    const fetchWork = mapLimit(symbols, opt.concurrency, s => getSeries(s, opt.range, ac.signal, topUp, stats).then(v => ({ ok: true, v }), e => ({ ok: false, e: String(e.message || e) })));
+    const fetchWork = mapLimit(symbols, opt.concurrency, s => getSeries(s, opt.range, ac.signal, topUp, stats, fillGaps).then(v => ({ ok: true, v }), e => ({ ok: false, e: String(e.message || e) })));
     const hardDeadline = new Promise((_, reject) => {
       deadline = setTimeout(() => {
         ac.abort(deadlineError);
@@ -1078,6 +1139,11 @@ async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
         description: warmupDescription(Number(opt.strengthWindow ?? opt.window), Number(opt.percentileMinPoints ?? opt.minWindowPoints)),
       },
       components: COMPONENTS,
+      // whether the newest close a venue-listed series lacked on Yahoo was filled from the venue (fillVenueGap); which
+      // series it happened to is on each market (venueFills)
+      venueGapFill: { enabled: fillGaps, venues: Object.keys(VENUE_CLOSE_SOURCES), meaning: fillGaps
+        ? 'the newest close Yahoo listed without a value was taken from the listing venue’s own published close for the venues named; every earlier bar is Yahoo’s'
+        : 'off: every bar is Yahoo’s' },
       ...(includeExpandingSignal ? { expandingSignal: {
         id: PUBLIC_SIGNAL_MODEL_ID,
         version: PUBLIC_SIGNAL_MODEL_VERSION,
@@ -1096,7 +1162,9 @@ async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
       ...stats,
       symbols: symbols.length,
       topUpEnabled: topUp,
-      meaning: 'chart requests sent by this call: one full-history request per symbol, one 3mo top-up per symbol when topUpEnabled, plus retries; cacheHits were served without a request',
+      venueFillEnabled: fillGaps,
+      venueFillRequests: Number(stats.venueFillRequests) || 0,
+      meaning: 'chart requests sent by this call: one full-history request per symbol, one 3mo top-up per symbol when topUpEnabled, plus retries; cacheHits were served without a request; venueFillRequests are requests to a listing venue for a close Yahoo lacked (not Yahoo requests)',
     },
   };
 }
@@ -1116,7 +1184,7 @@ module.exports = {
   getMarketFearGreed, getMarketFearGreedResearchHistory, clearCache,
   LABELS, BANDS, WARMUP, DISPLAY_NAMES, MARKET_DISCLOSURES, venueOf, warmupDescription, newFetchStats,
   compStrength, compMomentum,
-  COMPONENTS, labelOf, pctScores, expandingPctScores, computeMarket, fetchSeries, topUpRecentBars, lagDetailFor,
+  COMPONENTS, labelOf, pctScores, expandingPctScores, computeMarket, fetchSeries, topUpRecentBars, fillVenueGap, VENUE_CLOSE_SOURCES, lagDetailFor,
   hashPublicDecision, hashPublishedScoreHistory, makeExchangeDateFormatter,
   collectSpecSymbols, equalWeightReturnSeries, resolveSeriesSpec, beforeUtcDate, beforeRetrievalLocalDate,
   buildPublicExpandingSignal,

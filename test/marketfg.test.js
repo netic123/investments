@@ -289,6 +289,52 @@ test('Yahoo acquisition retries the independent chart host without changing the 
   }
 });
 
+test('the newest close Yahoo lists without a value is filled from the listing venue only when it is dated exactly that day', async () => {
+  const { fillVenueGap, VENUE_CLOSE_SOURCES } = require('../marketfg');
+  assert.deepEqual(Object.keys(VENUE_CLOSE_SOURCES), ['London-listed']);
+  const originalFetch = global.fetch;
+  const rows = [{ date: '2026-09-02', close: 90.88 }, { date: '2026-09-03', close: 91.1 }];
+  const base = { symbol: 'IHYG.L', venue: 'London-listed', currency: 'EUR', rows, lastDate: '2026-09-03', missingCloseDates: ['2026-08-31', '2026-09-04'] };
+  const lse = body => ({ ok: true, status: 200, json: async () => body });
+  const calls = [];
+  global.fetch = async url => { calls.push(String(url)); return lse({ tidm: 'IHYG', isin: 'IE00B66F4759', currency: 'EUR', lastclose: 91.025, lastclosedate: '2026-09-04T15:35:15.000' }); };
+  try {
+    const filled = await fillVenueGap(base);
+    assert.equal(calls[0], 'https://api.londonstockexchange.com/api/gw/lse/instruments/alldata/IHYG');
+    assert.equal(filled.rows.length, 3);
+    assert.deepEqual(filled.rows[2], { date: '2026-09-04', close: 91.025 });
+    assert.equal(filled.lastDate, '2026-09-04');
+    assert.equal(filled.venueFill.filled, true);
+    assert.equal(filled.venueFill.date, '2026-09-04');
+    assert.equal(filled.venueFill.isin, 'IE00B66F4759');
+    assert.equal(base.rows.length, 2, 'the Yahoo series itself is not mutated');
+    // the venue's newest close is for another day: nothing is filled, and the reason is recorded
+    global.fetch = async () => lse({ tidm: 'IHYG', currency: 'EUR', lastclose: 91.1, lastclosedate: '2026-09-03T15:35:15.000' });
+    const older = await fillVenueGap(base);
+    assert.equal(older.rows.length, 2);
+    assert.match(older.venueFill.reason, /newest close is dated 2026-09-03, not 2026-09-04/);
+    // a currency mismatch is refused
+    global.fetch = async () => lse({ tidm: 'IHYG', currency: 'GBX', lastclose: 9102.5, lastclosedate: '2026-09-04T15:35:15.000' });
+    assert.match((await fillVenueGap(base)).venueFill.reason, /quotes GBX, the series EUR/);
+    // an identity mismatch is refused
+    global.fetch = async () => lse({ tidm: 'IEAC', currency: 'EUR', lastclose: 117.13, lastclosedate: '2026-09-04T15:35:15.000' });
+    assert.match((await fillVenueGap(base)).venueFill.reason, /identity mismatch/);
+    // nothing missing after the last row: no request at all
+    calls.length = 0;
+    global.fetch = async url => { calls.push(String(url)); return lse({}); };
+    const complete = await fillVenueGap({ ...base, missingCloseDates: ['2026-08-31'] });
+    assert.equal(complete.venueFill, undefined);
+    assert.equal(calls.length, 0);
+    // a venue without a source is left alone
+    assert.equal((await fillVenueGap({ ...base, venue: 'Xetra-listed' })).venueFill, undefined);
+    // a failing request leaves the series untouched with the reason
+    global.fetch = async () => { throw new Error('boom'); };
+    assert.match((await fillVenueGap(base)).venueFill.reason, /venue request failed: boom/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test('newer bars from a short-range request top up a trailing full history only when the overlap agrees', async () => {
   const { topUpRecentBars } = require('../marketfg');
   const originalFetch = global.fetch;

@@ -836,6 +836,8 @@ async function main() {
       // say what the whole build sent; the page shows both.
       yahooRequests: (data.marketfg && data.marketfg.fetchStats) ?? null,
       snapshotAttempts: data.snapshotAttempts ?? null,
+      // whether a close Yahoo lacked was filled from the listing venue in this build (marketfg.js fillVenueGap), per market
+      venueFills: Object.fromEntries(Object.entries((data.marketfg && data.marketfg.markets) || {}).map(([key, market]) => [key, market.venueFills || {}])),
       // why each earlier attempt was discarded (its model computation, and its requests, were repeated)
       snapshotRetryReasons: data.snapshotRetryReasons || [],
       yahooRequestsAllAttempts: data.marketfg && data.marketfg.fetchStats

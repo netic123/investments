@@ -412,7 +412,15 @@ HOW IT WORKS
   publishes snapshotAttempts, yahooRequestsAllAttempts and snapshotRetryReasons (132 requests over two attempts
   on 4 Sep 2026, the first discarded for carried-forward components). The research replays in research/ call getMarketFearGreed too and therefore also top up; only the
   lockbox collectors, which call getMarketFearGreedResearchHistory, send the 33 full-history requests alone and
-  never top up, keeping the exact single request their frozen capture contracts expect. A request that fails is
+  never top up, keeping the exact single request their frozen capture contracts expect. Venue gap fill: when
+  Yahoo lists a completed session with no close (a feed gap, seen on 1, 3 and 4 Sep 2026 for the London-, Xetra-
+  and Stockholm-listed ETFs), the public build and the local server take that one close from the listing
+  venue's own published close (marketfg.js fillVenueGap; VENUE_CLOSE_SOURCES names the venue endpoints, each
+  checked against Yahoo to the cent on 5 Sep 2026); only the newest missing date is filled, only when the
+  venue's newest close is dated exactly that day and in the series' currency, every earlier bar stays Yahoo's,
+  and api/marketfg.json records the fill per market (venueFills, with why a fill was not possible) and the
+  setting in model.venueGapFill. The tab says which bar came from where. The setting is off in the module's
+  defaults, so the research replays and the lockbox collectors keep Yahoo-only input. A request that fails is
   retried once on Yahoo's other chart host (query2, or query1); an HTTP 429 or 5xx answer first waits
   Retry-After seconds (default 2 s, at most 10 s) and is allowed one further host swap, so at most three
   attempts per series; a plain 4xx is not retried. The selected hostname for every symbol and full-history
