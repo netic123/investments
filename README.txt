@@ -148,8 +148,10 @@ apart, then reads whatever it serves with a warning), reads the published holdin
 when its bytes match the digest that build.json publishes for it (otherwise nothing is imported that run),
 running scripts/record-holdings-history.js, which merges
 the provenance-bearing receipts of the published holdings.json into data/snapshots.json (legacy rows without
-provenance are kept; a later capture of the same date wins), and commits "Record WAGN holdings history <date>
-[skip ci]" only when a receipt was added or replaced. A local checkout therefore sees those commits; build.json
+provenance are kept; a later capture of the same date wins), then scripts/dalal-13f-history.js --from-published,
+which appends to data/dalal13f-history.json the 13F quarter the published api/dalal.json carries when the file
+lacks it, and commits "Record WAGN holdings history <date> [skip ci]" only when a receipt or a quarter was added
+or replaced. A local checkout therefore sees those commits; build.json
 historyDurability says so. The Pages build is deliberately forced to the approved data/positions.public.json
 watchlist: Constellation Software, Kaspi.kz and Warrior Met Coal, all with entry price set to null. It never
 publishes the gitignored data/positions.local.json or data/portfolio.local.json, even when the build script is
@@ -320,6 +322,17 @@ TABS (top of the page)
     and the page warns that a newer 13F may exist. The page never labels fallback as newly verified. While
     fallback is displayed, the visitor's browser also asks the CORS-enabled official SEC submissions endpoint
     whether a newer accession exists, and says so when that check could not run.
+  - Quarter by quarter since 2012 (under the current 13F table): every 13F Dalal Street has filed
+    (data/dalal13f-history.json, 58 quarters from 31 Mar 2012, built once by scripts/dalal-13f-history.js from
+    EDGAR — the 2012–2013 text-form filings parsed here, the XML filings from 30 Jun 2013 parsed by pabrai.js and
+    checked against each filing's own entry and value totals; values stored in dollars, the thousands of the
+    pre-2023 filings converted; the one amendment replaces its original; one 2016 CUSIP filed with eight
+    characters is left-padded and flagged), the current filing appended by the build when the file lacks it and
+    persisted by the record job (--from-published). Shown as one row per quarter with the share changes since
+    the quarter before as chips (New position / Bought more / Reduced / Sold out, per CUSIP, put and call rows
+    excluded), the newest eight visible and the rest collapsed, then "Positions over time": every security ever
+    listed with its first and last quarter, quarters held, peak shares and current shares. The hint says what a
+    13F cannot show.
   - Independent check — SEC N-PORT (collapsed; its summary line says whether the report is comparable yet or
     which report the first comparison waits for): the fund's own quarterly portfolio report to SEC, held against the saved
     daily file proven to be priced as of the report date (share counts per position, with the matching method

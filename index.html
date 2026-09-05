@@ -316,6 +316,11 @@ footer p{margin:0 0 .5em}
   <div class="sec-head"><h2>Dalal Street (Pabrai’s firm) — 13F filing</h2><span class="note" id="dalalNote">—</span></div>
   <p class="hint" id="dalalHint" style="margin:0 0 10px"></p>
   <div class="tablewrap"><table id="tblDalal"><thead><tr><th>Holding</th><th class="num">Weight</th><th class="num">Shares</th><th id="thDalalChange">Change in quarter</th></tr></thead><tbody></tbody></table></div>
+  <div class="sec-head sub"><h2>Quarter by quarter since 2012</h2><span class="note" id="dalalHistNote">—</span></div>
+  <div id="dalalHist"></div>
+  <p class="hint">Quarter-on-quarter differences in the shares Dalal Street reported to SEC. A 13F lists only reportable long positions in 13(f) securities and may omit any holding under 10,000 shares and $200,000, so an appearance or disappearance can be a reporting change, not a trade; shares are as filed, and a company’s own splits or share-class changes are not adjusted.</p>
+  <details class="more"><summary id="dalalEarlierSummary">Earlier quarters</summary><div id="dalalHistEarlier"></div></details>
+  <details class="more"><summary>Positions over time — every security the 13F has listed</summary><div class="tablewrap"><table id="tblDalalPositions"><thead><tr><th>Security</th><th>First quarter</th><th>Last quarter</th><th class="num">Quarters</th><th class="num">Peak shares</th><th class="num">Now</th></tr></thead><tbody></tbody></table></div></details>
   <details class="more"><summary>Source, checks, and what a 13F leaves out</summary><div class="callout" id="dalalCall"></div></details>
 </section>
 
@@ -1336,6 +1341,37 @@ function renderDalal(D){
     else if(h.prevShares==null) q = h.qChange!=null ? esc(h.qChange) : 'first reported (not in the prior 13F)';
     else q = numeric || '—';
     return `<tr class="${mine.has(h.ticker)?'mine':''}"><td><span class="tick">${esc(h.ticker)}</span> ${esc(h.name)}</td><td class="num">${pct(w,2,false)}</td><td class="num">${fmt(h.shares)}</td><td>${q}</td></tr>`; }).join('');
+  renderDalalHistory(D);
+}
+// Every 13F since the first (dalal.history, from data/dalal13f-history.json with the current filing appended by the
+// build): one row per quarter with the share changes since the quarter before as chips, the newest eight visible and
+// the rest collapsed, then one line per security ever listed. Shares are summed per CUSIP (a filing may split a security
+// over several rows); put and call rows are left out of the share counts.
+function renderDalalHistory(D){
+  const wrap=$('#dalalHist'), earlier=$('#dalalHistEarlier'), note=$('#dalalHistNote'), body=$('#tblDalalPositions tbody'), sum=$('#dalalEarlierSummary'); if(!wrap) return;
+  const Q=Array.isArray(D&&D.history)?[...D.history].filter(q=>q&&q.reportDate&&Array.isArray(q.rows)).sort((a,b)=>a.reportDate.localeCompare(b.reportDate)):[];
+  if(Q.length<2){ wrap.innerHTML='<div class="empty">This snapshot carries no quarterly history.</div>'; note.textContent='—'; earlier.innerHTML=''; body.innerHTML=''; sum.textContent='Earlier quarters'; return; }
+  const tickerByCusip=Object.fromEntries((((CFG.dalalStreet||{}).holdings)||[]).filter(h=>h&&h.cusip).map(h=>[String(h.cusip).toUpperCase(),h.ticker]));
+  const pretty=s=>String(s||'').toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase()).replace(/ (Of|And|De|The) /g,m=>m.toLowerCase()).replace(/\s+(New|Del)$/i,'').replace(/\s+/g,' ').trim();
+  const nameOf=r=> tickerByCusip[r.cusip] || pretty(r.issuer);
+  const byQ=Q.map(q=>{ const m={}; for(const r of q.rows){ if(r.putCall) continue; const p=m[r.cusip]=m[r.cusip]||{cusip:r.cusip,issuer:r.issuer,shares:0,valueUsd:0}; p.shares+=Number(r.shares)||0; p.valueUsd+=Number(r.valueUsd)||0; } return {q,m}; });
+  const rows=[];
+  for(let i=byQ.length-1;i>=1;i--){
+    const {q,m}=byQ[i], prev=byQ[i-1].m, keys=[...new Set([...Object.keys(m),...Object.keys(prev)])];
+    const items=keys.map(c=>{ const now=m[c]?m[c].shares:0, before=prev[c]?prev[c].shares:0, d=now-before; if(!d) return null;
+      const kind=!prev[c]?'New position':!m[c]?'Sold out':d>0?'Bought more':'Reduced'; const ref=m[c]||prev[c]; const perShare=ref.shares?ref.valueUsd/ref.shares:0;
+      return {c,d,kind,now,before,name:nameOf(ref),usd:Math.abs(d)*perShare}; }).filter(Boolean).sort((a,b)=>b.usd-a.usd);
+    const chips=items.map(it=>`<span class="tchip ${it.d>0?'buy':'sell'}" title="${fmt(it.before)} → ${fmt(it.now)} shares${it.usd?', ≈ $'+fmt(it.usd)+' at the filing’s value':''} · CUSIP ${esc(it.c)}"><span class="k">${it.kind}</span>${esc(it.name)}<span class="n">${it.d>0?'+':''}${fmt(it.d)}</span></span>`);
+    rows.push(`<li><span class="d">${fmtDate(q.reportDate)}<span class="s">filed ${fmtDate(q.filed)}${q.amended?' (amendment)':''} · ${fmt(Object.keys(m).length)} position${Object.keys(m).length===1?'':'s'} · $${fmt(q.totalValueUsd/1e6,1)}M</span></span><span class="acts">${items.length?chips.join(''):'<span class="muted">no change in any position</span>'}</span></li>`);
+  }
+  const RECENT=8;
+  wrap.innerHTML=`<ul class="trades">${rows.slice(0,RECENT).join('')}</ul>`;
+  earlier.innerHTML=rows.length>RECENT?`<ul class="trades">${rows.slice(RECENT).join('')}</ul>`:'<div class="empty">Nothing earlier.</div>';
+  sum.textContent=rows.length>RECENT?`Earlier quarters — ${fmtDate(Q[1].reportDate)} to ${fmtDate(byQ[byQ.length-1-RECENT].q.reportDate)}, ${fmt(rows.length-RECENT)} more`:'Earlier quarters';
+  note.textContent=`${fmt(Q.length)} filings · ${fmtDate(Q[0].reportDate)} → ${fmtDate(Q[Q.length-1].reportDate)}`;
+  const pos={};
+  byQ.forEach(({q,m},i)=>{ for(const [c,r] of Object.entries(m)){ const p=pos[c]=pos[c]||{cusip:c,name:nameOf(r),first:q.reportDate,last:null,count:0,peak:0,peakDate:null,now:0}; p.last=q.reportDate; p.count++; if(r.shares>p.peak){ p.peak=r.shares; p.peakDate=q.reportDate; } p.now=i===byQ.length-1?r.shares:0; } });
+  body.innerHTML=Object.values(pos).sort((a,b)=>b.last.localeCompare(a.last)||b.peak-a.peak).map(p=>`<tr class="${p.now?'':'cashrow'}"><td>${esc(p.name)}<div class="s">CUSIP ${esc(p.cusip)}</div></td><td>${fmtDate(p.first)}</td><td>${fmtDate(p.last)}</td><td class="num">${fmt(p.count)}</td><td class="num">${fmt(p.peak)} <span class="muted">${fmtDate(p.peakDate)}</span></td><td class="num">${p.now?fmt(p.now):'—'}</td></tr>`).join('');
 }
 // The fund's own Form N-PORT held against the saved daily file priced as of the same date. Says exactly what
 // was compared, or why nothing could be, and never turns "SEC unavailable" into a statement about the fund.
