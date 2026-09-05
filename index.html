@@ -47,6 +47,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
 #status{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right}
 #status.err{color:var(--neg)}
 #status.warn{color:var(--warn)}
+#btnRefresh{min-height:28px;font-size:10px;padding:4px 10px}
 
 section{padding-top:38px}
 .sec-head{border-top:1px solid var(--rule-strong);padding-top:14px;margin-bottom:15px;display:flex;align-items:center;column-gap:14px;row-gap:9px;flex-wrap:wrap}
@@ -729,6 +730,16 @@ function sharedWarnings(){
   if(SNAPSHOT.codeBuild&&B.commit&&SNAPSHOT.codeBuild!==B.commit) out.push({level:'warn',text:`this page’s code is from build ${SNAPSHOT.codeBuild.slice(0,7)} while its data is from build ${String(B.commit).slice(0,7)}: the CDN serves the page and the JSON files separately, and it may keep either for up to 10 min. Reload in a few minutes`});
   return out;
 }
+// What the visible tab's figures are as of: the holdings file's proven pricing date on the Pabrai tab, the market's last scored
+// bar on a Fear & Greed tab; '' when the snapshot cannot say.
+function dataAsOf(onPabrai){
+  if(!SNAPSHOT||!SNAPSHOT.data) return '';
+  if(onPabrai){ const H=SNAPSHOT.data.holdings; if(!H||!H.latest) return ''; const c=holdingsNavCheck(H,SNAPSHOT.data.nav||null); return c.matched ? 'data as of the '+fmtDate(c.navDate)+' close' : 'fund file dated '+fmtDate(H.latest.date)+', pricing date not asserted'; }
+  const S=typeof FGS!=='undefined'&&FGS[document.body.dataset.tab], n=S&&S.norm&&!S.norm.error&&S.norm.stats&&S.norm.stats[0]&&S.norm.stats[0][1];
+  return n&&n.date ? 'score as of the '+fmtDate(n.date)+' close' : '';
+}
+// The build time, short when it is today in the visitor's zone (the tooltip and the About line carry the full stamp).
+const whenShort=iso=>{ const d=iso?new Date(iso):null; if(!d||isNaN(d)) return '—'; const t=new Date(); return d.toDateString()===t.toDateString() ? fmtInstant(d,{hour:'2-digit',minute:'2-digit'}) : whenFull(iso); };
 function renderStatus(extra){
   const st=$('#status'), onPabrai=document.body.dataset.tab==='pabrai';
   const shared=sharedWarnings(), scoped=SNAPSHOT ? (onPabrai?SNAPSHOT.pabraiErrs:SNAPSHOT.marketErrs) : [];
@@ -738,7 +749,10 @@ function renderStatus(extra){
   // the copy this page holds keeps ageing after it was fetched (the CDN may or may not have refreshed since)
   const cdn=SNAPSHOT&&SNAPSHOT.cdnAge!=null ? ' · CDN copy '+Math.round(SNAPSHOT.cdnAge+(Date.now()-(SNAPSHOT.cdnAgeAt||Date.now()))/1000)+' s old' : '';
   const checked=LAST_CHECK.mode&&LAST_CHECK.at ? ' · checked '+LAST_CHECK.at : '';
-  st.textContent = (STATIC_BUILD ? 'snapshot built '+built+cdn+' · page loaded '+PAGE_LOADED_AT+checked+LAST_CHECK.note : 'updated '+(LAST_UPDATED_AT||PAGE_LOADED_AT)+LAST_CHECK.note)+(errs.length?' — '+errs.join(' · '):'')+(extra||'');
+  // the full record stays in the tooltip; the line itself says what the figures are as of and when they were built
+  st.title = (STATIC_BUILD ? 'snapshot built '+built+cdn+' · page loaded '+PAGE_LOADED_AT+checked : 'updated '+(LAST_UPDATED_AT||PAGE_LOADED_AT))+LAST_CHECK.note;
+  const asOf=dataAsOf(onPabrai), shortBuilt=B&&B.generatedAt ? whenShort(B.generatedAt)+(ageStr(B.generatedAt)?' ('+ageStr(B.generatedAt)+')':'') : 'unknown time';
+  st.textContent = (STATIC_BUILD ? (asOf?asOf+' · ':'')+'built '+shortBuilt : 'updated '+(LAST_UPDATED_AT||PAGE_LOADED_AT))+LAST_CHECK.note+(errs.length?' — '+errs.join(' · '):'')+(extra||'');
   st.className = scoped.length||shared.some(w=>w.level==='err') ? 'err' : shared.length||LAST_CHECK.failed ? 'warn' : '';
   STATUS_RENDER=()=>renderStatus(extra);
 }
