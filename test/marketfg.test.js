@@ -956,7 +956,8 @@ test('series carry a proper instrument name and type, Yahoo\'s own name alongsid
   assert.match(MARKET_DISCLOSURES.crypto.verified, /IEF, HYG and LQD were among the 23 series .* and checked again on 4 Sep 2026/);
   assert.match(MARKET_DISCLOSURES.crypto.verified, /on 5 Sep 2026 their identity and every UTC daily close from 20 Aug to 4 Sep 2026 were checked against CoinMarketCap/);
   assert.match(MARKET_DISCLOSURES.sweden.verified, /checked again on 5 Sep 2026: .* against Nasdaq’s own index history \(OMXSBGI, to the cent\), Nasdaq Stockholm’s instrument data and Avanza \(the three XACT ETFs, to the cent\) and Carnegie Fonder’s published NAVs/);
-  assert.match(MARKET_DISCLOSURES.europe.verified, /checked again on 5 Sep 2026: .* against Deutsche Börse’s Xetra price history \(SXRQ\.DE, EXSE\.DE and EXSA\.DE, exact at three decimals\), STOXX Ltd’s own series/);
+  // the three Xetra ETFs could only be checked through 3 Sep: Yahoo listed their 4 Sep bar without a close, and no Xetra venue source exists
+  assert.match(MARKET_DISCLOSURES.europe.verified, /checked again on 5 Sep 2026: .* against Deutsche Börse’s Xetra price history \(SXRQ\.DE, EXSE\.DE and EXSA\.DE, exact at three decimals through 3 Sep 2026: Yahoo listed their 4 Sep bar without a close when checked, and no Xetra venue source is configured\), STOXX Ltd’s own series/);
   for (const key of ['sweden', 'europe']) assert.doesNotMatch(MARKET_DISCLOSURES[key].verified, /4 Sep 2026:/, key + ' has no US-listed series');
   assert.doesNotMatch(Object.values(MARKET_DISCLOSURES).map(d => d.verified).join('\n'), /have not had it|no later check|no second-source check/);
   assert.match(MARKET_DISCLOSURES.ustech.note, /after the retrospective rule searches, the replication test, the diagnostic battery and the Europe lockbox activation, none of which covers it/);

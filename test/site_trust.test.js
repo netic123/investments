@@ -48,11 +48,11 @@ test('the page labels snapshot data, times and changes truthfully', () => {
   assert.match(html, /const errs=\[\.\.\.shared\.map\(w=>w\.text\),\.\.\.scoped\];/);
   assert.match(html, /older than the \$\{th\.hours\} h expected\$\{window\}/);
   // the window clause is only claimed when build.json publishes one
-  assert.match(html, /const window=th\.window\?\(th\.inWindow\?' while the weekday schedule is active':' outside the weekday schedule'\):'';/);
+  assert.match(html, /const window=th\.window\?\(th\.inWindow\?' while the daytime weekday schedule is active':' outside the daytime weekday schedule'\):'';/);
   // the page can only see what the CDN served it, and it must not claim schedules are the only trigger
   assert.match(html, /no newer build has been served to this page since/);
   assert.doesNotMatch(html, /no build has published since/);
-  assert.match(html, /Nothing on this page can start a build; a new snapshot appears after a push, after a requested build, or when GitHub starts one of the scheduled slots/);
+  assert.match(html, /Nothing a visitor can do on this page starts a build \(the owner’s Update button is the one exception\); a new snapshot appears after a push, after a requested build, or when GitHub starts one of the scheduled slots/);
   assert.doesNotMatch(html, /builds happen only when GitHub starts a scheduled run/);
   // the run count is a lower bound when every listed run falls inside the window (only 20 are read)
   assert.match(html, /BUILD_RUNS_24H=\{n:started24h,atLeast:started24h===runs\.length\}/);
@@ -446,7 +446,7 @@ test('the page shows its provenance and reads the build history from GitHub only
   assert.match(disclosure, /data\.sec\.gov \(SEC’s EDGAR submissions index\), on a page load and, at most once an hour, on a re-check that loads a newer snapshot, while the published snapshot carries the manually verified 13F fallback — whichever tab you have open/);
   // the owner's token and interval are the exception to "nothing you type is sent"
   assert.match(disclosure, /Nothing you type on this page is sent anywhere, except the owner’s token and rebuild interval, which the live update sends to api\.github\.com/);
-  assert.match(disclosure, /automatic rebuilds, by itself on load and on the 10-minute re-check/);
+  assert.match(disclosure, /automatic rebuilds, by itself on load, when the tab becomes visible again, and on the 10-minute re-check/);
   // the Dates note matches renderDates (an entry stays through day +3)
   assert.match(html, /a configured entry stays listed until three days after its date; a filed shareholder report stays for 45 days after its filing date, and a due date appears up to 120 days ahead/);
   assert.match(html, /if\(days<-3\) return null;/);
@@ -549,7 +549,9 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   assert.match(explain, /an open data source for Europe, hence the own computation/);
   // plain-language explanation first, the exact rules and the warm-up quoted from model.warmup, no learner "below"
   assert.match(explain, /Each of the six indicators listed below is turned into a rank from 0 to 100 against all of its own past values/);
-  assert.match(explain, /\(a rank starts only once 126 past values exist\)/);
+  // the 126th finite value is the first one ranked (marketfg.js expandingPctScores: n < minPts ? null), so 125 earlier values suffice
+  assert.match(explain, /\(a rank starts with the 126th value, once 125 earlier values exist\)/);
+  assert.match(explain, /Scoring starts at the 126th valid raw value\./);
   assert.match(explain, /on a shorter window \(from 126 observations\) until 252 exist/);
   assert.match(explain, /Warm-up: strength is computed from the 126th benchmark observation onward \(the published rule\)\./);
   assert.match(explain, /A separate research learner is computed and published in api\/marketfg\.json only; it is not shown on this page\./);

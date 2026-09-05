@@ -148,7 +148,7 @@ function venueOf(symbol) {
 const CHECK_23 = 'among the 23 series whose identity, freshness and gaps were checked on 24 Aug 2026 (20 of the 23 closes verified to the cent against a second source)';
 // 4 Sep 2026: the ten US-listed series (SPY, XLK, ACWI, IEF, HYG, LQD, IWM, RSPT, ^VIX, ^VXN) were checked again by
 // hand: the name and every close from 20 Aug to 3 Sep 2026 against Nasdaq's historical table (the eight ETFs) or
-// Cboe's published daily history (the two indices), 111 closes in all, and Yahoo's dividend adjustment of IEF, HYG
+// Cboe's published daily history (the two indices), every close of the 11 sessions in that span, and Yahoo's dividend adjustment of IEF, HYG
 // and LQD for their 1 Sep 2026 ex-dates against the amounts and the prior closes. The sixteen European and Swedish
 // series and the seven crypto pairs were not part of it.
 // 5 Sep 2026: the sixteen European and Swedish series and the seven crypto
@@ -176,11 +176,11 @@ const MARKET_DISCLOSURES = Object.freeze({
   ustech: Object.freeze({
     benchmarkType: 'ETF total-return proxy (XLK, dividend-adjusted closes); XLK is the S&P 500 technology sector, not QQQ or the Nasdaq-100',
     verified: `XLK, ^VXN and RSPT were added on 27 Aug 2026, after the 24 Aug 2026 check, and IEF, HYG and LQD were ${CHECK_23}; all six were ${CHECK_US}`,
-    note: 'US Tech was added on 27 Aug 2026, after the retrospective rule searches, the replication test, the diagnostic battery and the Europe lockbox activation, none of which covers it; the only research/ records that include it are FG-X2-FITTED-V1 (28 Aug 2026), a deliberately overfit fitted lookup that its own document calls neither a strategy nor evidence of predictive value, and the PLS1 pre-registration draft, which is not activated. The volatility input is Nasdaq-100 implied volatility (^VXN) applied to a sector ETF, and the bond/credit inputs are general US proxies',
+    note: 'US Tech was added on 27 Aug 2026, after the retrospective rule searches, the replication test, the diagnostic battery and the Europe lockbox activation, none of which covers it; the research/ records that mention it are FG-X2-FITTED-V1 (28 Aug 2026), a deliberately overfit fitted lookup that its own document calls neither a strategy nor evidence of predictive value; the expanding-binary protocol (28 Aug 2026), whose US Tech decision is published as expandingSignal for auditing only; and the PLS1 pre-registration draft, which is not activated. The volatility input is Nasdaq-100 implied volatility (^VXN) applied to a sector ETF, and the bond/credit inputs are general US proxies',
   }),
   europe: Object.freeze({
     benchmarkType: 'price index (STOXX Europe 600, dividends excluded), unlike Sweden\'s gross total return benchmark',
-    verified: `every series of this market was ${CHECK_23}; ${CHECK_EU_DATE} against Deutsche Börse’s Xetra price history (SXRQ.DE, EXSE.DE and EXSA.DE, exact at three decimals), STOXX Ltd’s own series (^STOXX, to the cent) and the London Stock Exchange with FT (IHYG.L and IEAC.L, to the cent)`,
+    verified: `every series of this market was ${CHECK_23}; ${CHECK_EU_DATE} against Deutsche Börse’s Xetra price history (SXRQ.DE, EXSE.DE and EXSA.DE, exact at three decimals through 3 Sep 2026: Yahoo listed their 4 Sep bar without a close when checked, and no Xetra venue source is configured), STOXX Ltd’s own series (^STOXX, to the cent) and the London Stock Exchange with FT (IHYG.L and IEAC.L, to the cent)`,
     note: 'every ex-dividend drop lowers the price index, so momentum, strength and safe-haven read lower than they would on a total-return benchmark; European dividends cluster in spring; realised volatility is used because no matching implied-volatility series is configured',
   }),
   global: Object.freeze({
@@ -1175,11 +1175,11 @@ async function getMarketFearGreedWithMode(cfg, includeExpandingSignal) {
       bandsMeaning: opt.percentileMode === 'expanding' ? BANDS_MEANING : 'legacy v2: the score is rounded to an integer and classified on integer bands',
       // The history is not a record of what this page showed: every point is
       // recomputed from the provider's current full response at each build.
-      // publishedSince is the repository's first commit (the dashboard went up
-      // that week); scoringSince is the commit that adopted this expanding
+      // publishedSince is the site's first Pages deployment (24 Aug 2026, 20:17 UTC;
+      // the repository's first commit was 23 Aug); scoringSince is the commit that adopted this expanding
       // percentile definition. Both are constants: a build cannot read them
       // from git, because the published artefact carries no repository.
-      publishedSince: '2026-08-23',
+      publishedSince: '2026-08-24',
       scoringSince: opt.percentileMode === 'expanding' ? '2026-08-30' : null,
       historyNote: 'every point is recomputed by the current model from the full history the provider returns at each build; no point is a score this page displayed on that date',
       // what the code needs before a market's first composite row (see WARMUP); each market's firstScoredDate says where that fell

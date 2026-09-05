@@ -45,7 +45,7 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 // the window below is the daytime series, so the 3 h expectation is not raised at night, when GitHub's hit rate is unmeasured;
 // see .github/workflows/pages.yml) and once a day at 09:20 UTC, but GitHub
 // starts scheduled runs late and skips most slots, so the snapshot's age is
-// the only honest freshness statement. While the weekday schedule is active
+// the only honest freshness statement. While the daytime weekday schedule is active
 // (SCHEDULE_WINDOW_UTC) a snapshot older than SNAPSHOT_STALE_AFTER_HOURS means
 // no slot since has run; outside that window (weekends and nights, when only
 // the daily slot exists) the threshold is SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE,
@@ -60,7 +60,7 @@ const SCHEDULE_WINDOW_UTC = Object.freeze({ days: 'Mon-Fri', from: '05:05', to: 
 // not been captured when the snapshot is older.
 const HOLDINGS_FILE_EXPECTED_BY_UTC = '00:30';
 // A dated observation of how GitHub honours the schedules; keep it literal.
-const SCHEDULE_NOTE = 'GitHub starts scheduled runs late and skips most slots: on Thu 3 Sep 2026 it started 7 of the 36 half-hourly weekday slots then configured, and on Fri 4 Sep 2026 6 of the first 34 by 21:30 UTC; the weekday schedule was doubled to 72 slots on 4 Sep 2026 to raise the number of attempts, and on 5 Sep 2026 a night series (00:07-04:52 UTC, Tue-Sat) and a 12:50 UTC weekend slot were added because no slot had fallen in the five hours after the fund’s 00:02 UTC file';
+const SCHEDULE_NOTE = 'GitHub starts scheduled runs late and skips most slots: on Thu 3 Sep 2026 it started 7 of the 36 half-hourly weekday slots then configured, and on Fri 4 Sep 2026 6 of the first 33 by 21:30 UTC; the weekday schedule was doubled to 72 slots on 4 Sep 2026 to raise the number of attempts, and on 5 Sep 2026 a night series (00:07-04:52 UTC, Tue-Sat) and a 12:50 UTC weekend slot were added because no slot had fallen in the five hours after the fund’s 00:02 UTC file';
 const WORKFLOW_PATH = path.join(ROOT, '.github', 'workflows', 'pages.yml');
 const LOCAL_MODE_MARKER = '<meta name="investments-mode" content="local">';
 const STATIC_MODE_MARKER = '<meta name="investments-mode" content="static">';
@@ -855,7 +855,7 @@ async function main() {
         ? (data.navReconciliation.mode === 'exact'
           ? `holdings NetAssets and SharesOutstanding reconcile to the official NAV receipt dated ${data.navReconciliation.navDate}`
           : data.navReconciliation.unitChange
-            ? `holdings NetAssets per unit reconcile to the official NAV dated ${data.navReconciliation.navDate}; ${data.navReconciliation.unitChange} units were created/redeemed after that NAV file`
+            ? `holdings NetAssets per unit reconcile to the official NAV dated ${data.navReconciliation.navDate}; the file carries ${Math.abs(data.navReconciliation.unitChange)} ${data.navReconciliation.unitChange > 0 ? 'more' : 'fewer'} units than the NAV file of that date (a ${data.navReconciliation.unitChange > 0 ? 'creation' : 'redemption'} booked after that NAV was struck)`
             : `holdings NetAssets per unit reconcile to the official NAV dated ${data.navReconciliation.navDate}${data.navReconciliation.navFileShares == null ? ' (the NAV file carried no unit count)' : ''}`)
         : `pricing date not asserted: ${data.navReconciliation.reason}`,
       navReconciliationMode: data.navReconciliation.mode,

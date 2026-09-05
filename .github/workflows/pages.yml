@@ -22,7 +22,7 @@ name: Deploy GitHub Pages
         default: ''
   schedule:
     # WAGN's holdings file is normally published just after 00:00 UTC (dated
-    # the next weekday; observed at about 00:02 UTC on 1-4 Sep 2026) and the
+    # the next NYSE trading day; observed at about 00:02 UTC on 1-5 Sep 2026) and the
     # matching NAV file around 08:40 UTC. The slots below ask GitHub for a build
     # every 15 minutes on weekdays (:05, :20, :35 and :50 past each hour from
     # 05:05 to 22:50 UTC) and once a day at 09:20 UTC (Crypto trades on
@@ -64,8 +64,8 @@ jobs:
   build:
     name: Build public snapshot
     runs-on: ubuntu-latest
-    # Observed over the 27 runs of 2-4 Sep 2026: the test step takes 3 to 4.5
-    # minutes (183-261 s); the build job takes 31-61 s without the suite and
+    # Observed over the 40 runs of 2-4 Sep 2026: the test step takes 3 to 4.5
+    # minutes (183-261 s); the build job takes 31-68 s without the suite and
     # 224-317 s with it. The snapshot step's retry budget (scripts/build-pages.js
     # captureSnapshot) is up to 3 attempts with a 120 s timeout per endpoint
     # fetch plus waits of 20 s and 40 s, so a tested build on a slow upstream
@@ -253,7 +253,7 @@ jobs:
               break
             fi
             if [ "$attempt" = 10 ]; then
-              echo "::warning::the CDN still serves build ${served:-unknown}, not $EXPECTED_COMMIT, after 5 minutes; importing the receipts it serves (they carry their own provenance)"
+              echo "::warning::the CDN still serves build ${served:-unknown}, not $EXPECTED_COMMIT, after 5 minutes; reading the receipts it serves; they are imported only if their digest matches what this build published"
             else
               sleep 30
             fi

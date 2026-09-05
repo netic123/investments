@@ -23,7 +23,7 @@ between 28 Aug and 1 Sep 2026 the then single daily run started 4.9 to 11.6 hour
 Thu 3 Sep 2026 GitHub started 7 of the 36 half-hourly slots then configured (at 09:51, 13:36, 13:54, 14:35, 18:05, 21:02 and
 23:17 UTC); on Fri 4 Sep 2026 none of the first 8 slots (05:20 to 08:50 UTC) had started by 08:57 UTC, so the
 site still showed the 3 Sep holdings file although the fund had published the 4 Sep file at about 00:02 UTC; by
-21:30 UTC that day 6 of the first 34 slots had run. On Sat 5 Sep 2026 the 00:23 UTC build fetched the fund's new
+21:30 UTC that day 6 of the first 33 slots had run. On Sat 5 Sep 2026 the 00:23 UTC build fetched the fund's new
 file but refused it as future-dated: it was dated Tue 8 Sep, the NYSE trading day after Labor Day, and the rule
 then in force allowed only the next weekday (Mon 7 Sep), so the site showed the 4 Sep file (Thursday's close)
 until the rule was corrected later that day.
@@ -43,13 +43,15 @@ read, the suite runs. api/build.json records testsSkipped from what the test ste
 trigger) and, when it was skipped, testsVerifiedBy: the URL of the run that proved the commit. The About line
 shows both.
 
-A build without the suite takes about a minute of build and deploy runner time (Jobs API, all 27 runs of
-2–4 Sep 2026: build job 31–61 s, deploy 8–63 s; the build job takes 224–317 s with the suite, of which the
+A build without the suite takes about a minute of build and deploy runner time (Jobs API, the 40 runs of
+2–4 Sep 2026: build job 31–68 s, deploy 8–63 s; the build job takes 224–317 s with the suite, of which the
 test step is 183–261 s), free for a public repository, plus
 whatever queue GitHub adds; the build job times out after 15 minutes. Each build fetches: the five fund files;
 a full history (period1=0) plus a 3-month top-up request for each of the 33 Yahoo series behind the six
 Fear & Greed tabs, 66 chart requests, counted in api/build.json yahooRequests (requests, fullHistoryRequests,
-topUpRequests, retries, http429, http5xx, byHost, cacheHits); six Yahoo quotes (the three watchlist tickers,
+topUpRequests, retries, http429, http5xx, byHost, cacheHits; venueFillRequests counts the requests sent to a
+listing venue — the LSE or Nasdaq Stockholm — for a close Yahoo listed without a value, nine on the 5 Sep 2026
+15:22 UTC build); six Yahoo quotes (the three watchlist tickers,
 the two FX pairs and WAGN itself); the 13F (five requests to SEC: the submissions index, then primary_doc.xml
 and infotable.xml for each of the two quarters); and the N-PORT (the submissions index plus one primary
 document per trust filing opened until one names the fund's series — eight on 2 Sep 2026, at most 30). When a
@@ -74,7 +76,8 @@ verified 13F fallback — whichever tab the visitor
 opened, because the Pabrai section is rendered either way — to check whether a newer filing exists; and
 api.github.com only when the visitor presses "Show build history" (an unauthenticated read of the last 20 runs)
 or when the owner's live update runs with a stored token, which happens on the Update button and, with
-automatic rebuilds switched on, by itself on load and on the 10-minute re-check. No credential and nothing the
+automatic rebuilds switched on, by itself on load, when the tab becomes visible again, and on the 10-minute
+re-check. No credential and nothing the
 visitor did on the page are sent to GitHub, which sees the request as any web server does: the IP address, the
 browser's user agent and that it came from netic123.github.io. Nothing typed on the page is sent anywhere
 except the owner's token and rebuild interval, which go to api.github.com (the interval is also published in
@@ -89,10 +92,10 @@ Every public figure is as of the build time in the status line — "snapshot bui
 N s old · page loaded <time>[ · checked <time>]", in the visitor's local time with the zone abbreviation that
 applied at each instant — and changes only on the next successful deployment. Three warnings come from the
 snapshot alone and show on every tab, and a fourth from the page's own build stamp. Age: api/build.json publishes snapshotStaleAfterHours = 3, applied while
-the weekday schedule is active (scheduleWindowUtc: Mon–Fri 05:05–23:20 UTC), and
+the daytime weekday schedule is active (scheduleWindowUtc: Mon–Fri 05:05–23:20 UTC), and
 snapshotStaleAfterHoursOffSchedule = 30 for weekends and nights; past the applicable threshold the status line
-says "this snapshot is N h old, older than the T h expected [while the weekday schedule is active | outside the
-weekday schedule]: no newer build has been served to this page since <time> (the CDN can keep the previous
+says "this snapshot is N h old, older than the T h expected [while the daytime weekday schedule is active | outside the
+daytime weekday schedule]: no newer build has been served to this page since <time> (the CDN can keep the previous
 build.json for up to 10 min), so every figure on this page is as of that build. Nothing on this page can start a
 build; a new snapshot appears after a push, after a requested build, or when GitHub starts one of the scheduled
 slots, and it skips most of them" and, once Build history has been read, how many runs GitHub started in the
@@ -117,8 +120,8 @@ the Pages CDN, which keeps each file for up to 10 minutes (Cache-Control max-age
 strings; the status line therefore shows the served copy's age from the Age header ("CDN copy N s old",
 advancing while the page holds it) and reports one of "newer snapshot loaded", "no newer snapshot was served
 (the CDN may hold a copy for up to 10 min)", "same build re-loaded", "first snapshot loaded", "the CDN served
-an older snapshot (built …) than the one already loaded; kept the loaded one" or "the CDN served files from
-two different builds; kept the consistent set already loaded". Consistency is checked, not assumed: the page
+an older snapshot (built …) than the one already loaded; kept the loaded one" or "the served files do not all match
+one build.json (normally the CDN still serving an earlier build's file); kept the consistent set already loaded". Consistency is checked, not assumed: the page
 hashes every api/*.json it loads (SHA-256 of the bytes) against build.json's files map, re-fetches build.json
 and the disagreeing files once, keeps a previously loaded consistent set over a mixed one, never replaces the
 loaded set with an older build.json, and on a first load that is still mixed warns "a file's bytes do not match the
@@ -134,7 +137,9 @@ receipts than the previous build.json's carriedSnapshotCount unless INVESTMENTS_
 is set by hand. After a push build and after the 09:20 slot (when GitHub runs it) the workflow's record job —
 the only job in pages.yml with contents: write, though the lockbox workflow has its own writer — waits for the
 CDN to serve the new build (up to ten reads half a minute
-apart, then imports whatever it serves with a warning), runs scripts/record-holdings-history.js, which merges
+apart, then reads whatever it serves with a warning), reads the published holdings.json and imports it only
+when its bytes match the digest that build.json publishes for it (otherwise nothing is imported that run),
+running scripts/record-holdings-history.js, which merges
 the provenance-bearing receipts of the published holdings.json into data/snapshots.json (legacy rows without
 provenance are kept; a later capture of the same date wins), and commits "Record WAGN holdings history <date>
 [skip ci]" only when a receipt was added or replaced. A local checkout therefore sees those commits; build.json
@@ -198,8 +203,10 @@ https://netic123.github.io (all Pages sites of this account — today only this 
 with page access can read the token; the page's Content-Security-Policy stops scripts injected into this page,
 not other same-origin pages. Anyone who can use that browser profile can use the token for the same. The
 permission does more than start builds: it also allows cancelling, re-running and approving this repository's
-workflow runs and deleting its runs, logs, artifacts and caches — everything under Actions there, nothing
-outside it; it cannot read or change code. The signed attestations survive a deleted run. The dispatch reason
+workflow runs and deleting its runs, logs, artifacts and caches — everything under Actions there. The token
+itself cannot read or change code, but starting or re-running a workflow starts whatever that workflow does:
+the builds publish the public page, and the lockbox and holdings-history jobs commit their own output to main.
+The signed attestations survive a deleted run. The dispatch reason
 is public text: api/build.json records the trigger ("workflow_dispatch", "schedule" or "push"), the reason
 (shown on the About line, cut to 80 characters) and whether the tests were skipped.
 Auto mode: with a token stored, ⚙ offers "Automatically rebuild while this page is open and the snapshot is
@@ -313,12 +320,14 @@ TABS (top of the page)
             was not checked about its raw series, dated; a note) and its first scored date. Europe's benchmark
             ^STOXX is a price index (dividends excluded) unlike Sweden's gross total return ^OMXSBGI, and both tabs
             say so. US Tech means XLK, not QQQ or the Nasdaq-100; it was added on 27 Aug 2026 (commit 23429e4), after
-            every research study and after the 24 Aug 2026 series check, and its tab says that no study covers it.
+            every research study and after the 24 Aug 2026 series check, and its tab says that no study covers it (three
+            research records mention it without studying it: the fitted lookup, the expanding-history learner and
+            the unactivated PLS1 draft).
             The expanding-history BUY/SELL research signal is still computed and published in api/marketfg.json, but
             the public page does not show it (the card appears only in the local app or with #owner in the address,
             remembered for that browser tab session): it has passed no prospective validation, and a coloured
             BUY/SELL reads as a recommendation. Each Fear & Greed tab's own footer block attributes the research honestly
-            (US Tech prints its own variant, naming the one fitted study that includes it): the owner's
+            (US Tech prints its own variant, naming the three research records that mention it): the owner's
             back-tests of the earlier v1 and v2 scores (trailing-window percentiles) found no reliable timing rule —
             seven kinds of rule on those scores, their components and benchmark prices across Crypto, Sweden, USA, Europe
             and Global rejected after costs; one Europe
@@ -357,7 +366,8 @@ HOW IT WORKS
   "vs pro-rata" (a column in the full change log, a tooltip on the figures elsewhere) restates each trade
   relative to deploying the flow in proportion to the previous portfolio — context, not the headline. Files saved before 25 Aug 2026 (20 and 24 Aug) report no unit count;
   a count for them is implied from NetAssets ÷ the NAV of the previous rate date, accepted only when the
-  quotient is within 0.01 of a whole number, and labelled "implied" wherever it appears (the Fund assets KPI
+  quotient is within twice the cent-rounding bound of a whole number (0.005 ÷ NAV, about 0.0006 units at a $16
+  NAV), and labelled "implied" wherever it appears (the Fund assets KPI
   splits the change since the first saved file into NAV change × unit flow on that basis); when no count can be
   implied the page says the units are unknown and does not split. In the full portfolio the "Δ shares" columns
   are plain share differences; "∝ unit flow" marks a raw move that was proportional to a flow; "Currency
@@ -373,8 +383,9 @@ HOW IT WORKS
   proofs: "exact" (the NAV file reports the same unit count, or none, and NetAssets equals rounded NAV × units
   within one hundred-thousandth of NetAssets, or one dollar, whichever is larger — about $3,000 at the fund's
   current size, though every file observed so far matches to the cent) or "per-share" (NetAssets / units rounds to the NAV within half a cent although
-  the unit count differs, because a creation or redemption settled after the NAV file; the page then says how
-  many units, or that the NAV file carried no unit count). The NAV date must be 0–4 calendar days before the
+  the unit count differs, because a creation or redemption was booked after that NAV was struck — the holdings
+  file, published hours before the NAV file, already carries the new count; the page then says how many units,
+  or that the NAV file carried no unit count). The NAV date must be 0–4 calendar days before the
   file date. Otherwise the pricing date is not asserted and the page prints why. The match proves the pricing
   date, not an asset total: the file's NetAssets is the rounded NAV × units, and the page shows the NAV file's
   own net assets next to it (nav.netAssets, from DailyNAV) with the difference when both files carry the same
@@ -434,8 +445,8 @@ HOW IT WORKS
   on 4 Sep 2026, the first discarded for carried-forward components). The research replays in research/ call getMarketFearGreed too and therefore also top up; only the
   lockbox collectors, which call getMarketFearGreedResearchHistory, send the 33 full-history requests alone and
   never top up, keeping the exact single request their frozen capture contracts expect. Venue gap fill: when
-  Yahoo lists a completed session with no close (a feed gap, seen on 1, 3 and 4 Sep 2026 for the London-, Xetra-
-  and Stockholm-listed ETFs), the public build and the local server take that one close from the listing
+  Yahoo lists a completed session with no close (a feed gap, seen on 1, 3 and 4 Sep 2026 for the Xetra- and Stockholm-listed ETFs and on 3 and
+  4 Sep for the London-listed ones, which had no 1 Sep bar at all on 2 Sep), the public build and the local server take that one close from the listing
   venue's own published close (marketfg.js fillVenueGap; VENUE_CLOSE_SOURCES names the venue endpoints: the
   London Stock Exchange for the six London lines and Nasdaq Stockholm for the three XACT ETFs, each checked
   against Yahoo to the cent on 5 Sep 2026; Deutsche Börse's data API signs its requests with headers derived
@@ -587,7 +598,7 @@ dates, 13F fallback and N-PORT note re-checked 4 Sep 2026)
   Xetra and LSE. On 4 Sep 2026 the ten US-listed series (SPY, XLK, ACWI, IEF, HYG, LQD, IWM, RSPT, ^VIX, ^VXN;
   the three US Tech series added on 27 Aug 2026 had had no check before) were checked again by hand: the name and
   every close from 20 Aug to 3 Sep 2026 matched Nasdaq's historical table (the eight ETFs) or Cboe's published
-  daily history (the two indices) to the cent, 111 closes in all, and Yahoo's dividend adjustment of IEF, HYG and
+  daily history (the two indices) to the cent, every close of the 11 sessions in that span, and Yahoo's dividend adjustment of IEF, HYG and
   LQD for their 1 Sep 2026 ex-dates reproduced to six decimals from the amounts and the prior closes. On 5 Sep
   2026 the sixteen Stockholm-, Xetra- and London-listed series and the seven crypto pairs were checked the same
   way (names and ISINs, every close from 20 Aug to 4 Sep 2026): OMXSBGI against Nasdaq's own index history, the
@@ -678,9 +689,10 @@ IF SOMETHING GOES WRONG
   otherwise); every figure on the page is as of that build. Press "Show build history" to see what GitHub
   started; nothing on the page can trigger a build except the owner's live update.
 - "the fund's file dated <D> is normally published by 00:30 UTC; this snapshot …" (public site, every tab) = the
-  newest weekday file is not in the snapshot: either the build predates the file, or the fund had not published
-  it when the build fetched, or the fetch failed. Not an error in itself. On a US market holiday and the day
-  after it the line says so instead (see GITHUB PAGES).
+  newest file is not in the snapshot: either the build predates the file, or the fund had not published
+  it when the build fetched, or the fetch failed. Not an error in itself. A US market holiday is not a file day: the expectation comes from a fixed NYSE
+  closure list, so nothing is expected for it and the line stays silent until the next trading day's file is due
+  (see GITHUB PAGES).
 - "a file's bytes do not match the SHA-256 that build.json publishes for it …; figures may not match" = the first
   load got a mixed set even
   after one retry; Reload snapshot a few minutes later.
@@ -715,11 +727,11 @@ IF SOMETHING GOES WRONG
 DATED OBSERVATIONS THAT WILL AGE
 Nothing below is derived from a live source; each is true as of the date it carries and must be re-measured by
 hand. Where to change it when it is:
-- GitHub's schedule reliability (7 of 36 half-hourly slots on 3 Sep 2026; 6 of the first 34 by 21:30 UTC on 4 Sep,
+- GitHub's schedule reliability (7 of 36 half-hourly slots on 3 Sep 2026; 6 of the first 33 by 21:30 UTC on 4 Sep,
   when the schedule was doubled to 72 weekday slots): SCHEDULE_NOTE in
   scripts/build-pages.js (the About line prints it), the GITHUB PAGES section above, and the comment block over
   the cron lines in .github/workflows/pages.yml.
-- Runner times (build 31–61 s / 224–317 s, deploy 8–63 s, test step 183–261 s over 2–4 Sep 2026): GITHUB PAGES
+- Runner times (build 31–68 s / 224–317 s, deploy 8–63 s, test step 183–261 s over 2–4 Sep 2026): GITHUB PAGES
   above and the timeout comment on the build job in pages.yml.
 - "Every GitHub build since 2 Sep 2026 verified the SEC filings with the built-in default User-Agent": GITHUB
   PAGES and SOURCES above, the header comment of pabrai.js, the SEC_USER_AGENT comment in pages.yml and in
@@ -727,8 +739,8 @@ hand. Where to change it when it is:
 - The N-PORT quarter dates (next report 30 Sep 2026, due 30 Nov 2026) and candidateCount 228: SOURCES above;
   the page computes both from SEC's index at each build.
 - The Yahoo gap observations of 2 and 4 Sep 2026: HOW IT WORKS above.
-- The 24 Aug 2026 series check (20 of 23 closes), the 4 Sep 2026 re-check of the ten US-listed series (111
-  closes, three dividend adjustments) and the 5 Sep 2026 check of the other 23 series: SOURCES above and
+- The 24 Aug 2026 series check (20 of 23 closes), the 4 Sep 2026 re-check of the ten US-listed series (11
+  sessions, three dividend adjustments) and the 5 Sep 2026 check of the other 23 series: SOURCES above and
   CHECK_23 / CHECK_US / CHECK_EU_DATE / MARKET_DISCLOSURES in marketfg.js.
 - The venue gap-fill sources (VENUE_CLOSE_SOURCES in marketfg.js): the London Stock Exchange instrument data
   and Nasdaq Stockholm's instrument data with the XACT orderbook ids and ISINs; re-check them when a fill is
