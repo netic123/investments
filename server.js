@@ -468,7 +468,9 @@ const routes = {
   // All six market tabs come from this one model response. Yahoo series are cached for 15 minutes inside the module;
   // a plain /api/refresh clears the route cache (fund files, both SEC filings, quotes are fetched again on the next
   // request), while /api/refresh?force=1 also drops every cached Yahoo series so all 33 are fetched again too.
-  '/api/marketfg': () => cached('marketfg', () => marketfg.getMarketFearGreed(config.marketFearGreed), v => {
+  // fillVenueGaps: a close Yahoo lists without a value is taken from the listing venue (marketfg.js fillVenueGap); the
+  // research replays call the module with the configuration file alone and keep Yahoo-only input.
+  '/api/marketfg': () => cached('marketfg', () => marketfg.getMarketFearGreed({ ...config.marketFearGreed, fillVenueGaps: true }), v => {
     const expected = Object.keys((config.marketFearGreed && config.marketFearGreed.markets) || {}).sort();
     const actual = Object.keys((v && v.markets) || {}).sort();
     return !!(v && v.ok) && Object.keys(v.failed || {}).length === 0 && JSON.stringify(actual) === JSON.stringify(expected);

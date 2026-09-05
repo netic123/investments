@@ -1492,6 +1492,10 @@ function normMarket(M,model,fetchedAt){
   const compName=k=>{ const c=comps.find(x=>x.key===k); return c?c.name:k; };
   const topUps=Object.entries(M.recentBarTopUps||{});
   if(topUps.length) callouts.push(`Yahoo’s full-history response trailed the newest completed bars for ${topUps.map(([s,t])=>esc(s)+' (+'+fmt(t.appended)+' through '+dayMon(t.to)+')').join(', ')}; those bars were taken from a short-range request that agreed with the full history on their last shared close.`);
+  // a close Yahoo listed without a value, taken from the listing venue's own published close (marketfg.js fillVenueGap)
+  const fills=Object.entries(M.venueFills||{}), filled=fills.filter(([,f])=>f.filled), unfilled=fills.filter(([,f])=>!f.filled);
+  if(filled.length) callouts.push(`Yahoo listed the ${filled.map(([,f])=>dayMon(f.date)).filter((d,i,a)=>a.indexOf(d)===i).join(' and ')} bar without a close for ${filled.map(([s,f])=>esc(s)+' ('+fmt(f.close,3)+' '+esc(f.currency||'')+')').join(', ')}; that close was taken from ${esc(filled[0][1].source)}, the listing venue’s own published close. Every earlier bar is Yahoo’s.`);
+  if(unfilled.length) callouts.push(`Yahoo listed a bar without a close for ${unfilled.map(([s,f])=>esc(s)+' ('+dayMon(f.date)+': '+esc(f.reason)+')').join(', ')}, and the listing venue could not supply it, so the component is carried from the previous bar.`);
   // "as of" is the benchmark's last completed bar. A component whose source has no bar for that date is carried from its
   // own last completed bar (lag=true) for up to fillDays; marketfg.js lists them in carriedComponents with, per series, what
   // the data shows (a bar listed with no close; no bar on any series of that venue — holiday or feed gap, which the model
