@@ -96,6 +96,7 @@ details.more>summary{color:var(--muted);font-family:var(--f-body);font-size:.84r
 details.more>:not(summary){margin:0 14px 12px}
 details.more .callout{margin:0}
 details.more .tablewrap{box-shadow:none}
+details.more footer{border-top:none;padding-top:0;margin-top:10px}
 .sec-head.sub{border-top:none;padding-top:26px;margin-bottom:10px}
 .sec-head.sub h2{font-size:1.1rem}
 .trades{list-style:none;margin:0;padding:0}
@@ -1557,12 +1558,15 @@ ${t.kind==='market'?`<section class="fg-data">
 </section>
 <section class="fg-data">
   <div class="sec-head"><h2>How the index works</h2><span class="note" id="${id}-explnote"></span></div>
-  <div class="cards">
-    <div class="card"><div class="kpi"><div class="l">Scale</div></div><ul class="fg-bands" id="${id}-bands"></ul></div>
-    <div class="card" id="${id}-explain"></div>
-  </div>
+  <p class="hint" id="${id}-plain" style="margin:0"></p>
+  <details class="more"><summary>The model, its series, what was checked, and the research record</summary>
+    <div class="cards">
+      <div class="card"><div class="kpi"><div class="l">Scale</div></div><ul class="fg-bands" id="${id}-bands"></ul></div>
+      <div class="card" id="${id}-explain"></div>
+    </div>
+    <footer id="${id}-footer"></footer>
+  </details>
 </section>
-<footer id="${id}-footer" class="fg-data"></footer>
 </div>`;
 }
 // The expanding-history BUY/SELL research signal is computed and published (api/marketfg.json) but shown only in the
@@ -1607,7 +1611,7 @@ function normMarket(M,model,fetchedAt){
   // when the carried components have different dates, dating them all to the oldest would overstate the age of the newer ones
   const carriedDates=Array.isArray(M.carriedDates)&&M.carriedDates.length ? M.carriedDates : [...new Set(carried.map(c=>c.asOf))].sort();
   const total=M.total||comps.length||6;
-  if(carried.length) callouts.push(`${carried.length} of ${total} indicators are carried from an earlier completed bar of their own source: ${carried.map(c=>`<b>${esc(c.name)}</b> as of ${dayMon(c.asOf)}${c.detail?' — '+esc(humanDates(c.detail)):' ('+esc(c.symbol)+')'}`).join('; ')}. The model carries a component for up to ${fmt(model.fillDays||7)} calendar days and moves it forward only once its source has a newer completed bar; an exchange holiday leaves no bar to publish, so nothing here promises that a missing bar will appear.`);
+  if(carried.length) callouts.push(`${carried.length} of ${total} indicators are carried from an earlier completed bar of their own source: ${carried.map(c=>`<b>${esc(c.name)}</b> as of ${dayMon(c.asOf)}${c.detail?' — '+esc(humanDates(c.detail)):' ('+esc(c.symbol)+')'}`).join('; ')}. <details class="plain"><summary>what that means</summary><div class="body">The model carries a component for up to ${fmt(model.fillDays||7)} calendar days and moves it forward only once its source has a newer completed bar; an exchange holiday leaves no bar to publish, so nothing here promises that a missing bar will appear.</div></details>`);
   // the stamp used by the header KPI, the Indicators note and the section note
   const asOfText = carried.length
     ? `as of ${when} — composite of the benchmark’s last bar dated before the build day; ${carried.length} of ${total} indicators carried from ${carriedDates.length>1?carriedDates.map(fmtDate).join(" / "):fmtDate(oldest)}`
@@ -1652,7 +1656,7 @@ function normMarket(M,model,fetchedAt){
   // marketfg.js counts per model computation; a build that discarded an attempt sent that many again, so say both
   const requests = Y&&Number.isFinite(Y.requests) ? ` The model computation behind this snapshot sent ${fmt(Y.requests)} Yahoo chart requests for ${Number.isFinite(Y.symbols)?fmt(Y.symbols)+' ':''}series${Number.isFinite(Y.fullHistoryRequests)&&Number.isFinite(Y.topUpRequests)?` (${fmt(Y.fullHistoryRequests)} full-history, ${fmt(Y.topUpRequests)} top-up${Number.isFinite(Y.retries)?', '+fmt(Y.retries)+' retries':''})`:''}${attempts&&allAttempts?`; the build itself made ${fmt(attempts)} attempts and sent ${fmt(allAttempts)} requests in all, because an earlier attempt was discarded and repeated (build.json lists why)`:''}.` : '';
   const footer=`<p><b>Who calculates this:</b> the repository’s own code (<span class="mono">marketfg.js</span>) from daily Yahoo Finance price histories; Yahoo supplies prices, not a score, and no third-party Fear &amp; Greed score (CoinMarketCap, Alternative.me, CNN) enters the calculation. Yahoo’s chart feed has no public API guarantee.${requests}</p><p><b>Descriptive indicator only.</b> ${SHOW_RESEARCH_SIGNAL?'The BUY/SELL research card above is an unvalidated research model shown in the local app and to the owner only.':studied+'This v3 score (expanding percentiles) has had no rule search and no prospective test, so no buy/sell signal is shown here; a separate research learner’s output is published in api/marketfg.json for auditing only.'}</p>`;
-  return { bands, value:v, label:M.label, title:`Fear & Greed — ${M.name} (own model)`, note:`${esc(M.indexName)} · ${esc(asOfText)} · ${fetchedStr(fetchedAt)}`,
+  return { bands, value:v, label:M.label, title:`Fear & Greed — ${M.name} (own model)`, note:`${esc(asOfText)} · ${fetchedStr(fetchedAt)}`,
     sub:(delta!=null?`<span class="${cls(delta)}">${delta>0?'+':''}${fmt(delta,1)}</span> since previous observation · `:'')+'last bar before the build day, as of '+when,
     kpiSub:M.label+' · '+asOfText, prevLabel:'Previous observation', prev:row(P.close,P.closeDate),
     stats:[['Latest',now],['Previous observation',row(P.close,P.closeDate)],['1 week ago',row(P.week,P.weekDate)],['1 month ago',row(P.month,P.monthDate)],['1 year ago',row(P.year,P.yearDate)],['Yearly high',hi],['Yearly low',lo]],
@@ -1697,7 +1701,7 @@ function renderFg(id){
     $i('title').textContent = 'Fear & Greed — '+t.tab;
     $i('error').innerHTML=`<div class="empty">Fear &amp; Greed could not be fetched${N&&N.error?' — '+esc(N.error):''}. The page retries every 10 minutes, or press ${STATIC_BUILD?'Reload snapshot':'Update'}.</div>`;
     $i('note').textContent='—'; $i('chartnote').textContent='—'; $i('label').textContent='—'; $i('sub').textContent='—'; $i('explnote').textContent='';
-    $i('explain').innerHTML = ''; $i('footer').innerHTML='';
+    $i('explain').innerHTML = ''; $i('footer').innerHTML=''; if($i('plain')) $i('plain').textContent='';
     if($i('rule')){ $i('rule').innerHTML='<div class="empty">—</div>'; $i('rulenote').textContent='—'; }
     clearChartExplorer($i('chart'),$i('charttip'),$i('chartlive')); return;
   }
@@ -1721,13 +1725,14 @@ function renderFg(id){
   renderRuleCard(id,N,$i);
   if(N.components){
     $i('compnote').textContent=N.compnote;
-    $i('comps').innerHTML=N.components.map(c=>`<tr><td><b>${esc(c.name)}</b><div class="muted" style="font-size:.78rem">${esc(c.desc)}${c.note?' · '+esc(c.note):''}</div></td>
+    $i('comps').innerHTML=N.components.map(c=>`<tr><td${c.note?` title="${esc(c.note)}"`:''}><b>${esc(c.name)}</b><div class="muted" style="font-size:.78rem">${esc(c.desc)}</div></td>
       <td class="num">${fmtRaw(c.raw,c.unit)}</td>
       <td><span class="fgbar"><b></b><i style="left:${c.score==null?0:Math.max(0,Math.min(100,c.score))}%"></i></span><span class="mono" style="font-size:.82rem">${c.score==null?'—':fmt(c.score,1)}</span></td>
       <td class="fg-c${fgBand(c.score,bands)}">${c.label?esc(c.label):'—'}${c.lag?' <span class="pill" title="'+esc(c.lagDetail?humanDates(c.lagDetail):'carried from this component’s own last completed bar')+'">carried · as of '+dayMon(c.asOf)+'</span>':''}${c.stale?' <span class="pill no">fallback data</span>':''}</td>
       <td class="mono" style="font-size:.78rem">${c.symbols.map(esc).join(' / ')}</td></tr>`).join('');
   }
   $i('bands').innerHTML=bands.map(([lo,hi,name],i)=>`<li><span class="swatch" style="background:${FG_COL[i]};opacity:${FG_OP[i]}"></span><span class="r">${lo}–${hi}</span><span>${esc(name)}</span>${i===b?'<span class="now">now</span>':''}</li>`).join('');
+  if($i('plain')) $i('plain').textContent=`Six indicators from daily Yahoo prices for ${t.forName}, each ranked 0–100 against its own history and averaged, volatility counted the other way round. A descriptive regime score, not investment advice; the block below has the exact rules, the series, what was checked and the research record.`;
   $i('explain').innerHTML=N.explain; $i('explnote').textContent=N.explnote; $i('footer').innerHTML=N.footer;
   renderFgChart(id);
 }
@@ -1763,12 +1768,12 @@ function renderFgChart(id){
   const vals=h.map(r=>r.value), mn=Math.min(...vals), mx=Math.max(...vals), d=lr.value-f.value;
   // Every point is recomputed at each build from the provider's current full history; the page itself is younger than the
   // chart, so say from when it has published a score at all and since when with this scoring.
-  const M0=N.model||{}, since=M0.publishedSince?` · recomputed at each build from Yahoo’s current history; this page has published a score since ${fmtDate(M0.publishedSince)}${M0.scoringSince?` and this v3 scoring since ${fmtDate(M0.scoringSince)}`:''}, so earlier points were never shown at the time`:'';
-  $i('chartnote').textContent=`${fmtDate(f.date)} – ${fmtDate(lr.date)} · ${spanDays>400 ? (spanDays/365.25).toFixed(1)+' years' : spanDays+' days'} · ${n} points${since}`;
+  const M0=N.model||{}, since=M0.publishedSince?`Every point is recomputed at each build from Yahoo’s current history; this page has published a score since ${fmtDate(M0.publishedSince)}${M0.scoringSince?` and this v3 scoring since ${fmtDate(M0.scoringSince)}`:''}, so earlier points were never shown at the time.`:'';
+  $i('chartnote').textContent=`${fmtDate(f.date)} – ${fmtDate(lr.date)} · ${spanDays>400 ? (spanDays/365.25).toFixed(1)+' years' : spanDays+' days'} · ${fmt(n)} points`;
   // older stretches where not all indicator series existed yet (e.g. a credit ETF launched later) — the index was the mean of the ones available
   const partial=N.total?h.filter(r=>r.n!=null&&r.n<N.total):[]; const firstFull=N.total?h.find(r=>r.n===N.total):null;
   const partialNote = partial.length ? ` · before ${firstFull?fmtDate(firstFull.date):'the end'} only ${Math.min(...partial.map(r=>r.n))}–${Math.max(...partial.map(r=>r.n))} of ${N.total} indicators existed` : '';
-  $i('chartsub').innerHTML=`Low ${fmt(mn,1)} · high ${fmt(mx,1)} · ${fmt(f.value,1)} → ${fmt(lr.value,1)} <span class="${cls(d)}">${d>0?'+':''}${fmt(d,1)}</span> over the period${partialNote}`;
+  $i('chartsub').innerHTML=`Low ${fmt(mn,1)} · high ${fmt(mx,1)} · ${fmt(f.value,1)} → ${fmt(lr.value,1)} <span class="${cls(d)}">${d>0?'+':''}${fmt(d,1)}</span> over the period${partialNote}${since?'<div style="margin-top:4px">'+esc(since)+'</div>':''}`;
 }
 $('#fgPanels').addEventListener('click',e=>{ const b=e.target.closest('.range[data-fg] button[data-days]'); if(!b) return;
   const id=b.closest('.range').dataset.fg; FGS[id].days=Number(b.dataset.days);
@@ -1777,7 +1782,7 @@ $('#fgPanels').addEventListener('click',e=>{ const b=e.target.closest('.range[da
 // header KPIs for the active Fear & Greed tab
 function updateFgHeader(id){
   const S=FGS[id]; if(!S) return; const N=S.norm, t=S.tab;
-  $('#fgFileNote').textContent = `Fear & Greed for ${t.forName} — six indicators from daily Yahoo price data, each ranked 0–100 against its own history and averaged; the score is that of the benchmark’s last daily bar dated before the build day at its exchange — a bar dated the build day is left out until the next day, even after the close, because the provider may still revise it — never live.`;
+  $('#fgFileNote').innerHTML = `<b>Fear &amp; Greed for ${esc(t.forName)}</b> · six indicators from daily Yahoo prices, each ranked against its own history · the score of the last bar before the build day, never live <details class="plain"><summary>how the score is defined</summary><div class="body">Six indicators from daily Yahoo price data, each ranked 0–100 against its own history and averaged; the score is that of the benchmark’s last daily bar dated before the build day at its exchange — a bar dated the build day is left out until the next day, even after the close, because the provider may still revise it — never live.</div></details>`;
   $('#kFgPrevL').textContent = N&&!N.error ? N.prevLabel : 'Previous observation';
   if(!N||N.error){ $('#kFg').textContent='—'; $('#kFgSub').textContent=''; $('#kFgPrev').textContent='—'; $('#kFgPrevSub').textContent=''; return; }
   $('#kFg').innerHTML=`<span class="fg-c${fgBand(N.value,N.bands)}">${fmt(N.value,1)}</span>`; $('#kFgSub').textContent=N.kpiSub;
