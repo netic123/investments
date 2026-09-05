@@ -415,8 +415,12 @@ HOW IT WORKS
   never top up, keeping the exact single request their frozen capture contracts expect. Venue gap fill: when
   Yahoo lists a completed session with no close (a feed gap, seen on 1, 3 and 4 Sep 2026 for the London-, Xetra-
   and Stockholm-listed ETFs), the public build and the local server take that one close from the listing
-  venue's own published close (marketfg.js fillVenueGap; VENUE_CLOSE_SOURCES names the venue endpoints, each
-  checked against Yahoo to the cent on 5 Sep 2026); only the newest missing date is filled, only when the
+  venue's own published close (marketfg.js fillVenueGap; VENUE_CLOSE_SOURCES names the venue endpoints: the
+  London Stock Exchange for the six London lines and Nasdaq Stockholm for the three XACT ETFs, each checked
+  against Yahoo to the cent on 5 Sep 2026; Deutsche Börse's data API signs its requests with headers derived
+  from its own site bundle, so the three Xetra ETFs have no source and stay carried when Yahoo lacks their
+  close); a venue request has its own 8-second deadline so a hanging venue costs one unfilled bar, not the
+  model computation; only the newest missing date is filled, only when the
   venue's newest close is dated exactly that day and in the series' currency, every earlier bar stays Yahoo's,
   and api/marketfg.json records the fill per market (venueFills, with why a fill was not possible) and the
   setting in model.venueGapFill. The tab says which bar came from where. The setting is off in the module's
@@ -563,9 +567,16 @@ dates, 13F fallback and N-PORT note re-checked 4 Sep 2026)
   the three US Tech series added on 27 Aug 2026 had had no check before) were checked again by hand: the name and
   every close from 20 Aug to 3 Sep 2026 matched Nasdaq's historical table (the eight ETFs) or Cboe's published
   daily history (the two indices) to the cent, 111 closes in all, and Yahoo's dividend adjustment of IEF, HYG and
-  LQD for their 1 Sep 2026 ex-dates reproduced to six decimals from the amounts and the prior closes. The sixteen
-  Stockholm-, Xetra- and London-listed series (two indices, eleven UCITS ETFs, two fund NAV series, one STOXX
-  index) have had no check since 24 Aug 2026, and the seven crypto pairs were not among the 23 and have had none;
+  LQD for their 1 Sep 2026 ex-dates reproduced to six decimals from the amounts and the prior closes. On 5 Sep
+  2026 the sixteen Stockholm-, Xetra- and London-listed series and the seven crypto pairs were checked the same
+  way (names and ISINs, every close from 20 Aug to 4 Sep 2026): OMXSBGI against Nasdaq's own index history, the
+  three XACT ETFs against Nasdaq Stockholm's instrument data and Avanza, the two Carnegie fund series against
+  the fund company's published NAVs (four decimals), the three Xetra ETFs against Deutsche Börse's price history
+  (exact at three decimals), STOXX Europe 600 against STOXX Ltd's own series, the six London lines against the
+  London Stock Exchange and FT, and the crypto pairs against CoinMarketCap (Yahoo's own source; equal to within
+  0.0006 %) and against Coinbase Exchange and CoinGecko (within 0.5 %). Every close matched; the only differences
+  were Yahoo's float32 storage of 3- and 4-decimal values. Yahoo's 4 Sep 2026 bar had no close for all twelve
+  European ETFs while every venue had it, which is what the venue gap fill (HOW IT WORKS) addresses;
   each tab's disclosure (api/marketfg.json markets.<key>.disclosure) says which of its series were checked,
   without counting them, so the sentence cannot drift from the component table beside it. Model validation: the US version of the FIRST rolling-window model (v1) was compared ONCE, on
   23 Aug 2026, by hand with CNN's published index number (CNN publishes a number, not an open feed or component
@@ -695,8 +706,12 @@ hand. Where to change it when it is:
 - The N-PORT quarter dates (next report 30 Sep 2026, due 30 Nov 2026) and candidateCount 228: SOURCES above;
   the page computes both from SEC's index at each build.
 - The Yahoo gap observations of 2 and 4 Sep 2026: HOW IT WORKS above.
-- The 24 Aug 2026 series check (20 of 23 closes) and the 4 Sep 2026 re-check of the ten US-listed series (111
-  closes, three dividend adjustments): SOURCES above and CHECK_23 / CHECK_US / MARKET_DISCLOSURES in marketfg.js.
+- The 24 Aug 2026 series check (20 of 23 closes), the 4 Sep 2026 re-check of the ten US-listed series (111
+  closes, three dividend adjustments) and the 5 Sep 2026 check of the other 23 series: SOURCES above and
+  CHECK_23 / CHECK_US / CHECK_EU_DATE / MARKET_DISCLOSURES in marketfg.js.
+- The venue gap-fill sources (VENUE_CLOSE_SOURCES in marketfg.js): the London Stock Exchange instrument data
+  and Nasdaq Stockholm's instrument data with the XACT orderbook ids and ISINs; re-check them when a fill is
+  refused for identity or currency.
 - The 23 Aug 2026 CNN comparison (0.88 correlation, 8.9-point mean gap): SOURCES above only.
 - The NYSE closure lists for 2026–2027 (US_MARKET_HOLIDAYS in index.html, NYSE_CLOSURES in pabrai.js) and the
   FilePoint dating rule they serve (next trading day; observed once across a holiday, Labor Day 2026): GITHUB
