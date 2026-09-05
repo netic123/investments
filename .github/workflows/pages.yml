@@ -29,7 +29,11 @@ name: Deploy GitHub Pages
     # weekends). The weekday series was half-hourly until 4 Sep 2026 and was
     # doubled because GitHub started about one slot in six; each slot that does
     # run costs about a minute of free runner time and one round of upstream
-    # fetches. GitHub does not honour them reliably: it
+    # fetches. Since 5 Sep 2026 a night series (:07, :22, :37 and :52 past
+    # 00-04 UTC, Tuesday to Saturday) covers the five hours after the fund's
+    # 00:02 UTC file, which no slot had asked for before (the first build of a
+    # weekday came 9-13 hours after the file), and a 12:50 UTC slot on Saturday
+    # and Sunday backs up the daily one. GitHub does not honour them reliably: it
     # starts scheduled runs late and skips most slots (on Thu 3 Sep 2026 it
     # started 7 of the 36 half-hourly slots then configured, at 09:51, 13:36, 13:54, 14:35, 18:05,
     # 21:02 and 23:17 UTC; on Fri 4 Sep 2026 none of the first 8 slots had
@@ -47,6 +51,8 @@ name: Deploy GitHub Pages
     - cron: '20,50 5-8,10-22 * * 1-5'
     - cron: '50 9 * * 1-5'
     - cron: '5,35 5-22 * * 1-5'
+    - cron: '7,22,37,52 0-4 * * 2-6'
+    - cron: '50 12 * * 0,6'
 
 permissions: {}
 

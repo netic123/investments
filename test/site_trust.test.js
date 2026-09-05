@@ -170,7 +170,7 @@ test('the pure page helpers apply build.json thresholds, the expected weekday fi
   // and an unfamiliar cron is printed verbatim
   const crons = build.workflowSchedules(fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pages.yml'), 'utf8'));
   for (const cron of crons) assert.ok(cron in helpers.CRON_LABELS, `index.html CRON_LABELS lacks '${cron}'`);
-  assert.equal(helpers.describeSchedules(crons), 'every 15 min 05:05–22:50 UTC Mon–Fri; 09:20 UTC daily, with the test suite');
+  assert.equal(helpers.describeSchedules(crons), 'every 15 min 05:05–22:50 UTC Mon–Fri; 09:20 UTC daily, with the test suite; every 15 min 00:07–04:52 UTC Tue–Sat (after the fund’s 00:02 UTC file); 12:50 UTC Sat–Sun');
   // a build.json from before the schedule was doubled still reads as the half-hourly series
   assert.equal(helpers.describeSchedules(['20 9 * * *', '20,50 5-8,10-22 * * 1-5', '50 9 * * 1-5']), 'every 30 min 05:20–22:50 UTC Mon–Fri; 09:20 UTC daily, with the test suite');
   assert.equal(helpers.describeSchedules(['20 9 * * *', '0 0 1 * *']), "09:20 UTC daily, with the test suite; cron '0 0 1 * *' (UTC)");
@@ -631,7 +631,10 @@ test('the Pages workflow asks for half-hourly weekday slots and a daily tested s
   assert.match(workflow, /- cron: '20,50 5-8,10-22 \* \* 1-5'/);
   assert.match(workflow, /- cron: '50 9 \* \* 1-5'/);
   assert.match(workflow, /- cron: '5,35 5-22 \* \* 1-5'/);
-  assert.deepEqual(build.workflowSchedules(workflow), ['20 9 * * *', '20,50 5-8,10-22 * * 1-5', '50 9 * * 1-5', '5,35 5-22 * * 1-5']);
+  // the night series after the fund's 00:02 UTC file (Tue-Sat) and the weekend backup slot, added 5 Sep 2026
+  assert.match(workflow, /- cron: '7,22,37,52 0-4 \* \* 2-6'/);
+  assert.match(workflow, /- cron: '50 12 \* \* 0,6'/);
+  assert.deepEqual(build.workflowSchedules(workflow), ['20 9 * * *', '20,50 5-8,10-22 * * 1-5', '50 9 * * 1-5', '5,35 5-22 * * 1-5', '7,22,37,52 0-4 * * 2-6', '50 12 * * 0,6']);
   assert.equal(build.testedScheduleSlot(workflow), '20 9 * * *');
   assert.match(workflow, /INVESTMENTS_BUILD_SCHEDULE: \$\{\{ github\.event\.schedule \}\}/);
   assert.match(workflow, /SEC_USER_AGENT: \$\{\{ vars\.SEC_USER_AGENT \}\}/);
@@ -653,6 +656,9 @@ test('build.json describes the schedule from the workflow itself, in words that 
   assert.equal(build.describeCron('50 9 * * 1-5'), '09:50 UTC Mon-Fri');
   assert.equal(build.describeCron('20,50 5-8,10-22 * * 1-5'), ':20 and :50 past 05-08 and 10-22 UTC Mon-Fri');
   assert.equal(build.describeCron('5,35 5-22 * * 1-5'), ':05 and :35 past 05-22 UTC Mon-Fri');
+  assert.equal(build.describeCron('7,22,37,52 0-4 * * 2-6'), ':07, :22, :37 and :52 past 00-04 UTC Tue-Sat');
+  assert.equal(build.describeCron('50 12 * * 0,6'), '12:50 UTC Sat-Sun');
+  assert.match(build.SCHEDULE_NOTE, /on 5 Sep 2026 a night series \(00:07-04:52 UTC, Tue-Sat\) and a 12:50 UTC weekend slot were added/);
   assert.equal(build.describeCron('0 0 1 * *'), "cron '0 0 1 * *' (UTC)", 'an unfamiliar shape is printed verbatim, never guessed');
   const sentence = build.refreshTriggerSentence(build.workflowSchedules(workflowText()), '20 9 * * *');
   assert.match(sentence, /09:20 UTC every day \(with the test suite\)/);

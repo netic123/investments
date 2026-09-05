@@ -41,7 +41,8 @@ const PUBLIC_EXPANDING_SIGNAL_KEYS = [
 
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 // Snapshot staleness, as published in api/build.json and applied by index.html.
-// The workflow schedules a build every 15 minutes on weekdays (05:05-22:50 UTC,
+// The workflow schedules a build every 15 minutes on weekdays (05:05-22:50 UTC, and since 5 Sep 2026 also 00:07-04:52 UTC Tue-Sat plus 12:50 UTC Sat-Sun;
+// the window below is the daytime series, so the 3 h expectation is not raised at night, when GitHub's hit rate is unmeasured;
 // see .github/workflows/pages.yml) and once a day at 09:20 UTC, but GitHub
 // starts scheduled runs late and skips most slots, so the snapshot's age is
 // the only honest freshness statement. While the weekday schedule is active
@@ -59,7 +60,7 @@ const SCHEDULE_WINDOW_UTC = Object.freeze({ days: 'Mon-Fri', from: '05:05', to: 
 // not been captured when the snapshot is older.
 const HOLDINGS_FILE_EXPECTED_BY_UTC = '00:30';
 // A dated observation of how GitHub honours the schedules; keep it literal.
-const SCHEDULE_NOTE = 'GitHub starts scheduled runs late and skips most slots: on Thu 3 Sep 2026 it started 7 of the 36 half-hourly weekday slots then configured, and on Fri 4 Sep 2026 6 of the first 34 by 21:30 UTC; the weekday schedule was doubled to 72 slots on 4 Sep 2026 to raise the number of attempts';
+const SCHEDULE_NOTE = 'GitHub starts scheduled runs late and skips most slots: on Thu 3 Sep 2026 it started 7 of the 36 half-hourly weekday slots then configured, and on Fri 4 Sep 2026 6 of the first 34 by 21:30 UTC; the weekday schedule was doubled to 72 slots on 4 Sep 2026 to raise the number of attempts, and on 5 Sep 2026 a night series (00:07-04:52 UTC, Tue-Sat) and a 12:50 UTC weekend slot were added because no slot had fallen in the five hours after the fund’s 00:02 UTC file';
 const WORKFLOW_PATH = path.join(ROOT, '.github', 'workflows', 'pages.yml');
 const LOCAL_MODE_MARKER = '<meta name="investments-mode" content="local">';
 const STATIC_MODE_MARKER = '<meta name="investments-mode" content="static">';
@@ -163,11 +164,12 @@ function describeCron(cron) {
   const pad = value => value.padStart(2, '0');
   if (parts.length !== 5 || parts[2] !== '*' || parts[3] !== '*') return `cron '${cron}' (UTC)`;
   const [minute, hour, , , dow] = parts;
-  const days = dow === '*' ? 'every day' : dow === '1-5' ? 'Mon-Fri' : null;
+  const days = dow === '*' ? 'every day' : dow === '1-5' ? 'Mon-Fri' : dow === '2-6' ? 'Tue-Sat' : dow === '0,6' ? 'Sat-Sun' : null;
   if (!days) return `cron '${cron}' (UTC)`;
   if (/^\d{1,2}$/.test(minute) && /^\d{1,2}$/.test(hour)) return `${pad(hour)}:${pad(minute)} UTC ${days}`;
   if (/^\d{1,2}(,\d{1,2})*$/.test(minute) && /^\d{1,2}(-\d{1,2})?(,\d{1,2}(-\d{1,2})?)*$/.test(hour)) {
-    const minutes = minute.split(',').map(m => `:${pad(m)}`).join(' and ');
+    const minuteList = minute.split(',').map(m => `:${pad(m)}`);
+    const minutes = minuteList.length > 1 ? `${minuteList.slice(0, -1).join(', ')} and ${minuteList[minuteList.length - 1]}` : minuteList[0];
     const hours = hour.split(',').map(h => h.split('-').map(pad).join('-')).join(' and ');
     return `${minutes} past ${hours} UTC ${days}`;
   }

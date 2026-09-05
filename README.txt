@@ -14,7 +14,11 @@ records and the holdings-history commits described below — plus a manual dispa
 .github/workflows/pages.yml. The schedules ask GitHub for a build at 09:20 UTC every day (the tested slot: it
 always runs the test suite) and every 15 minutes, at :05, :20, :35 and :50, from 05:05 to 22:50 UTC Monday–Friday
 (half-hourly until 4 Sep 2026; doubled because GitHub started about one slot in six, and a slot that runs costs about
-a minute of free runner time and one round of upstream fetches). A slot is an opportunity, not a promise: GitHub starts scheduled runs late and skips most of them. Observed:
+a minute of free runner time and one round of upstream fetches), every 15 minutes at :07, :22, :37 and :52 from 00:07
+to 04:52 UTC Tuesday–Saturday (added 5 Sep 2026: until then no slot fell in the five hours after the fund's 00:02 UTC
+file, so the first build of a weekday came 9–13 hours after it), and at 12:50 UTC on Saturday and Sunday as a backup
+for the daily slot. The 3-hour freshness expectation on the page covers the daytime series only; the night series is
+extra opportunity, and its hit rate is unmeasured. A slot is an opportunity, not a promise: GitHub starts scheduled runs late and skips most of them. Observed:
 between 28 Aug and 1 Sep 2026 the then single daily run started 4.9 to 11.6 hours after its cron time; on
 Thu 3 Sep 2026 GitHub started 7 of the 36 half-hourly slots then configured (at 09:51, 13:36, 13:54, 14:35, 18:05, 21:02 and
 23:17 UTC); on Fri 4 Sep 2026 none of the first 8 slots (05:20 to 08:50 UTC) had started by 08:57 UTC, so the
