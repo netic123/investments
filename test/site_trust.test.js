@@ -780,6 +780,11 @@ test('the build publishes an Atom feed of the trades: one entry per interval wit
   assert.match(html, /\$\('#tradesFeed'\)\.hidden=false;/);
   // the seven-day digest nets each holding over the window and is skipped when the window is one interval
   assert.match(html, /<b>Last 7 days<\/b>/);
+  // the build-up cards: one point per saved file, cash-like rows left out, unchanged holdings not shown
+  assert.match(html, /<h2>How each position was built<\/h2>/);
+  assert.match(html, /function renderBuildUp\(H\)/);
+  assert.match(html, /if\(!isCashLike\(t\)\) tickers\.add\(t\);/);
+  assert.match(html, /if\(pts\.every\(p=>Math\.abs\(p\.shares-first\)<0\.5\)\) continue;/);
   assert.match(html, /if\(intervals\.length<2\) return '';/);
 });
 
