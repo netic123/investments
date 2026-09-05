@@ -1,0 +1,66 @@
+name: Ticker
+
+# The clock that GitHub's schedule does not keep. GitHub starts this
+# repository's scheduled runs late and skips most slots (pages.yml records the
+# observations), so a build could lag the fund's 00:02 UTC holdings file by
+# hours. This workflow is a chain instead: each run waits on the "ticker"
+# environment's wait timer (Settings -> Environments -> ticker; the timer is
+# the period, 15 minutes as configured by the owner), then scripts/ticker.js
+# looks at the fund's files and the published snapshot, starts a Pages build
+# when one is due (a new holdings or NAV file, or a snapshot older than three
+# hours), and dispatches the next run of this workflow. A workflow_dispatch
+# sent with the repository's own token does create a run (the documented
+# exception to "the GITHUB_TOKEN does not trigger workflows"), so the chain
+# needs no personal token and no third party. Without the environment, or
+# with a wait timer under ten minutes, the script refuses to re-dispatch, so
+# a missing or misconfigured timer cannot become a tight loop. If a run fails
+# and the chain stops, every successful Pages build restarts it (the
+# kick-ticker job in pages.yml), and so does starting this workflow by hand.
+# A waiting run costs nothing; a tick that runs costs about twenty seconds of
+# runner time, free for a public repository.
+
+on:
+  workflow_dispatch:
+    inputs:
+      hop:
+        description: 'Position in the chain (each run dispatches the next; 0 starts a chain)'
+        type: string
+        default: '0'
+
+permissions: {}
+
+# One waiting run and one running run at most: a second chain is cancelled here.
+concurrency:
+  group: ticker
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    name: Wait, look at the fund's files, build if due, re-dispatch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # The environment's wait timer holds this job before it starts; that wait is the ticker's period.
+    environment: ticker
+    permissions:
+      # dispatch pages.yml and this workflow; read the ticker environment and the run lists
+      actions: write
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22.19.0'
+          package-manager-cache: false
+
+      - name: Look, build if due, re-dispatch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TICKER_HOP: ${{ inputs.hop }}
+          TICKER_ENVIRONMENT: ticker
+          PUBLISHED_API: https://netic123.github.io/investments/api
+        run: node scripts/ticker.js
