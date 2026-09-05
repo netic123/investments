@@ -57,10 +57,12 @@ test('the page labels snapshot data, times and changes truthfully', () => {
   // the run count is a lower bound when every listed run falls inside the window (only 20 are read)
   assert.match(html, /BUILD_RUNS_24H=\{n:started24h,atLeast:started24h===runs\.length\}/);
   assert.match(html, /'at least ':''\)\+BUILD_RUNS_24H\.n/);
-  assert.match(html, /is normally published by \$\{B\.holdingsFileExpectedByUtc\} UTC; this snapshot was built before it and shows the \$\{fmtDate\(fileDate\)\} file/);
+  assert.match(html, /the fund’s file dated \$\{when\}; this snapshot was built before it and shows the \$\{fmtDate\(fileDate\)\} file/);
+  assert.match(html, /or the build refused the file \(the Pabrai tab’s file line says which\)/);
   // US market holidays come from a fixed NYSE list and turn the expectation into a stated unknown, never an assertion
   assert.match(html, /const US_MARKET_HOLIDAYS=\{'2026-01-01'/);
-  assert.match(html, /is a US market holiday \(\$\{gap\.name\}\), \$\{gap\.kind\}: the fund prices only on trading days, and how FilePoint dates its file around a holiday has not been observed/);
+  assert.match(html, /is normally published by \$\{B\.holdingsFileExpectedByUtc\} UTC on \$\{fmtDate\(publishedAt\.slice\(0,10\)\)\}/);
+  assert.doesNotMatch(html, /has not been observed/);
   assert.doesNotMatch(html, /is not modelled here/);
   assert.match(html, /a file’s bytes do not match the SHA-256 that build\.json publishes for it/);
   assert.match(html, /this page’s code is from build \$\{SNAPSHOT\.codeBuild\.slice\(0,7\)\} while its data is from build/);
@@ -115,7 +117,7 @@ test('the pure page helpers apply build.json thresholds, the expected weekday fi
   const start = html.indexOf('const hhmmUtc=');
   const end = html.indexOf('// ---- end pure helpers');
   assert.ok(start > 0 && end > start, 'the pure helper block must be delimited in index.html');
-  const helpers = require('node:vm').runInNewContext(`${html.slice(start, end)}\n;({staleThreshold,expectedHoldingsFileDate,filesMatch,describeSchedules,CRON_LABELS,usMarketHoliday,holidayGap})`, {});
+  const helpers = require('node:vm').runInNewContext(`${html.slice(start, end)}\n;({staleThreshold,expectedHoldingsFileDate,filesMatch,describeSchedules,CRON_LABELS,usMarketHoliday,nextTradingDay,lastTradingDayBefore,holdingsFilePublishedAt})`, {});
   const published = {
     snapshotStaleAfterHours: build.SNAPSHOT_STALE_AFTER_HOURS,
     snapshotStaleAfterHoursOffSchedule: build.SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE,
@@ -132,23 +134,29 @@ test('the pure page helpers apply build.json thresholds, the expected weekday fi
   const single = helpers.staleThreshold({ snapshotStaleAfterHours: 30 }, at('2026-09-05T10:00:00Z'));
   assert.deepEqual([single.hours, single.inWindow, single.window], [30, null, null], 'an older build.json with one threshold claims no window');
   assert.equal(helpers.staleThreshold({}, at('2026-09-05T10:00:00Z')).hours, null, 'no threshold means no age warning');
-  // the newest weekday file that should exist: that day's after 00:30 UTC, the previous weekday's before, Friday's at the weekend
+  // the newest file that should exist: the one dated the next NYSE trading day after the last close whose file is out
+  // (published 00:30 UTC on the calendar day after that close, Saturdays included)
   assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-04T13:31:00Z')), '2026-09-04');
   assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-04T00:29:00Z')), '2026-09-03');
   assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-04T00:30:00Z')), '2026-09-04');
-  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-05T10:00:00Z')), '2026-09-04', 'Saturday');
-  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-06T23:59:00Z')), '2026-09-04', 'Sunday');
-  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-07T00:10:00Z')), '2026-09-04', 'Monday before the file time');
-  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-07T00:40:00Z')), '2026-09-07', 'Monday after the file time');
+  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-05T00:10:00Z')), '2026-09-04', 'Saturday before the file time');
+  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-05T10:00:00Z')), '2026-09-08', 'Saturday: the file for Friday’s close is dated the trading day after Labor Day');
+  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-06T23:59:00Z')), '2026-09-08', 'Sunday');
+  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-07T00:40:00Z')), '2026-09-08', 'Labor Day: no new close, the same file');
+  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-08T00:40:00Z')), '2026-09-08', 'Tuesday: still the same file');
+  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-09T00:10:00Z')), '2026-09-08', 'Wednesday before the file time');
+  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-09-09T00:40:00Z')), '2026-09-09', 'Wednesday after the file time');
+  assert.equal(helpers.expectedHoldingsFileDate(published, at('2026-08-29T10:00:00Z')), '2026-08-31', 'an ordinary Saturday expects Monday’s file');
   assert.equal(helpers.expectedHoldingsFileDate({}, at('2026-09-07T00:40:00Z')), null, 'no published time means no expectation');
   // holidays: Labor Day itself, the Tuesday after it (whose file would carry Monday's close), and an ordinary day
   assert.equal(helpers.usMarketHoliday('2026-09-07'), 'Labor Day');
   assert.equal(helpers.usMarketHoliday('2026-09-04'), null);
   // the helper object comes from another vm realm, so compare its fields, not its prototype
-  assert.equal(JSON.stringify(helpers.holidayGap('2026-09-07')), JSON.stringify({ date: '2026-09-07', name: 'Labor Day', kind: 'the date itself' }));
-  assert.equal(helpers.holidayGap('2026-09-08').date, '2026-09-07', 'the day after a holiday would carry the holiday’s close');
-  assert.equal(helpers.holidayGap('2026-09-09'), null);
-  assert.equal(helpers.holidayGap('2027-07-06').date, '2027-07-05', 'Independence Day 2027 is observed on Monday 5 July');
+  assert.equal(helpers.nextTradingDay('2026-09-04'), '2026-09-08');
+  assert.equal(helpers.lastTradingDayBefore('2026-09-08'), '2026-09-04');
+  assert.equal(helpers.holdingsFilePublishedAt('2026-09-08', '00:30'), '2026-09-05T00:30:00Z', 'the Tuesday file is live on Saturday');
+  assert.equal(helpers.holdingsFilePublishedAt('2026-09-04', '00:30'), '2026-09-04T00:30:00Z');
+  assert.equal(helpers.nextTradingDay('2027-07-02'), '2027-07-06', 'Independence Day 2027 is observed on Monday 5 July');
   assert.equal(helpers.usMarketHoliday('2026-04-03'), 'Good Friday', 'a market closure that is not a federal holiday');
   // digest map: match, mismatch, unknown
   const hex = 'a'.repeat(64);

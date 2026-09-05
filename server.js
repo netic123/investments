@@ -521,7 +521,7 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`Investments running at ${ADDR}  (Ctrl+C or close the window to stop)`);
   if (process.platform === 'win32' && !process.env.NO_OPEN) exec(`start "" "${ADDR}"`);
   // capture the fund's holdings file every 30 minutes while the local server runs, so a file day is not missed when the page is
-  // closed (FilePoint publishes the next weekday's file at about 00:02 UTC, i.e. about 20:02 ET; a missed day merges multiple
+  // closed (FilePoint publishes the next trading day's file at about 00:02 UTC, i.e. about 20:02 ET, Saturdays included; a missed day merges multiple
   // days into one net quantity change). The public site has no such loop: it captures once per Pages build.
   setInterval(() => getHoldings().catch(e => console.error('snapshot capture:', e.message || e)), 30 * 60 * 1000).unref();
 });

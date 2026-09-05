@@ -52,9 +52,11 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 const SNAPSHOT_STALE_AFTER_HOURS = 3;
 const SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE = 30;
 const SCHEDULE_WINDOW_UTC = Object.freeze({ days: 'Mon-Fri', from: '05:05', to: '23:20' });
-// The fund's FilePoint holdings file for a weekday is normally live by this
-// UTC time (observed at about 00:02 UTC on 1-4 Sep 2026); index.html can say
-// that the day's file has not been captured when the snapshot is older.
+// The fund's FilePoint holdings file is normally live by this UTC time on the
+// calendar day after each NYSE trading day, Saturdays included (observed at
+// about 00:02 UTC on 1-5 Sep 2026; the Saturday file was dated Tue 8 Sep, the
+// trading day after Labor Day); index.html can say that the expected file has
+// not been captured when the snapshot is older.
 const HOLDINGS_FILE_EXPECTED_BY_UTC = '00:30';
 // A dated observation of how GitHub honours the schedules; keep it literal.
 const SCHEDULE_NOTE = 'GitHub starts scheduled runs late and skips most slots: on Thu 3 Sep 2026 it started 7 of the 36 half-hourly weekday slots then configured, and on Fri 4 Sep 2026 6 of the first 34 by 21:30 UTC; the weekday schedule was doubled to 72 slots on 4 Sep 2026 to raise the number of attempts';
@@ -308,7 +310,7 @@ function validateSnapshot(data, publicPositions) {
   // the newer historical rate has none, which only limits the reconciliation
   // proof below, so it must not fail the whole snapshot.
   assert(nav.sharesOut == null || (Number.isFinite(nav.sharesOut) && nav.sharesOut > 0), 'NAV SharesOutstanding is invalid');
-  // The holdings file (dated the next weekday) is priced at the previous NAV
+  // The holdings file (dated the next NYSE trading day) is priced at the previous NAV
   // date and carries NetAssets = NAV x its own units to the cent, also when a
   // creation or redemption settled after the NAV file. index.html applies the
   // same rule client-side; the outcome is recorded in api/build.json.
