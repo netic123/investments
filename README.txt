@@ -757,8 +757,14 @@ dates, 13F fallback and N-PORT note re-checked 4 Sep 2026)
   and is not republished. The same block shows Cboe's put/call ratio ranked against the record since Nov 2006
   (data/cboe-putcall.json); Europe, Global and Sweden show the OFR Financial Stress Index (a US-government work)
   with its regional contributions; Crypto shows alternative.me's index. None of them is an input to the score; the
-  page says so and says which one to doubt when they disagree. CNN's put/call and NYSE breadth inputs still have no
-  open daily feed usable inside the model.
+  page says so and says which one to doubt when they disagree. Since 6 Sep 2026 late evening the recognised index
+  leads where one exists: CNN's reading is the USA tile's and summary's headline and alternative.me's the Crypto
+  ones, with this site's model shown under both; the model leads the other four markets, whose blocks carry a
+  quantified caveat (index.html headlineFor, modelLevelNote). Shifting the model by its mean gap to CNN matches
+  CNN's band on 64 % of days (mean absolute gap 6.4 points against 14.9 unshifted; a linear fit or a quantile map
+  do no better), so the model's movements agree with CNN and its level is about 15 points high on the US — the
+  comparison carries that figure (sameBandShiftedPct). The model itself is unchanged; the research record stands.
+  CNN's put/call and NYSE breadth inputs still have no open daily feed usable inside the model.
   Known caveats, now also printed on the tabs: OMXSBGI is a gross total return index but STOXX 600 is a price
   index (every ex-dividend drop lowers it, so Europe's momentum, strength and safe-haven read lower than on a
   total-return benchmark; European dividends cluster in spring); Sweden/Europe use realised volatility because

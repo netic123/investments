@@ -616,7 +616,13 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   assert.match(html, /<text class="n" x="100" y="98" text-anchor="middle">\$\{fmt\(v,1\)\}<\/text>/);
   assert.match(html, /\$\{fmt\(r\.value,1\)\}<\/div><div class="s">\$\{esc\(r\.label\)\}/);
   assert.match(html, /\$\{c\.score==null\?'—':fmt\(c\.score,1\)\}/);
-  assert.match(html, /<span class="fg-c\$\{fgBand\(N\.value,N\.bands\)\}">\$\{fmt\(N\.value,1\)\}<\/span>` : '—';/, 'the header strip');
+  assert.match(html, /const v = h \? `<span class="fg-c\$\{fgBand\(h\.value,bands\)\}">\$\{fmt\(h\.value,h\.source==='model'\?1:0\)\}<\/span>` : '—';/, 'the header strip leads with the headline reading');
+  assert.match(html, /function headlineFor\(id\)/);
+  assert.match(html, /if\(id==='usa'&&R&&R\.cnn&&R\.cnn\.ok\) return \{source:'CNN'/);
+  assert.match(html, /if\(id==='crypto'&&R&&R\.crypto&&R\.crypto\.ok\) return \{source:'alternative\.me'/);
+  assert.match(html, /This site’s model leads here because no recognised index covers this market/);
+  assert.match(html, /so its movements agree better than its level/);
+  assert.match(html, /<div class="kpi"><div class="l">This site’s model<\/div><\/div>/);
   assert.match(html, /\$\{fmt\(v,1\)\} \$\{esc\(N\.label\)\}<\/span> · as of \$\{fmtDate\(N\.asOf\)\}/, 'the market block summary');
   // one Markets tab; a market hash opens it with that block expanded; the six blocks are collapsed details
   assert.match(html, /<button role="tab" id="tab-markets" data-tab="markets"/);
@@ -624,7 +630,7 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   assert.match(html, /const TAB_HASH=\{pabrai:'',markets:'#markets'\};/);
   // independent readings under each market: not inputs to the score, each with its date and source, labelled when unread
   assert.match(html, /function renderRefs\(id\)/);
-  assert.match(html, /not inputs to this score; where they and the model disagree, the model is the one to doubt/);
+  assert.match(html, /not inputs to this site’s model; where they and the model disagree, the model is the one to doubt/);
   assert.match(html, /could not be read at \$\{when\} time/);
   assert.match(html, /CNN’s own endpoint refuses automated readers, so the archive’s latest copy is used/);
   assert.match(html, /const SNAPSHOT_FILES=\['config','holdings','nav','perf','quotes','dalal','nport','kap','refs','marketfg'\];/);

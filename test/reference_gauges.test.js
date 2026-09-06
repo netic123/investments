@@ -39,6 +39,8 @@ test('the comparison with CNN: correlation, mean gap (this site minus CNN), same
   assert.equal(cmp.meanGap, 15);
   assert.equal(cmp.sameBandPct, 0);
   assert.equal(cmp.withinOneBandPct, 75, '42 (fear) against 57 (greed) is two bands apart');
+  assert.equal(cmp.sameBandShiftedPct, 100, 'shifted by its mean gap the model matches CNN band for band');
+  assert.ok(Math.abs(cmp.meanAbsGapShifted) < 1e-9);
   assert.equal(g.compareSeries(cnn, []).n, 0);
   assert.deepEqual([g.bandOf(10), g.bandOf(44.9), g.bandOf(45), g.bandOf(56), g.bandOf(75), g.bandOf('x')], [0, 1, 2, 3, 4, -1]);
 });
