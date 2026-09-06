@@ -273,12 +273,15 @@ TABS (top of the page)
   block that opens on a click (the header's "how this file was checked", the trades' "what that means", the
   13F's "Source, checks, and what a 13F leaves out", the whole N-PORT check, and the footer's "How to read
   this tab"); the site-level About and browser-contact paragraphs under the tabs are collapsed the same way.
-  - What Pabrai bought and sold: every change in shares held between the two latest saved files, labelled
+  - What Pabrai bought and sold: first (since 6 Sep 2026 evening) an "in short" sentence — the net change per holding
+    between the first saved file and the latest, in words, grouped by what he did (added to / built a new position in /
+    sold out of / trimmed), the six largest by value named, the rest counted; then every change in shares held between the two latest saved files, labelled
     Bought more / Reduced / New position / Sold out (a share-count difference between two official files after
     removing moves proportional to a unit creation or redemption — the footer says it is not a trade ticket),
     dated by the closes the two files are priced at ("the 4 Sept 2026 session" when the files are consecutive
     trading days, else the range of closes; the file dates when a pricing date cannot be proven), largest
-    first, with the shares now held and the weight; a one-line unit-flow callout when WAGN's units changed;
+    first, with the shares now held and the weight (chips elsewhere on the tab name the company and the approximate
+    value with the change in per cent, the share count in the tooltip, since 6 Sep 2026 evening);
     a line "Cash moved … (money-market fund, not a trade)" and, where WAGN shares were created or redeemed,
     "New money: +N WAGN shares (…)" — the word "units" left the visible flow on 6 Sep 2026 evening after a
     fresh-reader review, with the unit counts in tooltips; then Trade history: one row per
@@ -365,7 +368,7 @@ TABS (top of the page)
     characters is left-padded and flagged), the current filing appended by the build when the file lacks it and
     persisted by the record job (--from-published). Shown as one row per quarter with the share changes since
     the quarter before as chips (New position / Bought more / Reduced / Sold out, per CUSIP, put and call rows
-    excluded), the newest eight visible and the rest collapsed, then "Positions over time": every security ever
+    excluded), the newest four visible and the rest collapsed, then "Positions over time": every security ever
     listed with its first and last quarter, quarters held, peak shares and current shares. The hint says what a
     13F cannot show.
   - Cross-check with the fund's own SEC report — N-PORT (collapsed; its summary line says whether the report is comparable yet or
