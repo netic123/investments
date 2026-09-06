@@ -30,13 +30,15 @@ const ROOT = path.resolve(__dirname, '..');
 const markerOf = key => `<!-- ${MARKER}: ${key} -->`;
 const markersIn = text => [...String(text || '').matchAll(new RegExp(`<!-- ${MARKER}: (\\d{4}-\\d{2}-\\d{2}/\\d{4}-\\d{2}-\\d{2}) -->`, 'g'))].map(m => m[1]);
 
-// Which entries get an issue: the newest CONSIDER intervals with a trade, minus those already marked; on a first run
-// (no marked issue anywhere) the newest only.
+// Which entries get an issue: on a first run (no marked issue anywhere) the newest traded interval only; afterwards the
+// traded intervals newer than the newest one already marked (up to CONSIDER, so a chain that died for a day catches up),
+// never an older one — sessions that were on the page before the notifier existed are not news.
 function issuesToCreate(entries, existingKeys) {
-  const traded = entries.filter(e => e && e.tradeCount > 0).slice(0, CONSIDER);
+  const traded = entries.filter(e => e && e.tradeCount > 0);
   const have = new Set(existingKeys);
-  const fresh = traded.filter(e => !have.has(e.key));
-  return have.size ? fresh : fresh.slice(0, 1);
+  if (!have.size) return traded.slice(0, 1);
+  const newestMarked = [...have].map(k => String(k).split('/')[1] || '').sort().pop();
+  return traded.filter(e => !have.has(e.key) && e.to > newestMarked).slice(0, CONSIDER);
 }
 
 function issueFor(entry, { owner, siteUrl = SITE_URL, runUrl, fileDate }) {

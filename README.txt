@@ -228,9 +228,10 @@ creation or a cash-like move alone does not count — titled "Pabrai trades, <se
 same lines, basis sentence and links as the feed, labelled "trade" (the label is created on first use) and
 mentioning the repository owner, so GitHub's own e-mail and app notifications carry it. Each issue ends with a
 hidden marker naming the interval's file dates; before posting, the existing "trade" issues (open or closed) are
-read and a marked interval is skipped, so the ticker's rebuilds never post twice. Only the three newest
-intervals are considered, and when no trade issue exists at all only the newest, so the first run does not post
-the whole history. A failure to reach GitHub is logged as a warning and never fails the build. The issues are
+read and a marked interval is skipped, so the ticker's rebuilds never post twice. On a first run (no trade issue anywhere)
+only the newest traded interval is posted; afterwards only traded intervals newer than the newest one already
+marked, up to three, so a chain that stopped for a day catches up while sessions that were on the page before
+the notifier existed are never posted. A failure to reach GitHub is logged as a warning and never fails the build. The issues are
 written by github-actions[bot]; they are not commits and do not appear among the contributors.
 
 AUTOMATIC UPDATES (the ticker)
