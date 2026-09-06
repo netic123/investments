@@ -54,8 +54,10 @@ topUpRequests, retries, http429, http5xx, byHost, cacheHits; venueFillRequests c
 listing venue — the LSE or Nasdaq Stockholm — for a close Yahoo listed without a value, nine on the 5 Sep 2026
 15:22 UTC build); six Yahoo quotes (the three watchlist tickers,
 the two FX pairs and WAGN itself); the 13F (five requests to SEC: the submissions index, then primary_doc.xml
-and infotable.xml for each of the two quarters); and the N-PORT (the submissions index plus one primary
-document per trust filing opened until one names the fund's series — eight on 2 Sep 2026, at most 30). When a
+and infotable.xml for each of the two quarters); the N-PORT (the submissions index plus one primary
+document per trust filing opened until one names the fund's series — eight on 2 Sep 2026, at most 30); and, since
+6 Sep 2026, the five KAP company pages behind the Turkish holdings (scripts/kap-holders.js; 320–435 KB each, no
+key, one request per company; api/build.json kapCheck says how many were read). When a
 Fear & Greed component is carried forward on the first attempt, the build asks the server to drop its route
 cache and the Yahoo series cache (/api/refresh?force=1) and repeats every one of those fetches once (a third
 attempt only after a failure); yahooRequests describes the model computation behind the published snapshot,
@@ -63,7 +65,7 @@ not the discarded attempt. A holiday and a feed gap look the same to that retry 
 
 The workflow first compiles the page's inline script without running it (a syntax error would leave the
 public page at "loading…" forever, so the build fails before any network work), then starts the local server
-temporarily on the GitHub runner, fetches and validates the eight public API responses, and publishes only
+temporarily on the GitHub runner, fetches and validates the nine public API responses, and publishes only
 _site/index.html, _site/.nojekyll, _site/api/*.json and _site/api/trades.xml (an Atom feed of the trades; see the
 Pabrai tab under TABS). The published index.html carries a
 Content-Security-Policy that the build adds and verifies in the artifact: default-src 'none'; script-src only
@@ -147,8 +149,10 @@ running scripts/record-holdings-history.js, which merges
 the provenance-bearing receipts of the published holdings.json into data/snapshots.json (legacy rows without
 provenance are kept; a later capture of the same date wins), then scripts/dalal-13f-history.js --from-published,
 which appends to data/dalal13f-history.json the 13F quarter the published api/dalal.json carries when the file
-lacks it, and commits "Record WAGN holdings history <date> [skip ci]" only when a receipt or a quarter was added
-or replaced. A local checkout therefore sees those commits; build.json
+lacks it, then scripts/kap-holders.js --from-published --expect-sha256 <digest>, which appends to
+data/kap-holders.json a changed Pabrai row of a Borsa Istanbul >5 % holder table only when the served kap.json
+matches the digest build.json names for it and its read is later than the last recorded one, and commits "Record WAGN holdings history <date> [skip ci]" only when
+a receipt, a quarter or a KAP row was added or replaced. A local checkout therefore sees those commits; build.json
 historyDurability says so. The Pages build is deliberately forced to the approved data/positions.public.json
 watchlist: Constellation Software, Kaspi.kz and Warrior Met Coal, all with entry price set to null. It never
 publishes the gitignored data/positions.local.json or data/portfolio.local.json, even when the build script is
@@ -278,8 +282,17 @@ TABS (top of the page)
     a line stating what the cash-like rows did (never listed as trades); then Trade history: one row per
     file-to-file interval since the first saved file, newest first, the trades as chips (largest first), a
     unit creation or redemption marked, "no change in any holding" stated where nothing moved, the cash-like
-    move in dollars. The full change log with every column (including "vs pro-rata") stays under "Full
-    change log". "How each position was built, and how it has gone": one card per holding whose share count changed over the
+    move in dollars. Under the latest table, "where the money went" (collapsed) reconciles the two files: cash,
+    currency balances and cash-like rows moved − units created or redeemed × the later file's pricing NAV (proven
+    by the NAV check, else the previous rate date, said so) + the listed changes at the files' own values = the
+    residual, in dollars and as a share of net assets, flagged above 0.2 % (fees accruing, dividends, FX on the
+    payables and execution-vs-close differences make up the rest; the eleven intervals to 8 Sep 2026 all close
+    within 0.08 % of net assets; when the identity closes without the unit term, the line says the units' value did
+    not arrive as cash between the files — an in-kind basket or a later settlement — rather than that the files
+    disagree). The creations so far have settled in cash — untraded share counts did not move on creation days,
+    which the identity alone could not show — so an untraded holding is simply unchanged and nothing is restated "pro-rata" (removed
+    6 Sep 2026). The full change log with every column (the dated log carries the interval's unit flow) stays
+    under "Full change log". "How each position was built, and how it has gone": one card per holding whose share count changed over the
     saved files — a line of shares per saved file (one point per file, dates in the tooltip), first → last, the
     change and its approximate value at that holding's latest file price, then how its trades have gone at the
     fund's own file closes: shares bought at their share-weighted average price (the close of the day each change
@@ -301,13 +314,37 @@ TABS (top of the page)
     entered) the price return since your entry. A ticker that a 13F structurally cannot show (a listing only
     abroad, a money-market fund; config names[<ticker>].sec13f) says "cannot be listed there", the reason in
     a tooltip, instead of "not reported".
-  - The whole ETF portfolio sorted by weight, with plain "Δ shares" columns ("vs pro-rata" and "∝ unit flow"
-    as tooltips on the figures; an explanatory line under the table), the price with its listing currency code, and the "Avanza (SE broker)" column: whether the line can be bought through the Swedish
+  - The whole ETF portfolio sorted by weight, with plain "Δ shares" columns (the per-unit dilution on a "0" and
+    "∝ unit flow" as tooltips on the figures; an explanatory line under the table), the price with its listing currency code, and the "Avanza (SE broker)" column: whether the line can be bought through the Swedish
     retail broker Avanza (online / by phone / not available), a note checked by hand in the configuration, not
     fetched live and carrying no checked-on date
   - Fund performance vs S&P 500 (the fund's own month-end return table) and the NAV curve
-  - Dalal Street's manager-aggregated 13F — a one-line summary (value, count, next deadline, what a 13F
-    leaves out) above the table, the source paragraph collapsed under it — fetched from official SEC submissions + filing XML and validated by
+  - Pabrai's private funds in Turkey (since 6 Sep 2026): for each Turkish holding, the >5 % shareholder table of
+    the company's page on KAP, Borsa Istanbul's Public Disclosure Platform (scripts/kap-holders.js, read by the
+    build; the browser never contacts KAP), next to the ETF's own share count from its daily file — the Pabrai
+    Investment Funds II, IV and 3 (the private funds) with their shares and percentages, the ETF's own row where
+    it is listed under its former name "Pabrai Wagons Fund" (Gimat, equal to the file's share count), a "Pabrai
+    in total" floor, KAP's own date on the table, and above the table the changes the committed history records
+    (data/kap-holders.json: one observation per change in a Pabrai row, first written 6 Sep 2026; the record job
+    persists the published kap.json with --from-published only when its bytes match the digest build.json names
+    for it and only an observation read later than the last recorded one, so a stale CDN copy cannot append a
+    phantom change; seenAt is the fetch time of the build whose read was persisted, up to a day after the first
+    build that saw the state, and a change a build has read but no record run has persisted yet is listed as
+    "seen by this build, not yet in the committed record"; a change of shares with the percentage unchanged is a
+    "Capital change", not Up or Down; "no change since the first record" until one happens). A fund below 5 % is
+    invisible there, which the hint says. Figures are nominal lira of capital; KAP's own share-group table states
+    1 TL per share for Reysas REIT, Reysas, TAV and Gimat, while TAB Gida's entry there repeats the group totals
+    in the per-share column and is refused, so the page says 1 TL is not confirmed for it; the ETF's Gimat row
+    equals its daily file to the share. A page that cannot be read shows its last recorded table with the date it
+    was read, and the status line says so.
+  - Dalal Street's manager-aggregated 13F — filed by the manager of Pabrai's private funds, which the hint says —
+    a one-line summary (value, count, next deadline, what a 13F leaves out) above the table, then the same-date
+    check (renderDalalVsEtf): the ETF's holdings that a 13F can show (config sec13f.reportable) which the 13F for
+    the N-PORT's report date does not list, or lists with fewer shares than the ETF holds (30 Jun 2026: NE, VAL
+    and DAC absent, KSPI listed with 1,702 shares against the ETF's 124,184), so the 13F is read as the private
+    funds' US positions and not as a superset of the ETF; whether the shared rows (AMR, HCC, RIG) include the
+    ETF's shares is stated as unknowable from the filings, and documents for different dates are said to be not
+    compared; the source paragraph collapsed under it — fetched from official SEC submissions + filing XML and validated by
     the build against the filing's own summary totals (declared row count and total value); the page says
     "fetched from SEC EDGAR and validated by this build", never that SEC verified anything. The config copy is a
     clearly labelled fallback only when SEC cannot be reached. A Pages build accepts only that exact dated
@@ -413,8 +450,11 @@ HOW IT WORKS
   creation diluted its share per WAGN unit; a raw change that is proportional to the change in units
   outstanding (an in-kind basket; tolerance half a share or 0.5 % of the move) is skipped as an ETF flow, not a
   trade. When units changed between the two files, a callout states the creation/redemption and
-  "vs pro-rata" (a column in the full change log, a tooltip on the figures elsewhere) restates each trade
-  relative to deploying the flow in proportion to the previous portfolio — context, not the headline. Files saved before 25 Aug 2026 (20 and 24 Aug) report no unit count;
+  "where the money went" (cashReconciliation in index.html) reconciles the two files — cash moved − units × the
+  later file's pricing NAV + the listed changes at the files' values — and shows the residual, flagged above
+  0.2 % of net assets; the creations so far have settled in cash, so an untraded holding is simply unchanged and
+  nothing is restated "pro-rata" any more (removed 6 Sep 2026; the flow-adjusted fields stay in api/holdings.json
+  for consumers of that contract). Files saved before 25 Aug 2026 (20 and 24 Aug) report no unit count;
   a count for them is implied from NetAssets ÷ the NAV of the previous rate date, accepted only when the
   quotient is within twice the cent-rounding bound of a whole number (0.005 ÷ NAV, about 0.0006 units at a $16
   NAV), and labelled "implied" wherever it appears (the Fund assets KPI
@@ -543,6 +583,24 @@ dates, 13F fallback and N-PORT note re-checked 4 Sep 2026)
   and net assets come from the fund's DailyNAV file, not from Yahoo; Yahoo's WAGN quote (NYSE Arca) is shown
   only in the market-price tooltip. FX (USD/SEK, CAD/SEK): Yahoo's last tick; on 26 Aug 2026 it differed from
   the ECB/Riksbank daily fix by ~0.1 %. The rate and its time are shown under "Price in SEK".
+- KAP (Pabrai's private funds in Turkey, since 6 Sep 2026): https://www.kap.org.tr/en/sirket-bilgileri/genel/<oid>
+  for each Turkish holding (config names[<ticker>].kap.oid; the ids come from the JSON behind
+  https://www.kap.org.tr/tr/bist-sirketler, mkkMemberOid). The page embeds its data as JSON inside JavaScript
+  strings; scripts/kap-holders.js unescapes it and reads the item kpy41_acc5_sermayede_dogrudan ("Breakdown of
+  Shareholders Holding More Than 5% of the Capital and Voting Rights": shareholder, nominal capital, % of
+  capital, % of votes, plus KAP's creationDate on the item) and kpy41_acc5_odenmis_sermaye (paid-in capital).
+  Verified 6 Sep 2026 on all five pages (HTTP 200 with the site's own User-Agent, 320–435 KB, one occurrence of
+  each item): Reysas Tasimacilik — Pabrai Investment Fund 3 Ltd 14.98 % (299,509,209) and The Pabrai Investment
+  Fund II L.P. 10.4 % (208,000,000), table dated 5 Sep 2026; Gimat — PIF IV 11.74 %, PIF II 8.56 % and "Pabrai
+  Wagons Fund" 5.52 % (16,569,895.88, the ETF's own file share count to the share), dated 28 Aug 2026; no Pabrai
+  row on Reysas REIT, TAV or TAB Gida. The share-group item kpy41_acc5_sermayeyi_temsil_eden states a nominal
+  value of 1 TL per share for Reysas REIT, Reysas, TAV and Gimat; TAB Gida's entry repeats the group totals in
+  the per-share column, so scripts/kap-holders.js refuses it (nominalValuePerShare null) and the page says 1 TL is
+  not confirmed there (the paid-in capital equals the table's total for all five, which proves nothing about the
+  per-share value). Only direct holders at 5 % or more of the capital or votes appear, individually; the table is
+  part of the company's own general-information form and carries no as-of date beyond KAP's stamp. Threshold crossings are
+  disclosed separately ("Pay Alım Satım Bildirimi"), not read. A page that cannot be read is labelled
+  (ok:false, fetchError) and keeps its recorded history; the route is not cached in that state.
 - Dalal Street: official SEC EDGAR submissions for CIK 0001549575 select the newest two 13F-HR report quarters;
   primary_doc.xml and infotable.xml are fetched for both and cross-checked for manager identity, report date,
   amendment state, declared entry count and declared total value (five requests in all). The SEC User-Agent
@@ -783,7 +841,7 @@ hand. Where to change it when it is:
   above and the timeout comment on the build job in pages.yml.
 - "Every GitHub build since 2 Sep 2026 verified the SEC filings with the built-in default User-Agent": GITHUB
   PAGES and SOURCES above, the header comment of pabrai.js, the SEC_USER_AGENT comment in pages.yml and in
-  scripts/build-pages.js. api/build.json dalalVerification, nportCheck and secContact are the live record.
+  scripts/build-pages.js. api/build.json dalalVerification, nportCheck, kapCheck and secContact are the live record.
 - The N-PORT quarter dates (next report 30 Sep 2026, due 30 Nov 2026) and candidateCount 228: SOURCES above;
   the page computes both from SEC's index at each build.
 - The Yahoo gap observations of 2 and 4 Sep 2026: HOW IT WORKS above.

@@ -1,0 +1,83 @@
+{
+ "source": "KAP (Public Disclosure Platform, Borsa Istanbul): company general-information pages, the >5 % shareholder table",
+ "note": "One observation per change in a Pabrai row (a private fund, or the ETF under its former name) of a company’s >5 % direct-holder table on KAP; seenAt is the fetch time of the build whose published kap.json the record job persisted (a push build or the daily slot), which can be up to a day after the first build that read the state; tableDate is the date KAP stamps on the table. Shares are nominal lira of capital; KAP’s share-group table states 1 TL per share for Reysas REIT, Reysas, TAV and Gimat, and is malformed for TAB Gida.",
+ "companies": {
+  "RYGYO TI": [
+   {
+    "seenAt": "2026-09-06T13:04:40.383Z",
+    "tableDate": "2026-01-06",
+    "totalShares": 2000000000,
+    "rows": []
+   }
+  ],
+  "RYSAS TI": [
+   {
+    "seenAt": "2026-09-06T13:04:40.383Z",
+    "tableDate": "2026-09-05",
+    "totalShares": 2000000000,
+    "rows": [
+     {
+      "holder": "PABRAI INVESTMENT FUND 3 LTD.",
+      "shares": 299509209,
+      "pct": 14.98,
+      "votingPct": 14.98,
+      "etf": false
+     },
+     {
+      "holder": "THE PABRAI INVESTMENT FUND IIL.P.",
+      "shares": 208000000,
+      "pct": 10.4,
+      "votingPct": 10.4,
+      "etf": false
+     }
+    ]
+   }
+  ],
+  "TAVHL TI": [
+   {
+    "seenAt": "2026-09-06T13:04:40.383Z",
+    "tableDate": "2025-12-20",
+    "totalShares": 363281250,
+    "rows": []
+   }
+  ],
+  "GMTAS TI": [
+   {
+    "seenAt": "2026-09-06T13:04:40.383Z",
+    "tableDate": "2026-08-28",
+    "totalShares": 300000000,
+    "rows": [
+     {
+      "holder": "THE PABRAI INVESTMENT FUND IVL.P.",
+      "shares": 35226425,
+      "pct": 11.74,
+      "votingPct": 11.74,
+      "etf": false
+     },
+     {
+      "holder": "THE PABRAI INVESTMENT FUND IIL.P.",
+      "shares": 25684239,
+      "pct": 8.56,
+      "votingPct": 8.56,
+      "etf": false
+     },
+     {
+      "holder": "PABRAI WAGONS FUND",
+      "shares": 16569895.88,
+      "pct": 5.52,
+      "votingPct": 5.52,
+      "etf": true
+     }
+    ]
+   }
+  ],
+  "TABGD TI": [
+   {
+    "seenAt": "2026-09-06T13:04:40.383Z",
+    "tableDate": "2026-07-04",
+    "totalShares": 261292000,
+    "rows": []
+   }
+  ]
+ }
+}
