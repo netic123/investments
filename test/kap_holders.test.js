@@ -166,7 +166,8 @@ test('server, build, workflow and page are wired for api/kap.json', () => {
   assert.match(html, /const SNAPSHOT_FILES=\['config','holdings','nav','perf','quotes','dalal','nport','kap','marketfg'\];/);
   assert.match(html, /function renderKap\(K,H\)/);
   assert.match(html, /renderKap\(data\.kap\|\|null, data\.holdings\|\|null\)/);
-  assert.match(html, /Pabrai’s private funds in Turkey/);
+  assert.match(html, /<h2>Pabrai’s private funds<\/h2>/);
+  assert.match(html, /<h2>In Turkey<\/h2>/);
   assert.match(html, /none listed at 5 % or more/);
   assert.match(html, /lists each direct holder of 5 % or more of a company’s capital or votes/);
   assert.match(html, /a fund below 5 % is not listed, so a total is a floor/i);
