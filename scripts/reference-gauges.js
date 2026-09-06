@@ -104,7 +104,9 @@ function compareSeries(cnnHistory, modelHistory) {
   for (const p of pairs) { sxy += (p.model - mx) * (p.cnn - my); sxx += (p.model - mx) ** 2; syy += (p.cnn - my) ** 2; }
   const correlation = sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : null;
   const same = pairs.filter(p => bandOf(p.model) === bandOf(p.cnn)).length, within = pairs.filter(p => Math.abs(bandOf(p.model) - bandOf(p.cnn)) <= 1).length;
-  return { n, from: pairs[0].date, to: pairs[n - 1].date, correlation, meanGap: mx - my, meanAbsGap: pairs.reduce((s, p) => s + Math.abs(p.model - p.cnn), 0) / n, sameBandPct: same / n * 100, withinOneBandPct: within / n * 100 };
+  // the same model shifted down by its mean gap: how much of the disagreement is level rather than signal
+  const gap = mx - my, sameShifted = pairs.filter(p => bandOf(p.model - gap) === bandOf(p.cnn)).length;
+  return { n, from: pairs[0].date, to: pairs[n - 1].date, correlation, meanGap: gap, meanAbsGap: pairs.reduce((s, p) => s + Math.abs(p.model - p.cnn), 0) / n, sameBandPct: same / n * 100, withinOneBandPct: within / n * 100, sameBandShiftedPct: sameShifted / n * 100, meanAbsGapShifted: pairs.reduce((s, p) => s + Math.abs(p.model - gap - p.cnn), 0) / n };
 }
 async function fetchCnn({ fetchImpl = fetch, userAgent = USER_AGENT, modelHistory = null } = {}) {
   const fetchedAt = new Date().toISOString();
