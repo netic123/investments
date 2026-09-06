@@ -657,7 +657,8 @@ function pricingDateOf(snap, navHistory) {
   return nav.date;
 }
 const ACTION_WORD = { INCREASE: 'Bought more', DECREASE: 'Reduced', NEW: 'New position', 'SOLD OUT': 'Sold out' };
-function tradesFeedXml(holdings, nav, { generatedAt, siteUrl = SITE_URL } = {}) {
+// The entries behind api/trades.xml and the trade issues: one per file-to-file interval with a change, newest first.
+function tradeEntries(holdings, nav, { generatedAt } = {}) {
   const H = holdings || {}, log = Array.isArray(H.log) ? H.log : [], snaps = Array.isArray(H.snapshots) ? H.snapshots : [];
   const byDate = Object.fromEntries(snaps.map(s => [s.date, s])), navHistory = (nav && Array.isArray(nav.history)) ? nav.history : [];
   const dates = [...new Set(snaps.map(s => s.date))].sort();
@@ -678,8 +679,12 @@ function tradesFeedXml(holdings, nav, { generatedAt, siteUrl = SITE_URL } = {}) 
     const title = `${session}: ${items.length ? items.map(c => `${ACTION_WORD[c.kind] || c.kind} ${c.ticker} ${c.delta > 0 ? '+' : ''}${fmtN(c.delta)}`).join('; ') : 'no change in any holding'}`;
     const basis = pa && pb ? `Between the fund’s daily files dated ${dmy(from)} and ${dmy(to)}, priced at the ${dmy(pa)} and ${dmy(pb)} closes.` : `Between the fund’s daily files dated ${dmy(from)} and ${dmy(to)}.`;
     const captured = b && b.source && b.source.capturedAt ? b.source.capturedAt : generatedAt;
-    entries.push({ id: `tag:netic123.github.io,2026:investments/trades/${from}/${to}`, title, updated: captured, content: `${lines.join('\n')}\n\n${basis} Share-count changes between two official files after removing moves proportional to a unit creation or redemption; not trade tickets, so the exact time and price are unknown.` });
+    entries.push({ id: `tag:netic123.github.io,2026:investments/trades/${from}/${to}`, key: `${from}/${to}`, from, to, session, tradeCount: items.length, lines, basis, title, updated: captured, content: `${lines.join('\n')}\n\n${basis} Share-count changes between two official files after removing moves proportional to a unit creation or redemption; not trade tickets, so the exact time and price are unknown.` });
   }
+  return entries;
+}
+function tradesFeedXml(holdings, nav, { generatedAt, siteUrl = SITE_URL } = {}) {
+  const entries = tradeEntries(holdings, nav, { generatedAt });
   const updated = generatedAt || (entries[0] && entries[0].updated) || '1970-01-01T00:00:00Z';
   return `<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">\n<title>Pabrai Wagons ETF — what Pabrai bought and sold</title>\n<subtitle>Share-count changes between the fund’s daily holdings files, from an independent, unofficial dashboard; one entry per file-to-file interval with a change; rebuilt at each build</subtitle>\n<id>tag:netic123.github.io,2026:investments/trades</id>\n<link href="${xmlEsc(siteUrl)}#pabrai" rel="alternate"/>\n<link href="${xmlEsc(siteUrl)}api/trades.xml" rel="self"/>\n<updated>${xmlEsc(updated)}</updated>\n<author><name>netic123</name></author>\n${entries.map(e => `<entry>\n<id>${xmlEsc(e.id)}</id>\n<title>${xmlEsc(e.title)}</title>\n<link href="${xmlEsc(siteUrl)}#pabrai" rel="alternate"/>\n<updated>${xmlEsc(e.updated)}</updated>\n<content type="text">${xmlEsc(e.content)}</content>\n</entry>`).join('\n')}\n</feed>\n`;
 }
@@ -937,10 +942,10 @@ async function main() {
 }
 
 module.exports = {
-  DIGESTED_FILES, ENDPOINTS, EXPECTED_FILES, HOLDINGS_FILE_EXPECTED_BY_UTC, PUBLISHED_HOLDINGS_URL, SCHEDULE_NOTE, SCHEDULE_WINDOW_UTC,
+  DIGESTED_FILES, ENDPOINTS, EXPECTED_FILES, HOLDINGS_FILE_EXPECTED_BY_UTC, PUBLISHED_HOLDINGS_URL, SCHEDULE_NOTE, SCHEDULE_WINDOW_UTC, SITE_URL,
   SNAPSHOT_STALE_AFTER_HOURS, SNAPSHOT_STALE_AFTER_HOURS_OFF_SCHEDULE, STATIC_CSP_DIRECTIVES,
   artifactDigests, assertPublishedHoldingsUrl, checkInlineScript, describeCron, inlineScript, mergeSnapshots,
-  pricingDateOf, refreshTriggerSentence, staticCsp, staticPageHtml, testedScheduleSlot, tradesFeedXml, usableSnapshots, verifyStaticPage, workflowSchedules,
+  pricingDateOf, refreshTriggerSentence, staticCsp, staticPageHtml, testedScheduleSlot, tradeEntries, tradesFeedXml, usableSnapshots, verifyStaticPage, workflowSchedules,
 };
 
 if (require.main === module) main().catch(error => {
