@@ -37,7 +37,7 @@ build after that exchange's local midnight, because only completed source-local 
 
 The test suite (about four minutes; three research suites that are pinned to the freeze machine are excluded)
 runs on every push, on the 09:20 slot and on a dispatch that did not ask to skip it. Every other trigger — the
-quarter-hourly slots, the page's live update, an external dispatch with skip_tests=true — may skip it only when
+quarter-hourly slots, the ticker, an external dispatch with skip_tests=true — may skip it only when
 scripts/tests-gate.js finds, through GitHub's API (the build job has actions: read), a completed successful
 run of pages.yml for the same commit whose test step ran and passed; when there is none, or the API cannot be
 read, the suite runs. api/build.json records testsSkipped from what the test step actually did (never from the
@@ -77,14 +77,12 @@ Google Fonts for the typefaces; data.sec.gov (SEC's EDGAR submissions index) on 
 hour, on a 10-minute re-check that loads a newer snapshot, while the published snapshot carries the manually
 verified 13F fallback — whichever tab the visitor
 opened, because the Pabrai section is rendered either way — to check whether a newer filing exists; and
-api.github.com only when the visitor presses "Show build history" (an unauthenticated read of the last 20 runs)
-or when the owner's live update runs with a stored token, which happens on the Update button and, with
-automatic rebuilds switched on, by itself on load, when the tab becomes visible again, and on the 10-minute
-re-check. No credential and nothing the
-visitor did on the page are sent to GitHub, which sees the request as any web server does: the IP address, the
-browser's user agent and that it came from netic123.github.io. Nothing typed on the page is sent anywhere
-except the owner's token and rebuild interval, which go to api.github.com (the interval is also published in
-the build's reason); without a stored token, a page load contacts nothing on GitHub.
+api.github.com only when the visitor presses "Show build history" (an unauthenticated read of the last 20 runs).
+No credential and nothing the visitor did on the page are sent to GitHub, which sees the request as any web
+server does: the IP address, the browser's user agent and that it came from netic123.github.io. The page has
+no input field and stores no credential (the owner's live update, a token kept in the browser that could start
+a build from the page, was removed on 6 Sep 2026 because the ticker makes it unnecessary); a page load contacts
+nothing on GitHub.
 
 When the holdings file cannot be reconciled to the official NAV (the two proofs are under HOW IT WORKS), the
 build still publishes; the page then labels the pricing date as not asserted and prints the reason, and
@@ -134,8 +132,7 @@ and the disagreeing files once, keeps a previously loaded consistent set over a 
 loaded set with an older build.json, and on a first load that is still mixed warns "a file's bytes do not match the
 SHA-256 that build.json publishes for it, normally the CDN still serving a file from an earlier build; figures may
 not match". index.html cannot check its own hash from inside the page. The
-automatic 10-minute re-check reads the JSON files the same way, never index.html, and does not run while the
-owner's live update is running.
+automatic 10-minute re-check reads the JSON files the same way, never index.html.
 
 Each build imports the previously published holdings history (INVESTMENTS_PREVIOUS_PUBLIC_HOLDINGS_URL, which
 must be set on GitHub; the fetch is attempted three times, 5 s then 10 s apart) and merges it with the committed data/snapshots.json
@@ -187,48 +184,17 @@ failed and therefore published nothing; the note counts published, failed and st
 runs, and the callout says when a newer build has finished that the CDN had not served at the page's last
 check. That is the reliability record behind the status line's age warning.
 
-LIVE UPDATE ON THE PUBLIC SITE (owner only)
-GitHub Pages has no server, and the fund's FilePoint files and Yahoo send no CORS headers, so a browser cannot
-fetch them directly; "live" on the public site therefore means a fresh build. Visitors never see this: the
-"Live update…" button appears only when the page is opened with #owner in the address
-(https://netic123.github.io/investments/#owner, remembered in sessionStorage for that browser tab session) or
-when a token is already stored in that browser. The button sets it up: paste a fine-grained GitHub token once
-(github_pat_…), and the button becomes "Update (rebuild)". Pressing it first asks GitHub for the last ten runs:
-a queued or running build, or a finished successful build newer than the loaded snapshot that the CDN has not
-served yet, is followed instead of starting another; otherwise it sends a workflow_dispatch to pages.yml with
-skip_tests=true (honoured only when a tested run of the same commit exists, see GITHUB PAGES), follows the run
-through api.github.com (polled every 15 s, for up to 15 minutes), then reads api/build.json every 20 s for up
-to 10 minutes until the CDN serves the one that run produced (its runId, or a generatedAt after the dispatch)
-and reloads the page with location.reload(), so the page code and the data come from one deployment; if the
-CDN still serves the previous snapshot after 10 minutes the status line says so and asks you to reload later.
-GitHub's error answers are explained by status (401 invalid or expired token; 403 with the rate limit used up
-and its reset time, or a missing permission; 404 wrong repository or token scope; 429; 5xx). Create the token
-under GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens: resource owner
-netic123, repository access "Only select repositories" → investments, repository permission Actions: Read and
-write (Metadata: Read is added automatically), nothing else, with a short expiry. The token is kept in that
-browser's local storage (key investments.liveUpdateToken), is sent only to api.github.com, and can be removed
-with ⚙ → "Forget token". Local storage is scoped by origin, not by page: every page served from
-https://netic123.github.io (all Pages sites of this account — today only this one) and any browser extension
-with page access can read the token; the page's Content-Security-Policy stops scripts injected into this page,
-not other same-origin pages. Anyone who can use that browser profile can use the token for the same. The
-permission does more than start builds: it also allows cancelling, re-running and approving this repository's
-workflow runs and deleting its runs, logs, artifacts and caches — everything under Actions there. The token
-itself cannot read or change code, but starting or re-running a workflow starts whatever that workflow does:
-the builds publish the public page, and the lockbox and holdings-history jobs commit their own output to main.
-The signed attestations survive a deleted run. The dispatch reason
-is public text: api/build.json records the trigger ("workflow_dispatch", "schedule" or "push"), the reason
-(shown on the About line, cut to 80 characters) and whether the tests were skipped.
-Auto mode: with a token stored, ⚙ offers "Automatically rebuild while this page is open and the snapshot is
-older than N minutes" (default 30, 5 to 720). While the tab is visible, the page then starts a build by itself
-whenever the snapshot is older than that (checked on load and on the 10-minute re-check, judging the age from
-the CDN copy of build.json), at most once per 15 minutes, following an already queued, running or
-just-published build instead of starting another; after a failed automatic build it waits for a newer
-snapshot or a manual Update. The setting is stored in the same browser (key investments.liveUpdateAutoMinutes).
+LIVE UPDATE ON THE PUBLIC SITE (removed 6 Sep 2026)
+Until 6 Sep 2026 the owner could store a fine-grained GitHub token in the browser and start a build from the
+page ("Update (rebuild)", with an automatic mode). The ticker (AUTOMATIC UPDATES) starts builds by itself
+without any personal token, so the button, the token panel and the auto mode were removed: the public page
+holds no credential and has no input field. The workflow_dispatch inputs they used (skip_tests, reason) remain
+for the ticker and for scripts/dispatch-build.js.
 
 EXTERNAL CRON (optional; not in use)
 GitHub starts this repository's scheduled runs late and skips most slots (the observations are under GITHUB
-PAGES). A build on a clock you control is possible: an external cron can send the same workflow_dispatch the
-page's "Update (rebuild)" button sends, and scripts/dispatch-build.js does exactly that:
+PAGES); since 5 Sep 2026 the ticker (AUTOMATIC UPDATES) keeps that clock inside GitHub. An external cron could
+still send the same workflow_dispatch the ticker sends, and scripts/dispatch-build.js does exactly that:
 
   GITHUB_DISPATCH_TOKEN=github_pat_... node scripts/dispatch-build.js "external cron"
 
@@ -242,8 +208,13 @@ cron-job.org) the job would be:
             Content-Type: application/json
   Body:     {"ref":"main","inputs":{"skip_tests":"true","reason":"external cron"}}
   Schedule: whatever you prefer; expected answer 204.
-The token is the same kind as for the live update (see the recipe and the scope there; it lives only in the
-cron service's job settings; revoke it there and on GitHub to stop). A 204 only means the dispatch was queued:
+The token is a fine-grained personal access token (GitHub → Settings → Developer settings → Personal access
+tokens → Fine-grained tokens: resource owner netic123, repository access "Only select repositories" →
+investments, repository permission Actions: Read and write, nothing else, with a short expiry); it lives only
+in the cron service's job settings; revoke it there and on GitHub to stop. That permission also allows
+cancelling, re-running and approving this repository's workflow runs and deleting its runs, logs, artifacts
+and caches, and starting or re-running a workflow starts whatever that workflow does: the builds publish the
+public page, and the lockbox and holdings-history jobs commit their own output to main. A 204 only means the dispatch was queued:
 each one runs behind any build already in progress (the workflow's concurrency group serialises them), skips
 the suite only when a tested run of the same commit exists, and api/build.json records trigger
 "workflow_dispatch" with the reason, which the page's About line shows. GitHub's own schedules keep running
@@ -765,7 +736,7 @@ IF SOMETHING GOES WRONG
   <time>" (public site,
   every tab) = the published snapshot is older than the applicable threshold (3 h Mon–Fri 05:05–23:20 UTC, 30 h
   otherwise); every figure on the page is as of that build. Press "Show build history" to see what GitHub
-  started; nothing on the page can trigger a build except the owner's live update.
+  started; nothing on the page can trigger a build — the ticker and the schedules do.
 - "the fund's file dated <D> is normally published by 00:30 UTC; this snapshot …" (public site, every tab) = the
   newest file is not in the snapshot: either the build predates the file, or the fund had not published
   it when the build fetched, or the fetch failed. Not an error in itself. A US market holiday is not a file day: the expectation comes from a fixed NYSE
@@ -798,8 +769,6 @@ IF SOMETHING GOES WRONG
   startup. Crypto requires BTC, ETH, SOL, XRP, ADA, DOGE, BNB, IEF, HYG and LQD; the other tabs require their
   configured sources. If a raw series was fetched earlier, the last successful in-memory copy may be reused with
   an explicit warning ("fallback data"). No third-party sentiment index is substituted.
-- "live update: …" messages belong to the owner's live update; they end with the page reloading or with the
-  GitHub answer explained (see LIVE UPDATE).
 - If snapshots.json breaks, a copy is saved (snapshots.json.broken-<time>) and the history starts over.
 
 DATED OBSERVATIONS THAT WILL AGE

@@ -7,9 +7,9 @@ name: Deploy GitHub Pages
   workflow_dispatch:
     inputs:
       skip_tests:
-        # The page's owner-only "Update (rebuild)" button dispatches this
-        # workflow with skip_tests=true (scripts/dispatch-build.js can send the
-        # same request from an external cron; none is in use). The request is
+        # The ticker (ticker.yml) dispatches this workflow with skip_tests=true;
+        # scripts/dispatch-build.js can send the same request from a shell or
+        # an external cron (none is in use). The request is
         # honoured only when a completed, successful run of this workflow for
         # the same commit already ran the test step (the gate step checks
         # GitHub's API); otherwise the suite runs anyway, about four minutes.

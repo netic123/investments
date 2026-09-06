@@ -2,8 +2,8 @@
 'use strict';
 
 // Start a public-snapshot build from anywhere: an external cron service, a
-// shell, a scheduled task. It sends the same workflow_dispatch that the page's
-// owner-only "Update (rebuild)" button sends, so a build can be started on a
+// shell, a scheduled task. It sends the same workflow_dispatch that the ticker
+// (.github/workflows/ticker.yml) sends, so a build can be started on a
 // clock the owner controls (GitHub starts this repository's scheduled runs
 // late and skips most slots). The owner has decided against running one; the
 // script stays available.

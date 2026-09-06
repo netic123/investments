@@ -78,9 +78,8 @@ const STATIC_CSP_DIRECTIVES = [
   // api.github.com is contacted by a visitor's browser when the Build history
   // section is opened (an unauthenticated read of the last 20 runs of
   // pages.yml; GitHub sees an ordinary web request and nothing about the
-  // visitor is sent) and by the owner's optional live update (dispatching a
-  // rebuild with a token stored in that browser, then polling the run; after
-  // the new build.json is live the page reloads itself).
+  // visitor is sent). The page holds no credential (the owner's live update
+  // was removed on 6 Sep 2026; the ticker starts builds by itself).
   "connect-src 'self' https://data.sec.gov https://api.github.com",
   "img-src 'self' data:",
   "base-uri 'none'",
@@ -179,7 +178,7 @@ function describeCron(cron) {
 function refreshTriggerSentence(schedules, testedSlot) {
   const slots = schedules.map(cron => `${describeCron(cron)}${cron === testedSlot ? ' (with the test suite)' : ''}`);
   const scheduled = slots.length ? `, or one of the scheduled slots: ${slots.join('; ')}` : '';
-  return `push to main, a dispatch (manual or the page's live update)${scheduled}. Scheduled slots other than the tested one skip the suite only when a successful tested run of the same commit exists. ${SCHEDULE_NOTE}.`;
+  return `push to main, a dispatch (the ticker, or by hand)${scheduled}. Scheduled slots other than the tested one skip the suite only when a successful tested run of the same commit exists. ${SCHEDULE_NOTE}.`;
 }
 
 const EXPECTED_MARKET_SYMBOLS = {

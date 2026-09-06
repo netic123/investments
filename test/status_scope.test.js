@@ -31,15 +31,12 @@ test('the status line records the page load once and draws the shared warnings p
   assert.match(html, /const shared=sharedWarnings\(\)/);
   assert.match(html, /st\.className = scoped\.length\|\|shared\.some\(w=>w\.level==='err'\) \? 'err' : shared\.length\|\|LAST_CHECK\.failed \? 'warn' : '';/);
   assert.match(html, /#status\.warn\{color:var\(--warn\)\}/);
-  // the live update owns the line while it runs
-  assert.match(html, /const say=\(msg,err\)=>\{ st\.className=err\?'err':''; st\.textContent='live update: '\+msg; STATUS_RENDER=/);
 });
 
 test('browser source requests have finite deadlines', () => {
   assert.match(html, /u\.startsWith\('\/api\/marketfg'\)\?35000:45000/);
   assert.match(html, /AbortSignal\.timeout\(timeout\)/);
   assert.match(html, /CIK0001549575\.json',\{cache:'no-store',signal:AbortSignal\.timeout\(15000\)\}/);
-  assert.match(html, /signal:AbortSignal\.timeout\(20000\)/, 'GitHub API calls of the live update');
   assert.match(html, /signal:AbortSignal\.timeout\(15000\)\}\);\r?\n\s+if\(r\.status===403\|\|r\.status===429\)/, 'the Build history read');
 });
 
