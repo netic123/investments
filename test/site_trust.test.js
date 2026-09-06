@@ -799,6 +799,11 @@ test('the build publishes an Atom feed of the trades: one entry per interval wit
   assert.match(html, /\$\('#tradesFeed'\)\.hidden=false;/);
   // the seven-day digest nets each holding over the window and is skipped when the window is one interval
   assert.match(html, /<b>Last 7 days<\/b>/);
+  // the "in short" sentence: grouped verbs, the largest by value named, the rest counted, dated by the first file's pricing date
+  assert.match(html, /<p class="inshort"/);
+  assert.match(html, /\['added to',[^\]]*\],\['built a new position in',[^\]]*\],\['sold out of',[^\]]*\],\['trimmed'/);
+  assert.match(html, /Since \$\{fmtDate\(start\?start\.navDate:F0\.date\)\} Pabrai has/);
+  assert.match(html, /plus \$\{fmt\(rest\)\} smaller change/);
   // the build-up cards: one point per saved file, cash-like rows left out, unchanged holdings not shown
   assert.match(html, /<h2>Each position over time<\/h2>/);
   // plain words in the visible flow: no "session", "cash-like" or "WAGN units" outside tooltips and folded blocks

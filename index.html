@@ -119,6 +119,7 @@ details.market>summary{font-family:var(--f-body);font-size:.95rem;letter-spacing
 .tchip.sell{border-color:var(--neg)} .tchip.sell .k{color:var(--neg)}
 .tchip.units{border-style:dashed;color:var(--muted)}
 .tchip .n{font-family:var(--f-mono);font-size:.8rem;font-variant-numeric:tabular-nums}
+.inshort{font-size:1.02rem;line-height:1.5;margin:0 0 12px;color:var(--ink)}
 .hint{font-size:.8rem;color:var(--muted);margin:8px 0 0}
 @media (max-width:520px){ .trades li{grid-template-columns:1fr} }
 details{border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface);margin-top:10px;overflow:hidden}
@@ -407,6 +408,8 @@ const $ = s => document.querySelector(s);
 const nf = new Intl.NumberFormat('en-GB');
 const fmt = (n,d=0)=> n==null||!isFinite(n) ? '—' : (d?new Intl.NumberFormat('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d}).format(n):nf.format(Math.round(n)));
 const pct = (n,d=1,sign=true)=> n==null||!isFinite(n) ? '—' : (sign&&n>0?'+':'')+n.toFixed(d)+'%';
+const usdShort = v => v==null||!isFinite(v) ? '—' : Math.abs(v)>=1e6 ? '$'+fmt(Math.abs(v)/1e6,2)+'M' : '$'+fmt(Math.abs(v)/1e3,0)+'k'; // magnitude only; the caller adds the sign
+const listAnd = a => a.length<=1 ? a.join('') : a.slice(0,-1).join(', ')+' and '+a[a.length-1];
 const cls = n => n==null||!isFinite(n)||Math.abs(n)<1e-9 ? 'flat' : n>0 ? 'up' : 'down';
 const ratio = (a,b)=> a==null||b==null||!b ? null : (a/b-1)*100;   // null in → null out, never -100 %
 const div = (a,k)=> a==null ? null : a/k;
@@ -1050,9 +1053,24 @@ function renderHoldings(H,Q){
     let units=0, unitsKnown=true; for(const [a,b] of intervals){ const f=unitFlowWithImplied(byDate[a],byDate[b],NAV_DATA); if(f.known) units+=f.delta; else unitsKnown=false; }
     const cash=CASHLOG.filter(inWin).reduce((s,c)=>s+(c.delta>0?c.approxUsd:-c.approxUsd),0);
     const word=a=> a.kinds.has('SOLD OUT')&&a.delta<0 ? 'Sold out' : a.kinds.has('NEW')&&a.delta>0 ? 'New position' : a.delta>0 ? 'Bought more' : 'Reduced';
-    const chips=rows.map(a=>`<span class="tchip ${a.delta>0?'buy':'sell'}" title="net ${a.delta>0?'+':''}${fmt(a.delta)} shares over the period, ≈ ${a.usd<0?'−':''}$${fmt(Math.abs(a.usd))} at the files’ values"><span class="k">${word(a)}</span>${esc(a.ticker)}<span class="n">${a.delta>0?'+':''}${fmt(a.delta)}</span></span>`);
+    const base=t=>{ const s0=byDate[intervals[0][0]]; return s0&&s0.rows[t]?s0.rows[t].shares:0; };
+    const chips=rows.map(a=>{ const b0=base(a.ticker), p=b0?a.delta/b0*100:null; return `<span class="tchip ${a.delta>0?'buy':'sell'}" title="${esc(a.ticker)}: net ${a.delta>0?'+':''}${fmt(a.delta)} shares over the period${p!=null?' ('+pct(p,1)+')':''}, ≈ ${a.usd<0?'−':''}$${fmt(Math.abs(a.usd))} at the files’ values"><span class="k">${word(a)}</span>${esc(nameOf(a.ticker))}<span class="n">${a.usd<0?'−':'+'}${usdShort(a.usd)}${p!=null?' · '+pct(p,1):''}</span></span>`; });
     const first=closeOf(intervals[0][0]);
     return `<div class="callout"><b>Last 7 days</b> <span class="muted" title="${fmt(intervals.length)} pairs of the fund’s files, closes ${fmtDate(first)} → ${fmtDate(end)}">· ${fmtDate(first)} → ${fmtDate(end)}</span><div class="acts" style="display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:8px">${rows.length?chips.join(''):'<span class="muted">no change in any holding</span>'+(chips.length?' '+chips.join(''):'')}</div>${(cash||(unitsKnown&&units))?`<div class="hint" style="margin-top:6px">Not trades: ${[unitsKnown&&units?`new money ${units>0?'+':''}${fmt(units)} WAGN shares`:'', cash?`cash ${cash<0?'−':'+'}$${fmt(Math.abs(cash)/1e6,2)}M (money-market fund)`:''].filter(Boolean).join(' · ')} over the period.</div>`:''}</div>`;
+  })();
+  // ---- in short: what the saved files add up to, in one sentence — grouped by what he did, the largest by value first,
+  // the rest counted; the position cards below carry the detail. Dated by the first file's pricing date where proven.
+  const inShort=(()=>{
+    const snaps=[...(H.snapshots||[])].filter(s=>s&&s.rows).sort((a,b)=>a.date.localeCompare(b.date)); if(snaps.length<2) return '';
+    const F0=snaps[0], agg=[];
+    for(const t of new Set([...Object.keys(F0.rows||{}),...Object.keys(L.rows||{})])){ if(isCashLike(t)) continue; const a=F0.rows[t]?F0.rows[t].shares:0, b=L.rows[t]?L.rows[t].shares:0, d=b-a; if(Math.abs(d)<0.5) continue; const r=L.rows[t]||F0.rows[t], px=r&&r.shares?r.mv/r.shares:0; agg.push({t,a,b,d,usd:d*px,pct:a?d/a*100:null}); }
+    agg.sort((x,y)=>Math.abs(y.usd)-Math.abs(x.usd));
+    if(!agg.length) return '';
+    const TOP=6, shown=agg.slice(0,TOP), rest=agg.length-shown.length;
+    const named=x=>`<b>${esc(nameOf(x.t))}</b>${x.a&&x.b?' ('+pct(x.pct,0)+')':''}`;
+    const groups=[['added to',shown.filter(x=>x.a&&x.b&&x.d>0)],['built a new position in',shown.filter(x=>!x.a)],['sold out of',shown.filter(x=>!x.b)],['trimmed',shown.filter(x=>x.a&&x.b&&x.d<0)]].filter(([,l])=>l.length);
+    const start=pricingOf(F0,NAV_DATA);
+    return `<p class="inshort" title="net change in shares held between the first saved file and the latest, valued at the latest file’s price; the largest ${fmt(shown.length)} by value are named">Since ${fmtDate(start?start.navDate:F0.date)} Pabrai has ${groups.map(([verb,l])=>verb+' '+listAnd(l.map(named))).join('; ')}${rest?`; plus ${fmt(rest)} smaller change${rest===1?'':'s'}`:''}.</p>`;
   })();
   const latestHead = P ? `<p class="hint" style="margin:${digest?'14px':'0'} 0 8px;color:var(--ink)"><b>Latest${sess.proven&&sess.sessions===1?': '+sess.label:''}</b> <span class="muted" title="${esc(sess.proven?sess.sub:'')}">${sess.proven&&sess.sessions===1?'trading day':sess.proven?sess.label+' closes':'files '+span}</span></p>` : '';
   // On a day without a newer session (weekend, holiday) say why, and when the next file is due, from the NYSE calendar
@@ -1064,8 +1082,8 @@ function renderHoldings(H,Q){
   $('#chgNote').textContent = P ? (sess.proven ? (sess.sessions===1 ? 'latest: '+sess.label : 'latest: '+sess.label+' closes') : 'latest: '+span)+sinceNote : '—';
   $('#chgNote').title = since.title;
   $('#changes').innerHTML = !P ? '<div class="empty">Only one snapshot saved so far — changes appear from the next file day.</div>'
-    : !C.length ? digest+latestHead+flowCallout+`<div class="empty">No change in any holding (${sess.proven?sess.label:span}).</div>`+cashLine+basis+reconLine
-    : digest+latestHead+gapCallout+flowCallout+tradesTable(C,L)+cashLine+basis+reconLine;
+    : !C.length ? inShort+digest+latestHead+flowCallout+`<div class="empty">No change in any holding (${sess.proven?sess.label:span}).</div>`+cashLine+basis+reconLine
+    : inShort+digest+latestHead+gapCallout+flowCallout+tradesTable(C,L)+cashLine+basis+reconLine;
   renderTradeHistory(H,LOG,CASHLOG,byDate);
   renderBuildUp(H,LOG,Q);
   const cashLog = CASHLOG.length ? `<div class="muted" style="font-size:.82rem;margin-top:8px">Cash-like rows not listed as trades: ${CASHLOG.map(c=>`${fmtDate(c.from)} → ${fmtDate(c.to)} ${esc(c.ticker)} ${c.delta>0?'+':''}${fmt(c.delta)} (${pct(c.pct,1)})`).join('; ')}.</div>` : '';
@@ -1148,7 +1166,7 @@ function renderTradeHistory(H,LOG,CASHLOG,byDate){
   for(let i=dates.length-1;i>0;i--){
     const from=dates[i-1], to=dates[i], items=groups[from+'→'+to]||[], s=sessionOf(from,to,byDate,NAV_DATA);
     const flow=unitFlowWithImplied(byDate[from],byDate[to],NAV_DATA);
-    const chips=[...items].sort((a,b)=>(b.absValue||0)-(a.absValue||0)).map(c=>`<span class="tchip ${c.delta>0?'buy':'sell'}" title="${esc(nameOf(c.ticker))}: ${c.delta>0?'+':''}${fmt(c.delta)} shares (${pct(c.pct,1)}), ≈ $${fmt(c.approxUsd)} at the file’s value"><span class="k">${esc(actionOf(c))}</span>${esc(c.ticker)}<span class="n">${c.delta>0?'+':''}${fmt(c.delta)}</span></span>`);
+    const chips=[...items].sort((a,b)=>(b.absValue||0)-(a.absValue||0)).map(c=>`<span class="tchip ${c.delta>0?'buy':'sell'}" title="${esc(c.ticker)}: ${c.delta>0?'+':''}${fmt(c.delta)} shares (${pct(c.pct,1)}), ≈ $${fmt(c.approxUsd)} at the file’s value"><span class="k">${esc(actionOf(c))}</span>${esc(nameOf(c.ticker))}<span class="n">${c.delta>0?'+':'−'}${usdShort(c.approxUsd)}${Number.isFinite(c.pct)?' · '+pct(c.pct,1):''}</span></span>`);
     // new money and the money-market cash are not trades: one muted note after the chips, the unit counts in its tooltip
     const cash=CASHLOG.filter(c=>c.from===from&&c.to===to), notes=[];
     if(flow.known&&flow.delta) notes.push(`${flow.delta>0?'new money':'money out'} ${flow.delta>0?'+':''}${fmt(flow.delta)} WAGN shares`);
@@ -1207,7 +1225,7 @@ function renderBuildUp(H,LOG,Q){
     if(s.avgSell!=null) gone.push(`sold ${fmt(s.sellShares)} at avg ${money2(s.avgSell,s.t)}${s.pxNow!=null?` → now ${money2(s.pxNow,s.t)} (${since(s.avgSell,s.pxNow)})`:' · no later price in the fund’s files'}`);
     const usdStr=v=>Math.abs(v)>=1e6?'$'+fmt(Math.abs(v)/1e6,2)+'M':'$'+fmt(Math.abs(v)/1e3,0)+'k', sekStr=v=>Math.abs(v)>=1e6?'SEK '+fmt(Math.abs(v)/1e6,1)+'M':'SEK '+fmt(Math.abs(v)/1e3,0)+'k';
     const res = s.result!=null ? ` · <span class="${cls(s.result)}">${s.result<0?'−':'+'}${usdStr(s.result)}</span>${usdSek?` (${s.result<0?'−':'+'}${sekStr(s.result*usdSek)})`:''} so far` : '';
-    return `<div class="card" style="padding:12px 14px" title="${esc(tip)}"><div class="hd" style="margin-bottom:6px"><span class="tick">${esc(s.t)}</span><span style="font-size:.9rem">${esc(nameOf(s.t))}</span><span class="badge ${d>0?'b-buy':'b-sell'}">${kind}</span></div>${spark(s.pts)}<div style="font-size:.78rem;color:var(--muted);margin-top:4px">${fmt(s.first)} → ${fmt(s.last)} shares since ${fmtDate(snaps[0].date)} · <span class="${cls(d)}">${d>0?'+':''}${fmt(d)}${s.first?' ('+pct(d/s.first*100,1)+')':''}</span> · ≈ ${s.usd<0?'−':'+'}$${fmt(Math.abs(s.usd)/1e6,2)}M</div>${gone.length?`<div style="font-size:.78rem;color:var(--muted);margin-top:3px">${gone.join(' · ')}${res}${s.unpriced?' · '+fmt(s.unpriced)+' change'+(s.unpriced===1?'':'s')+' without a file price':''}</div>`:''}</div>`; }).join('')
+    return `<div class="card" style="padding:12px 14px" title="${esc(tip)}"><div class="hd" style="margin-bottom:6px"><span class="tick">${esc(s.t)}</span><span style="font-size:.9rem">${esc(nameOf(s.t))}</span><span class="badge ${d>0?'b-buy':'b-sell'}">${kind}</span></div>${spark(s.pts)}<div style="font-size:.78rem;color:var(--muted);margin-top:4px"><span class="${cls(d)}">${d>0?'+':''}${fmt(d)} shares${s.first?' ('+pct(d/s.first*100,1)+')':''}</span> · ≈ ${s.usd<0?'−':'+'}${usdShort(s.usd)} · now ${fmt(s.last)}</div>${gone.length?`<div style="font-size:.78rem;color:var(--muted);margin-top:3px">${gone.join(' · ')}${res}${s.unpriced?' · '+fmt(s.unpriced)+' change'+(s.unpriced===1?'':'s')+' without a file price':''}</div>`:''}</div>`; }).join('')
     || '<div class="empty">No holding’s share count changed over the saved files.</div>';
   note.textContent=`${fmt(series.length)} holdings changed since ${fmtDate(snaps[0].date)}`;
   note.title=`files ${fmtDate(snaps[0].date)} → ${fmtDate(L.date)} · prices are the fund’s file closes${usdSek?' · SEK at '+fmt(usdSek,2)+' USD/SEK':''}`;
@@ -1334,10 +1352,10 @@ function renderDalalHistory(D){
     const items=keys.map(c=>{ const now=m[c]?m[c].shares:0, before=prev[c]?prev[c].shares:0, d=now-before; if(!d) return null;
       const kind=!prev[c]?'New position':!m[c]?'Sold out':d>0?'Bought more':'Reduced'; const ref=m[c]||prev[c]; const perShare=ref.shares?ref.valueUsd/ref.shares:0;
       return {c,d,kind,now,before,name:nameOf(ref),usd:Math.abs(d)*perShare}; }).filter(Boolean).sort((a,b)=>b.usd-a.usd);
-    const chips=items.map(it=>`<span class="tchip ${it.d>0?'buy':'sell'}" title="${fmt(it.before)} → ${fmt(it.now)} shares${it.usd?', ≈ $'+fmt(it.usd)+' at the filing’s value':''} · CUSIP ${esc(it.c)}"><span class="k">${it.kind}</span>${esc(it.name)}<span class="n">${it.d>0?'+':''}${fmt(it.d)}</span></span>`);
+    const chips=items.map(it=>`<span class="tchip ${it.d>0?'buy':'sell'}" title="${fmt(it.before)} → ${fmt(it.now)} shares${it.usd?', ≈ $'+fmt(it.usd)+' at the filing’s value':''} · CUSIP ${esc(it.c)}"><span class="k">${it.kind}</span>${esc(it.name)}<span class="n">${it.usd?(it.d>0?'+':'−')+usdShort(it.usd):(it.d>0?'+':'')+fmt(it.d)+' sh'}</span></span>`);
     rows.push(`<li><span class="d">${fmtDate(q.reportDate)}<span class="s">filed ${fmtDate(q.filed)}${q.amended?' (amendment)':''} · ${fmt(Object.keys(m).length)} position${Object.keys(m).length===1?'':'s'} · $${fmt(q.totalValueUsd/1e6,1)}M</span></span><span class="acts">${items.length?chips.join(''):'<span class="muted">no change in any position</span>'}</span></li>`);
   }
-  const RECENT=8;
+  const RECENT=4;
   wrap.innerHTML=`<ul class="trades">${rows.slice(0,RECENT).join('')}</ul>`;
   earlier.innerHTML=rows.length>RECENT?`<ul class="trades">${rows.slice(RECENT).join('')}</ul>`:'<div class="empty">Nothing earlier.</div>';
   sum.textContent=rows.length>RECENT?`Earlier quarters — ${fmtDate(Q[1].reportDate)} to ${fmtDate(byQ[byQ.length-1-RECENT].q.reportDate)}, ${fmt(rows.length-RECENT)} more`:'Earlier quarters';
