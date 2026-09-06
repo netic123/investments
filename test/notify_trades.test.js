@@ -48,13 +48,14 @@ test('an issue names the owner, lists the lines, links the page and the feed, an
   assert.deepEqual(n.markersIn(issue.body), ['2026-09-04/2026-09-08']);
 });
 
-test('only intervals with a trade, only the three newest, never one already marked, and only the newest on a first run', () => {
-  const e = (key, tradeCount) => ({ key, tradeCount });
-  const entries = [e('d/e', 1), e('c/d', 0), e('b/c', 2), e('a/b', 1), e('z/a', 1)];
-  assert.deepEqual(n.issuesToCreate(entries, []).map(x => x.key), ['d/e'], 'first run: the newest only');
-  assert.deepEqual(n.issuesToCreate(entries, ['x/y']).map(x => x.key), ['d/e', 'b/c', 'a/b'], 'three newest traded intervals');
-  assert.deepEqual(n.issuesToCreate(entries, ['d/e', 'b/c']).map(x => x.key), ['a/b'], 'marked ones are skipped');
-  assert.deepEqual(n.issuesToCreate(entries, ['d/e', 'b/c', 'a/b']), []);
+test('only the newest on a first run; afterwards only traded intervals newer than the last one marked, at most three, never an older one', () => {
+  const e = (from, to, tradeCount) => ({ key: `${from}/${to}`, from, to, tradeCount });
+  const entries = [e('2026-09-04', '2026-09-08', 1), e('2026-09-03', '2026-09-04', 0), e('2026-09-02', '2026-09-03', 2), e('2026-09-01', '2026-09-02', 1), e('2026-08-31', '2026-09-01', 1)];
+  assert.deepEqual(n.issuesToCreate(entries, []).map(x => x.key), ['2026-09-04/2026-09-08'], 'first run: the newest only');
+  assert.deepEqual(n.issuesToCreate(entries, ['2026-09-04/2026-09-08']), [], 'the newest is marked: nothing older is posted');
+  assert.deepEqual(n.issuesToCreate(entries, ['2026-08-31/2026-09-01']).map(x => x.key), ['2026-09-04/2026-09-08', '2026-09-02/2026-09-03', '2026-09-01/2026-09-02'], 'a dead chain catches up on the newer sessions, newest first, up to three');
+  assert.deepEqual(n.issuesToCreate(entries, ['2026-09-01/2026-09-02', '2026-08-31/2026-09-01']).map(x => x.key), ['2026-09-04/2026-09-08', '2026-09-02/2026-09-03']);
+  assert.deepEqual(n.issuesToCreate(entries, ['2026-09-04/2026-09-08', '2026-09-02/2026-09-03']), []);
   assert.equal(n.CONSIDER, 3);
 });
 
