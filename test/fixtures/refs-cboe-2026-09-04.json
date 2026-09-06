@@ -1,0 +1,110 @@
+{
+ "ratios": [
+  {
+   "name": "TOTAL PUT/CALL RATIO",
+   "value": "0.76"
+  },
+  {
+   "name": "INDEX PUT/CALL RATIO",
+   "value": "0.89"
+  },
+  {
+   "name": "EXCHANGE TRADED PRODUCTS PUT/CALL RATIO",
+   "value": "0.85"
+  },
+  {
+   "name": "EQUITY PUT/CALL RATIO",
+   "value": "0.58"
+  },
+  {
+   "name": "CBOE VOLATILITY INDEX (VIX) PUT/CALL RATIO",
+   "value": "0.21"
+  },
+  {
+   "name": "SPX + SPXW PUT/CALL RATIO",
+   "value": "1.15"
+  },
+  {
+   "name": "OEX PUT/CALL RATIO",
+   "value": "0.00"
+  },
+  {
+   "name": "MRUT PUT/CALL RATIO",
+   "value": "0.84"
+  },
+  {
+   "name": "MXEA PUT/CALL RATIO",
+   "value": "0.00"
+  },
+  {
+   "name": "MXEF PUT/CALL RATIO",
+   "value": "0.00"
+  },
+  {
+   "name": "MXACW PUT/CALL RATIO",
+   "value": "0.00"
+  },
+  {
+   "name": "MXWLD PUT/CALL RATIO",
+   "value": "0.00"
+  },
+  {
+   "name": "MXUSA PUT/CALL RATIO",
+   "value": "0.00"
+  },
+  {
+   "name": "CBTX PUT/CALL RATIO",
+   "value": "0.50"
+  },
+  {
+   "name": "MBTX PUT/CALL RATIO",
+   "value": "1.00"
+  },
+  {
+   "name": "SPEQX PUT/CALL RATIO",
+   "value": "0.00"
+  },
+  {
+   "name": "SPEQW PUT/CALL RATIO",
+   "value": "0.00"
+  },
+  {
+   "name": "MGTN PUT/CALL RATIO",
+   "value": "5.00"
+  },
+  {
+   "name": "MGTNW PUT/CALL RATIO",
+   "value": "0.13"
+  },
+  {
+   "name": "DJX PUT/CALL RATIO",
+   "value": "2.09"
+  },
+  {
+   "name": "DJXW PUT/CALL RATIO",
+   "value": "0.14"
+  },
+  {
+   "name": "XSPBX PUT/CALL RATIO",
+   "value": "0.00"
+  },
+  {
+   "name": "XSPBW PUT/CALL RATIO",
+   "value": "1.03"
+  }
+ ],
+ "SUM OF ALL PRODUCTS": [
+  {
+   "name": "VOLUME",
+   "call": 8097199,
+   "put": 6151527,
+   "total": 14248726
+  },
+  {
+   "name": "OPEN INTEREST",
+   "call": 383885124,
+   "put": 291007001,
+   "total": 674892125
+  }
+ ]
+}

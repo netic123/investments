@@ -14,12 +14,13 @@ const crypto = require('crypto');
 const { spawn, execFileSync } = require('child_process');
 const { impliedUnitsFromNav, isQuarterEndDate, nextTradingDay, reconcileWagnHoldingsToNav, secUserAgent, summarizeNportCheck, validateWagnHoldingsFreshness } = require('../pabrai');
 const { summarize: summarizeKap } = require('./kap-holders');
+const { summarize: summarizeRefs } = require('./reference-gauges');
 const { collectSpecSymbols, hashPublicDecision, hashPublishedScoreHistory } = require('../marketfg');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, '_site');
 const API_OUT = path.join(OUT, 'api');
-const ENDPOINTS = ['config', 'holdings', 'dalal', 'nport', 'kap', 'nav', 'perf', 'quotes', 'marketfg'];
+const ENDPOINTS = ['config', 'holdings', 'dalal', 'nport', 'kap', 'refs', 'nav', 'perf', 'quotes', 'marketfg'];
 const EXPECTED_FILES = ['.nojekyll', 'index.html', 'api/build.json', 'api/trades.xml', ...ENDPOINTS.map(name => `api/${name}.json`)].sort();
 const PUBLIC_POSITION_KEYS = ['currency', 'entry', 'fundTicker', 'nextReport', 'nextReportApprox', 'nextReportNote', 'secTicker', 'ticker', 'yahoo'];
 const PUBLIC_EXPANDING_SIGNAL_KEYS = [
@@ -500,7 +501,7 @@ function recentBarTopUps(marketfg) {
 }
 
 // Snapshot retry budget (the build job's timeout-minutes in pages.yml must
-// leave room for it after the test suite): up to 3 attempts, all nine
+// leave room for it after the test suite): up to 3 attempts, all ten
 // endpoints fetched in parallel with a 120 s timeout each (fetchJson), and
 // waits of 20 s after attempt 1 and 40 s after attempt 2.
 async function captureSnapshot(base, publicPositions) {
@@ -913,6 +914,8 @@ async function main() {
       nportCheck: summarizeNportCheck(data.nport),
       // KAP (Borsa Istanbul's disclosure platform): the >5 % holder tables naming Pabrai's private funds (scripts/kap-holders.js)
       kapCheck: summarizeKap(data.kap),
+      // the independent readings next to the Fear & Greed scores (scripts/reference-gauges.js)
+      refsCheck: summarizeRefs(data.refs),
     };
 
     prepareOutput();

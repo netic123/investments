@@ -22,6 +22,7 @@ const {
 } = require('./pabrai');
 const { mergeCurrent, readHistory: readDalalHistory } = require('./scripts/dalal-13f-history');
 const { fetchAll: fetchKapHolders, mergeCurrent: mergeKapCurrent, readHistory: readKapHistory } = require('./scripts/kap-holders');
+const { referenceGauges } = require('./scripts/reference-gauges');
 
 const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
@@ -484,6 +485,20 @@ async function getKap() {
   return { ...live, companies: live.companies.map(c => ({ ...c, history: history ? (history.companies[c.ticker] || []).map((o, i, all) => pending.has(c.ticker) && i === all.length - 1 ? { ...o, pending: true } : o) : undefined })) };
 }
 
+// ---------- the Fear & Greed model (one cached computation for the route and the reference gauges) ----------
+function marketfgCached() {
+  return cached('marketfg', () => marketfg.getMarketFearGreed({ ...config.marketFearGreed, fillVenueGaps: true }), v => {
+    const expected = Object.keys((config.marketFearGreed && config.marketFearGreed.markets) || {}).sort();
+    const actual = Object.keys((v && v.markets) || {}).sort();
+    return !!(v && v.ok) && Object.keys(v.failed || {}).length === 0 && JSON.stringify(actual) === JSON.stringify(expected);
+  });
+}
+async function getRefs() {
+  let usa = null;
+  try { const m = await marketfgCached(); usa = (m && m.markets && m.markets.usa && m.markets.usa.history) || null; } catch { usa = null; }
+  return referenceGauges({ userAgent: UA, modelHistoryUsa: usa });
+}
+
 // ---------- http ----------
 function send(res, code, body, type = 'application/json; charset=utf-8') {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
@@ -502,11 +517,11 @@ const routes = {
   // request), while /api/refresh?force=1 also drops every cached Yahoo series so all 33 are fetched again too.
   // fillVenueGaps: a close Yahoo lists without a value is taken from the listing venue (marketfg.js fillVenueGap); the
   // research replays call the module with the configuration file alone and keep Yahoo-only input.
-  '/api/marketfg': () => cached('marketfg', () => marketfg.getMarketFearGreed({ ...config.marketFearGreed, fillVenueGaps: true }), v => {
-    const expected = Object.keys((config.marketFearGreed && config.marketFearGreed.markets) || {}).sort();
-    const actual = Object.keys((v && v.markets) || {}).sort();
-    return !!(v && v.ok) && Object.keys(v.failed || {}).length === 0 && JSON.stringify(actual) === JSON.stringify(expected);
-  }),
+  '/api/marketfg': marketfgCached,
+  // Independent readings next to the Fear & Greed scores (scripts/reference-gauges.js): CNN's index through the Internet
+  // Archive, Cboe's put/call ratios, the OFR stress index, alternative.me's crypto index. The US score's history goes in
+  // for the comparison with CNN; a source that could not be read is labelled, and the set is cached only when all four read.
+  '/api/refs': () => cached('refs', getRefs, v => v.ok),
   '/api/config': async () => config,
   '/api/refresh': async (u) => {
     cache.clear();

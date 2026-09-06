@@ -163,7 +163,7 @@ test('server, build, workflow and page are wired for api/kap.json', () => {
   assert.match(yml, /\['api\/kap\.json'\]/, 'the digest build.json names for api/kap.json is read in the wait loop');
   assert.match(yml, /git add data\/snapshots\.json data\/dalal13f-history\.json data\/kap-holders\.json/);
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  assert.match(html, /const SNAPSHOT_FILES=\['config','holdings','nav','perf','quotes','dalal','nport','kap','marketfg'\];/);
+  assert.match(html, /const SNAPSHOT_FILES=\['config','holdings','nav','perf','quotes','dalal','nport','kap','refs','marketfg'\];/);
   assert.match(html, /function renderKap\(K,H\)/);
   assert.match(html, /renderKap\(data\.kap\|\|null, data\.holdings\|\|null\)/);
   assert.match(html, /<h2>Pabrai’s private funds<\/h2>/);

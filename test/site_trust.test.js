@@ -622,6 +622,12 @@ test('the Fear & Greed tabs state carried indicators, series names, verification
   assert.match(html, /<button role="tab" id="tab-markets" data-tab="markets"/);
   assert.doesNotMatch(html, /id="tab-crypto"|id="tab-usa"/);
   assert.match(html, /const TAB_HASH=\{pabrai:'',markets:'#markets'\};/);
+  // independent readings under each market: not inputs to the score, each with its date and source, labelled when unread
+  assert.match(html, /function renderRefs\(id\)/);
+  assert.match(html, /not inputs to this score; where they and the model disagree, the model is the one to doubt/);
+  assert.match(html, /could not be read at \$\{when\} time/);
+  assert.match(html, /CNN’s own endpoint refuses automated readers, so the archive’s latest copy is used/);
+  assert.match(html, /const SNAPSHOT_FILES=\['config','holdings','nav','perf','quotes','dalal','nport','kap','refs','marketfg'\];/);
   assert.match(html, /const HASH_ALIAS=\{'#fear-greed':'#crypto','#krypto':'#crypto','#sverige':'#sweden','#europa':'#europe'\};/);
   assert.match(html, /<details class="more market" id="panel-\$\{id\}"><summary id="\$\{id\}-summary">/);
   assert.match(html, /value=fmt\(row\.value,1\)\+' · '\+label/);
@@ -753,7 +759,7 @@ test('build.json digests are the SHA-256 of the exact bytes written, for index.h
     fs.writeFileSync(path.join(dir, 'api', 'trades.xml'), '<feed/>\n');
     fs.writeFileSync(path.join(dir, 'api', 'build.json'), '{}\n');
     const files = build.artifactDigests(dir, build.DIGESTED_FILES);
-    assert.deepEqual(Object.keys(files), ['index.html', 'api/config.json', 'api/holdings.json', 'api/dalal.json', 'api/nport.json', 'api/kap.json', 'api/nav.json', 'api/perf.json', 'api/quotes.json', 'api/marketfg.json', 'api/trades.xml']);
+    assert.deepEqual(Object.keys(files), ['index.html', 'api/config.json', 'api/holdings.json', 'api/dalal.json', 'api/nport.json', 'api/kap.json', 'api/refs.json', 'api/nav.json', 'api/perf.json', 'api/quotes.json', 'api/marketfg.json', 'api/trades.xml']);
     for (const [relative, digest] of Object.entries(files)) {
       assert.equal(digest, crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, relative))).digest('hex'));
     }
