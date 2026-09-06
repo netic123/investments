@@ -313,12 +313,21 @@ footer p{margin:0 0 .5em}
 </section>
 
 <section>
-  <div class="sec-head"><h2>Dalal Street (Pabrai’s firm) — 13F filing</h2><span class="note" id="dalalNote">—</span></div>
+  <div class="sec-head"><h2>Pabrai’s private funds in Turkey — Borsa Istanbul’s ≥5 % holder lists</h2><span class="note" id="kapNote">—</span></div>
+  <div id="kapChanges"></div>
+  <div class="tablewrap"><table id="tblKap"><thead><tr><th>Company</th><th class="num" title="From the fund’s daily file: shares held, and their share of the company’s capital">The ETF holds</th><th>Pabrai’s private funds, where listed at 5 % or more</th><th class="num" title="The private funds listed at 5 % or more plus the ETF’s own stake; a fund below 5 % is not listed, so this is a floor">Pabrai in total</th></tr></thead><tbody></tbody></table></div>
+  <p class="hint" id="kapHint"></p>
+  <details class="more"><summary>Source, what the list shows, and what it leaves out</summary><div class="callout" id="kapCall"></div></details>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Dalal Street (Pabrai’s private funds) — 13F filing</h2><span class="note" id="dalalNote">—</span></div>
   <p class="hint" id="dalalHint" style="margin:0 0 10px"></p>
   <div class="tablewrap"><table id="tblDalal"><thead><tr><th>Holding</th><th class="num">Weight</th><th class="num">Shares</th><th id="thDalalChange">Change in quarter</th></tr></thead><tbody></tbody></table></div>
+  <div class="callout" id="dalalEtf" hidden></div>
   <div class="sec-head sub"><h2>Quarter by quarter since 2012</h2><span class="note" id="dalalHistNote">—</span></div>
   <div id="dalalHist"></div>
-  <p class="hint">Quarter-on-quarter differences in the shares Dalal Street reported to SEC. A 13F lists only reportable long positions in 13(f) securities and may omit any holding under 10,000 shares and $200,000, so an appearance or disappearance can be a reporting change, not a trade; shares are as filed, and a company’s own splits or share-class changes are not adjusted.</p>
+  <p class="hint">Quarter-on-quarter differences in the shares Dalal Street, the manager of Pabrai’s private funds, reported to SEC. A 13F lists only reportable long positions in 13(f) securities and may omit any holding under 10,000 shares and $200,000, so an appearance or disappearance can be a reporting change, not a trade; shares are as filed, and a company’s own splits or share-class changes are not adjusted.</p>
   <details class="more"><summary id="dalalEarlierSummary">Earlier quarters</summary><div id="dalalHistEarlier"></div></details>
   <details class="more"><summary>Positions over time — every security the 13F has listed</summary><div class="tablewrap"><table id="tblDalalPositions"><thead><tr><th>Security</th><th>First quarter</th><th>Last quarter</th><th class="num">Quarters</th><th class="num">Peak shares</th><th class="num">Now</th></tr></thead><tbody></tbody></table></div></details>
   <details class="more"><summary>Source, checks, and what a 13F leaves out</summary><div class="callout" id="dalalCall"></div></details>
@@ -361,7 +370,7 @@ footer p{margin:0 0 .5em}
 <footer>
   <details class="more"><summary>How to read this tab — sources, what counts as a trade, how the file is checked</summary>
   <p>Primary sources: <a href="https://www.wagonsetf.com/fund-summary" target="_blank" rel="noopener">WAGN’s official fund page and daily FilePoint files</a> · Yahoo Finance for quotes · SEC EDGAR for Dalal Street LLC’s manager-aggregated 13F and for WAGN’s own quarterly Form N-PORT, which is used only as a lagged cross-check of the daily file (its section says what was compared, as of when, and what could not be). Source status is shown in the page; a 13F is delayed and incomplete, and only the N-PORT for the last month of each fiscal quarter is public — it appears on EDGAR when the trust files it, which must be within 60 days of that quarter end.</p>
-  <p><b>Changes</b> are differences in the number of shares held between two official files; “Bought more”, “Reduced”, “New position” and “Sold out” name the direction of that difference, not a confirmed order. A holding whose share count did not change is not listed, even when a cash creation diluted its share per WAGN unit; a change that is merely proportional to a change in units outstanding (an in-kind basket) is not listed either. Cash-like rows (the money-market fund FXFXX, per the configuration) appear in the full table but are not listed as trades; a line under the table states their change. Where units changed, “vs pro-rata” (a column in the full change log, a tooltip in the portfolio table) restates the trade relative to deploying the flow in proportion to the previous portfolio. Neither number is proof of Pabrai’s exact trade time, execution price or motive. A trade is dated by the closes the two files are priced at: one session when the files are consecutive trading days, otherwise the range, and only the net change over that range is known.</p>
+  <p><b>Changes</b> are differences in the number of shares held between two official files; “Bought more”, “Reduced”, “New position” and “Sold out” name the direction of that difference, not a confirmed order. A holding whose share count did not change is not listed, even when a cash creation diluted its share per WAGN unit; a change that is merely proportional to a change in units outstanding (an in-kind basket) is not listed either. Cash-like rows (the money-market fund FXFXX, per the configuration) appear in the full table but are not listed as trades; a line under the table states their change. Where units changed, the flow is stated with the trades, and “where the money went” reconciles cash, units and trades between the two files: the creations so far have settled in cash (untraded share counts did not move on those days), so an unchanged holding is simply unchanged, not diluted by a basket. None of this is proof of Pabrai’s exact trade time, execution price or motive. A trade is dated by the closes the two files are priced at: one session when the files are consecutive trading days, otherwise the range, and only the net change over that range is known.</p>
   <p>The holdings file is priced at the previous NAV date and dated the next NYSE trading day after it; it is published at about 00:02 UTC on the calendar day after the pricing date, Saturdays included (on Sat 5 Sept 2026 the file priced at the 4 Sept close was dated Tue 8 Sept, the trading day after Labor Day). Its pricing date is asserted only when NetAssets divided by the file’s own unit count equals the official NAV (within half a cent per unit); if the file carries more or fewer units than the NAV file of that date (a creation or redemption booked after that NAV was struck), the page says so. The file’s NetAssets is that rounded NAV × its unit count — a pricing-date proof, not an independent asset total; the fund’s NAV file carries its own net assets figure, shown next to it. Files saved before 25 Aug 2026 report no unit count; a count shown for them is implied from NetAssets ÷ NAV and labelled so. Snapshots are saved whenever a new official file day is detected; if a file day is missed, only the net change over the displayed interval is knowable.</p>
   </details>
 </footer>
@@ -500,7 +509,7 @@ async function fetchApi(u,opt={}){
     let parsed=true;
     if(STATIC_BUILD){ const buf=await r.arrayBuffer(); try{ json=JSON.parse(new TextDecoder().decode(buf)); }catch{ parsed=false; json={error:'invalid response'}; } digest=r.ok?await sha256Hex(buf):null; }
     else json=await r.json().catch(()=>{ parsed=false; return {error:'invalid response'}; });
-    if(!r.ok) throw new Error(json.error||r.statusText);
+    if(!r.ok) throw new Error(parsed ? (json.error||r.statusText) : 'HTTP '+r.status);
     // a 200 whose body is not JSON must fail here; otherwise {error:…} travels on as data
     if(!parsed) throw new Error('the response was not valid JSON');
     return {json,digest,cdnAge:STATIC_BUILD?cdnAgeSeconds(r):null};
@@ -510,8 +519,8 @@ async function fetchApi(u,opt={}){
   }
 }
 const getJson=async(u,opt)=>(await fetchApi(u,opt)).json;
-const SNAPSHOT_FILES=['config','holdings','nav','perf','quotes','dalal','nport','marketfg'];
-// Fetch build.json and the eight data files and check that they come from one build: each file is a separate CDN object with its
+const SNAPSHOT_FILES=['config','holdings','nav','perf','quotes','dalal','nport','kap','marketfg'];
+// Fetch build.json and the nine data files and check that they come from one build: each file is a separate CDN object with its
 // own expiry, so right after a deployment the CDN can serve a mixed set. On a mismatch build.json is fetched again (it may be the
 // stale one) and then whatever still disagrees, once; a set that is still mixed is returned flagged, never silently.
 // index.html itself cannot check its own hash from inside the page (build.json.files carries it for external readers).
@@ -674,6 +683,10 @@ async function renderSet(set){
       if(!check.matched) pabraiErrs.push('pricing date of the holdings file is not asserted — '+check.reason);
     }
   } else pabraiErrs.push('holdings: '+errMsg(errors.holdings));
+  // KAP (Borsa Istanbul’s disclosure platform): the >5 % holder tables naming Pabrai’s private funds, read by the build
+  renderKap(data.kap||null, data.holdings||null);
+  if(!data.kap) pabraiErrs.push('KAP holder lists could not be fetched ('+errMsg(errors.kap)+')');
+  else if(!data.kap.ok) pabraiErrs.push(`KAP unreadable at ${STATIC_BUILD?'build':'update'} time for ${(data.kap.failed||[]).join(', ')||'a company'} — the last recorded holder list is shown where one exists`);
   if(data.perf) renderPerf(data.perf); else pabraiErrs.push('performance could not be fetched');
   if(!data.quotes) pabraiErrs.push('quotes could not be fetched');
   else { const bad=Object.values(Q).filter(x=>x&&x.error).map(x=>x.symbol); if(bad.length) pabraiErrs.push('quote missing: '+bad.join(', ')); }
@@ -686,6 +699,7 @@ async function renderSet(set){
   else if(!data.nport.ok) pabraiErrs.push(`SEC N-PORT check unavailable at ${STATIC_BUILD?'build':'update'} time — ${data.nport.fetchError||'no reason given'}`);
   renderNport(NPORT);
   renderDates(NPORT); // the shareholder-report lines come from the same SEC index the N-PORT check reads
+  renderDalalVsEtf(DALAL,NPORT); // the 13F held against the ETF’s own N-PORT for the same date
   if(!DALAL.ok){
     // the static site has no server to ask, so the browser checks SEC itself; locally the server already did
     const secCheck=STATIC_BUILD ? await checkLatestSecAccession(DALAL) : {checked:false};
@@ -821,6 +835,34 @@ function unitFlowWithImplied(a,b,N){
   const delta=toUnits.units-fromUnits.units;
   return {known:true,fromUnits,toUnits,unitsFrom:fromUnits.units,unitsTo:toUnits.units,delta,pct:delta/fromUnits.units*100,kind:delta>0?'creation':delta<0?'redemption':'none',perUnitPct:fromUnits.units/toUnits.units*100-100,implied:fromUnits.implied||toUnits.implied};
 }
+// Where the money went between two saved files: cash (currency balances, "Cash&Other" and the cash-like rows) moved by
+// dCash; units created or redeemed brought or took units × NAV, the NAV of the later file's pricing date (proven by
+// pricingOf, else the previous rate date in the NAV history, said so); the listed changes at the files' own USD values
+// cost or brought their net value. dCash − units × NAV + trades leaves the residual: fees accruing, dividends, FX on the
+// payables, execution prices that differ from the close. Above RECON_WARN_PCT of net assets the two files disagree.
+// The creations so far have settled in cash, which the untraded share counts show (they did not move on creation days);
+// the identity alone cannot tell cash from an in-kind basket, so a residual that closes without the unit term is named.
+const RECON_WARN_PCT=0.2;
+function cashReconciliation(a,b,N,log,opts){
+  if(!a||!b||!(b.netAssets>0)) return null;
+  const cashLike=(opts&&opts.isCashLike)||isCashLike;
+  const cashOf=s=>Object.values(s.cash||{}).reduce((x,v)=>x+(Number(v)||0),0)+Object.entries(s.rows||{}).filter(([t])=>cashLike(t)).reduce((x,[,r])=>x+(Number(r.mv)||0),0);
+  const dCash=cashOf(b)-cashOf(a);
+  const flow=unitFlowWithImplied(a,b,N);
+  const p=pricingOf(b,N);
+  const hist=(N&&Array.isArray(N.history)?N.history:[]).filter(h=>h&&h.date<b.date&&h.nav>0).sort((x,y)=>x.date.localeCompare(y.date));
+  const prev=hist[hist.length-1]||null;
+  const nav = p ? {nav:p.nav,date:p.navDate,proven:true} : prev ? {nav:prev.nav,date:prev.date,proven:false} : null;
+  const trades=(log||[]).filter(c=>c&&c.from===a.date&&c.to===b.date&&!c.cashLike&&!cashLike(c.ticker)).reduce((x,c)=>x+(c.delta>0?1:-1)*(Number(c.approxUsd)||0),0);
+  const unitsUsd = flow.known ? (flow.delta ? (nav ? flow.delta*nav.nav : null) : 0) : null;
+  const residual = unitsUsd==null ? null : dCash-unitsUsd+trades;
+  const residualPct = residual==null ? null : residual/b.netAssets*100;
+  const warn=residualPct!=null&&Math.abs(residualPct)>RECON_WARN_PCT;
+  // the identity closes without the unit term: the units' value did not arrive as cash between these files (an in-kind
+  // basket, which the change list does not carry, or a settlement after the later file), not a disagreement
+  const unitsNotInCash=warn&&!!unitsUsd&&Math.abs(dCash+trades)/b.netAssets*100<=RECON_WARN_PCT;
+  return {from:a.date,to:b.date,dCash,flow,nav,unitsUsd,trades,residual,residualPct,warn,unitsNotInCash};
+}
 // ---- end unit counts
 // NYSE trading days in (a, b]: the sessions whose closes separate two files (a file dated a trading day carries the previous
 // session's close, so the Fri 4 → Tue 8 Sep 2026 pair spans one session, not two weekdays).
@@ -884,7 +926,7 @@ function renderFundAssets(H){
   const created = !hasFirst ? '' : firstFlow&&firstFlow.known&&firstFlow.delta ? `${fmt(Math.abs(firstFlow.delta))} units ${firstFlow.delta>0?'created':'redeemed'} since the first saved file (${pct(firstFlow.pct,1)}${firstFlow.implied?'; first-file units implied':''})` : firstFlow&&firstFlow.known ? `units unchanged since the first saved file${firstFlow.implied?' (first-file units implied)':''}` : 'first-file unit count unknown';
   $('#thFirst').textContent = hasFirst ? `Δ shares since first saved file (${fmtDate(F.date)})` : 'Δ shares since first saved file';
   $('#thFirst').title = !hasFirst ? '' : firstFlow&&firstFlow.known&&firstFlow.delta
-    ? `${fmt(firstFlow.unitsFrom)} → ${fmt(firstFlow.unitsTo)} WAGN units${firstFlow.implied?' (a count implied from NetAssets ÷ NAV where the file reports none)':''}: part of an increase can be creation-basket delivery rather than a decision, and an unchanged share count means a ${pct(Math.abs(firstFlow.perUnitPct),2,false)} ${firstFlow.delta>0?'smaller':'larger'} share per unit. “vs pro-rata” under a cell restates the change relative to keeping the same share per unit.`
+    ? `${fmt(firstFlow.unitsFrom)} → ${fmt(firstFlow.unitsTo)} WAGN units${firstFlow.implied?' (a count implied from NetAssets ÷ NAV where the file reports none)':''}: the creations so far have settled in cash (untraded share counts did not move on those days), so a share change is read as the fund’s own, and an unchanged share count means a ${pct(Math.abs(firstFlow.perUnitPct),2,false)} ${firstFlow.delta>0?'smaller':'larger'} share per unit.`
     : firstFlow&&firstFlow.known ? 'No units were created or redeemed over the interval, so each difference is a change in the position itself.'
     : `The ${fmtDate(F.date)} file reports no unit count and none could be implied, so a unit creation in the interval cannot be told apart from trades here.`;
   return {priced,firstFlow,unitsNote:created};
@@ -918,9 +960,8 @@ function renderHoldings(H,Q){
   $('#cards').innerHTML = CFG.myPositions.map(pos=>{
     const fundTicker=pos.fundTicker||pos.ticker, secTicker=pos.secTicker||pos.ticker;
     const row=L.rows[fundTicker], ch=prevMap[fundTicker], q=Q[pos.yahoo]||{};
-    const proRata = ch&&ch.flowAdjusted&&ch.unitFlow ? ` Relative to a pro-rata deployment of the ${fmt(Math.abs(ch.unitFlow.delta))}-unit ${ch.unitFlow.kind}: ${ch.flowAdjustedDelta>0?'+':''}${fmt(ch.flowAdjustedDelta)} shares.` : '';
     // what the badge means, as a tooltip: the approximate value of a change, or why an unchanged count still matters
-    const badgeTitle = ch ? `≈ $${fmt(ch.approxUsd)} at the latest holding-file value; not an execution price.${proRata}`
+    const badgeTitle = ch ? `≈ $${fmt(ch.approxUsd)} at the latest holding-file value; not an execution price.`
       : row&&flow&&flow.delta ? `${fmt(Math.abs(flow.delta))} WAGN units were ${flow.delta>0?'created':'redeemed'} between ${fmtDate(P.date)} and ${fmtDate(L.date)}${flow.implied?' (a unit count implied from NetAssets ÷ NAV)':''}; this holding’s share count is the same in both files, so its share per WAGN unit is ${pct(Math.abs(flow.perUnitPct),2,false)} ${flow.delta>0?'smaller':'larger'} than before.`
       : row&&P ? `${fmtDate(P.date)} → ${fmtDate(L.date)}${flow&&!flow.known?' · '+flow.reason:''}` : '';
     const badge = ch&&ch.kind==='SOLD OUT' ? `<span class="badge b-sell" title="${esc(badgeTitle)}">Sold out ${fmt(ch.delta)}</span>`
@@ -946,7 +987,7 @@ function renderHoldings(H,Q){
     const dw=dh&&D.portfolioValueUsd ? dh.valueUsd/D.portfolioValueUsd*100 : null;
     const gone=!!dh&&(dc ? dc.change==='no longer reported' : (dh.shares===0&&dh.prevShares>0));
     const dalalPosition = !dh
-      ? (sec13f&&sec13f.reportable===false ? `<span class="muted" title="${esc(sec13f.note)}">not in the 13F — cannot be listed there</span>` : `not reported${sec13f&&sec13f.reportable===true?' <span class="muted" title="a 13(f) security, so it could have been listed; a position under 10,000 shares and $200,000 may be omitted">(could have been)</span>':''}`)
+      ? (sec13f&&sec13f.reportable===false ? `<span class="muted" title="${esc(sec13f.note)}">not in the 13F — cannot be listed there</span>` : `not reported${sec13f&&sec13f.reportable===true?' <span class="muted" title="a 13(f) security, so it could have been listed; a position under 10,000 shares and $200,000 may be omitted">(could have been; the 13F is the private funds’ filing — see the same-date check under the 13F table)</span>':''}`)
       : gone ? 'no longer reported' : `${fmt(dh.shares)} shares · ${pct(dw,2,false)} of the 13F`;
     let dalalChange = !dh&&sec13f&&sec13f.reportable===false ? 'no 13F data exists for this listing' : '';
     if(dh){
@@ -979,13 +1020,16 @@ function renderHoldings(H,Q){
   const span = P ? `${fmtDate(P.date)} → ${fmtDate(L.date)}` : '';
   const sess = P ? sessionOf(P.date,L.date,byDate,NAV_DATA) : null;
   const gapCallout = sess&&sess.sessions>1 ? `<div class="callout">The interval ${span} spans ${sess.sessions} trading sessions — only the net change between these two disclosures is known; exact transactions in between are not.</div>` : '';
-  const flowCallout = flow&&flow.delta ? `<div class="callout"><b>${fmt(Math.abs(flow.delta))} WAGN units were ${flow.delta>0?'created':'redeemed'}</b> between these files (${fmt(flow.unitsFrom)} → ${fmt(flow.unitsTo)} units, ${pct(flow.pct,2)}${flow.implied?'; a count implied from NetAssets ÷ NAV where the file reports none':''}); holdings whose share count did not change are not listed. <details class="plain"><summary>what that means</summary><div class="body">An unchanged share count is the same in both files, which over an interval of more than one file day is a net result, not proof that nothing was traded. Each such holding’s share per WAGN unit is now ${pct(Math.abs(flow.perUnitPct),2,false)} ${flow.delta>0?'smaller':'larger'} than before. Hover a share change for its size relative to deploying the flow in proportion to the previous portfolio (“vs pro-rata”); the full change log shows that column.</div></details></div>`
+  const flowCallout = flow&&flow.delta ? `<div class="callout"><b>${fmt(Math.abs(flow.delta))} WAGN units were ${flow.delta>0?'created':'redeemed'}</b> between these files (${fmt(flow.unitsFrom)} → ${fmt(flow.unitsTo)} units, ${pct(flow.pct,2)}${flow.implied?'; a count implied from NetAssets ÷ NAV where the file reports none':''}); holdings whose share count did not change are not listed. <details class="plain"><summary>what that means</summary><div class="body">Creations have settled in cash so far, so the share counts of untraded holdings do not move; each such holding’s share per WAGN unit is now ${pct(Math.abs(flow.perUnitPct),2,false)} ${flow.delta>0?'smaller':'larger'} than before. Over an interval of more than one file day an unchanged count is a net result, not proof that nothing was traded. “Where the money went”, under the table, reconciles the cash with the units and the trades.</div></details></div>`
     : flow&&!flow.known ? `<div class="callout">Whether WAGN units were created or redeemed between these files is not known: ${esc(flow.reason)}. A share change below may therefore include creation-basket delivery.</div>` : '';
   // Cash-like rows (config cashLike, the money-market fund) change with cash management, not with a decision about a holding;
   // they are never listed as trades, and the visitor is told what they did.
   const cashChange=list=>list.map(c=>`${isCashLike(c.ticker)?'money-market fund ':''}${esc(c.ticker)} ${c.delta>0?'+':''}${fmt(c.delta)} shares (${pct(c.pct,1)}, ≈ ${c.delta<0?'−':'+'}$${fmt(c.approxUsd)})`).join('; ');
   const cashLine = CASH.length ? `<p class="hint">Cash-like rows are not listed as trades: ${cashChange(CASH)} between these files.</p>` : '';
   const basis = P ? `<p class="hint">Share counts from the fund’s own daily files dated ${fmtDate(P.date)} and ${fmtDate(L.date)}${sess.proven?`, priced at the ${fmtDate(sess.from)} and ${fmtDate(sess.to)} closes`:''}, after leaving out moves that were only proportional to a unit creation or redemption. Not trade tickets: the exact time and price are unknown.</p>` : '';
+  // where the money went between the two files: cash vs units created or redeemed vs the listed trades (cashReconciliation)
+  const recon = P ? cashReconciliation(P,L,NAV_DATA,H.log) : null;
+  const reconLine = recon ? reconciliationHtml(recon) : '';
   // ---- the last seven days in one reading: each holding's net change over the intervals whose closes fall within seven
   // calendar days of the latest file's pricing date (the file date when a pricing date is not proven), largest first;
   // skipped when that window is the single latest interval, which the table below already shows
@@ -1014,8 +1058,8 @@ function renderHoldings(H,Q){
     return (closed.length?' · NYSE closed '+closed.join(', '):' · no session since')+' · next file due by '+whenFull(due); })();
   $('#chgNote').textContent = P ? (sess.proven ? (sess.sessions===1 ? 'latest: the '+sess.label+' session' : 'latest: '+sess.label+' closes') : 'latest: '+span)+sinceNote : '—';
   $('#changes').innerHTML = !P ? '<div class="empty">Only one snapshot saved so far — changes appear from the next file day.</div>'
-    : !C.length ? digest+latestHead+flowCallout+`<div class="empty">No change in any holding (${sess.proven?sess.label:span}).</div>`+cashLine+basis
-    : digest+latestHead+gapCallout+flowCallout+tradesTable(C,L)+cashLine+basis;
+    : !C.length ? digest+latestHead+flowCallout+`<div class="empty">No change in any holding (${sess.proven?sess.label:span}).</div>`+cashLine+basis+reconLine
+    : digest+latestHead+gapCallout+flowCallout+tradesTable(C,L)+cashLine+basis+reconLine;
   renderTradeHistory(H,LOG,CASHLOG,byDate);
   renderBuildUp(H,LOG,Q);
   const cashLog = CASHLOG.length ? `<div class="muted" style="font-size:.82rem;margin-top:8px">Cash-like rows not listed as trades: ${CASHLOG.map(c=>`${fmtDate(c.from)} → ${fmtDate(c.to)} ${esc(c.ticker)} ${c.delta>0?'+':''}${fmt(c.delta)} (${pct(c.pct,1)})`).join('; ')}.</div>` : '';
@@ -1026,7 +1070,7 @@ function renderHoldings(H,Q){
   const mine=new Set(CFG.myPositions.map(p=>p.fundTicker||p.ticker));
   const rows=Object.entries(L.rows).sort((a,b)=>(b[1].weight||0)-(a[1].weight||0));
   $('#allNote').textContent=rows.length+' holdings · '+(priced.matched?'as of the '+fmtDate(priced.navDate)+' close':'file dated '+fmtDate(L.date));
-  $('#allHint').textContent=(unitsNote?unitsNote.charAt(0).toUpperCase()+unitsNote.slice(1)+'. ':'')+'The Δ columns are plain differences in shares held; hover a figure for its size relative to the unit flow (“vs pro-rata”). Flags show the investment country in the fund’s own N-PORT filing. Avanza: whether the line can be bought at the Swedish broker Avanza, checked by hand.';
+  $('#allHint').textContent=(unitsNote?unitsNote.charAt(0).toUpperCase()+unitsNote.slice(1)+'. ':'')+'The Δ columns are plain differences in shares held (a “0” under a unit flow carries the per-unit dilution in its tooltip; the creations so far have settled in cash). Flags show the investment country in the fund’s own N-PORT filing. Avanza: whether the line can be bought at the Swedish broker Avanza, checked by hand.';
   const cash=Object.values(L.cash||{}).reduce((a,v)=>a+(v||0),0);
   const cashLikeRows=rows.filter(([t])=>isCashLike(t)), cashLikeMv=cashLikeRows.reduce((a,[,r])=>a+(r.mv||0),0), cashLikeNames=cashLikeRows.map(([t])=>esc(t)).join(', ');
   // The file reports each currency balance in its MarketValue column, i.e. already converted to USD, so the currency code
@@ -1034,14 +1078,13 @@ function renderHoldings(H,Q){
   const cashBreakdown=Object.entries(L.cash||{}).map(([k,v])=>k+' balance $'+fmt(v)).join(' · ');
   const shareOf=v=>pct(L.netAssets?v/L.netAssets*100:null,2,false);
   // One cell of a Δ column: the raw difference in shares held; where the unit flow over the interval is known and units
-  // changed, the difference relative to keeping the same share per unit ("vs pro-rata") under it, or a title on a "0".
+  // changed, the per-unit dilution as a title on a "0"; a raw move proportional to the flow is marked "∝ unit flow".
   const deltaCell=(t,r,base,baseFlow,change)=>{
     if(!base||base.date===L.date) return '<span class="flat">—</span>';
     const b=base.rows[t]; const d=b ? r.shares-b.shares : r.shares; const p=b&&b.shares ? d/b.shares*100 : null;
-    const flowKnown=!!(baseFlow&&baseFlow.known&&baseFlow.delta)&&!isCashLike(t); // a cash-like row is cash management, not a position to restate pro-rata
+    const flowKnown=!!(baseFlow&&baseFlow.known&&baseFlow.delta)&&!isCashLike(t); // a cash-like row is cash management, not a position
     if(Math.abs(d)<0.5) return flowKnown ? `<span class="flat" title="unchanged share count; with ${fmt(Math.abs(baseFlow.delta))} units ${baseFlow.delta>0?'created':'redeemed'}, its share per WAGN unit is ${pct(Math.abs(baseFlow.perUnitPct),2,false)} ${baseFlow.delta>0?'smaller':'larger'}">0</span>` : '<span class="flat">0</span>';
-    const pro = flowKnown&&b ? (()=>{ const adj=change&&Number.isFinite(change.flowAdjustedDelta) ? change.flowAdjustedDelta : r.shares-b.shares*baseFlow.unitsTo/baseFlow.unitsFrom; return ` title="vs pro-rata ${adj>0?'+':''}${fmt(adj)} shares (relative to keeping the same share per WAGN unit through the ${fmt(Math.abs(baseFlow.delta))}-unit ${baseFlow.kind})"`; })() : '';
-    const note = change ? pro : (flowKnown ? ' title="∝ unit flow: this move was proportional to the unit creation or redemption, so it is not listed as a trade"' : '');
+    const note = change ? '' : (flowKnown ? ' title="∝ unit flow: this move was proportional to the unit creation or redemption, so it is not listed as a trade"' : '');
     return `<span class="${cls(d)}"${note}>${d>0?'+':''}${fmt(d)}${b?' ('+pct(p,1)+')':' (new)'}</span>`;
   };
   $('#tblAll tbody').innerHTML = rows.map(([t,r],i)=>{
@@ -1071,12 +1114,21 @@ function sessionOf(from,to,byDate,N){
   return {proven:false,sessions:tradingDaysBetween(from,to),from,to,label:`${fmtDate(from)} → ${fmtDate(to)}`,sub:'file dates (a pricing date could not be proven)'};
 }
 // The latest changes as a short table: holding, direction, shares, approximate value, and what the fund holds now.
-// "vs pro-rata" (the change relative to the unit flow) is a tooltip on the share figure; the full change log has the column.
+// "Where the money went" as one collapsed line under the latest trades (cashReconciliation): the three money flows the
+// two files show, the residual as a share of net assets, and a warning when the files do not reconcile.
+function reconciliationHtml(r){
+  const money=v=>`${v<0?'−':'+'}$${Math.abs(v)>=1e6?fmt(Math.abs(v)/1e6,2)+'M':fmt(Math.abs(v)/1e3,0)+'k'}`;
+  const units = r.flow.known&&r.flow.delta ? (r.nav ? `${fmt(Math.abs(r.flow.delta))} units ${r.flow.delta>0?'created':'redeemed'} at the $${fmt(r.nav.nav,2)} NAV of ${fmtDate(r.nav.date)}${r.nav.proven?'':' (the previous rate date; this file’s pricing date is not proven)'}${r.flow.implied?', a unit count implied from NetAssets ÷ NAV':''}: ${money(r.unitsUsd)}` : `${fmt(Math.abs(r.flow.delta))} units ${r.flow.delta>0?'created':'redeemed'}, but no NAV is loaded to value them`) : r.flow.known ? 'no units created or redeemed' : `units unknown (${esc(r.flow.reason||'')})`;
+  const tail = r.residual==null ? 'Without the unit term the residual is not computed.'
+    : r.unitsNotInCash ? `Without the units the identity closes (${money(r.dCash+r.trades)} left), so <b>the units’ value did not arrive as cash between these files</b>: share counts moved in proportion to the units (an in-kind basket, which is not listed as a trade) or the cash settles after the later file. The two files are consistent apart from that.`
+    : `Unexplained: ${money(r.residual)} (${pct(r.residualPct,2)} of net assets) — fees accruing, dividends, FX on the payables, and execution prices that differ from the close.${r.warn?' <b>Above 0.2 % of net assets: the two files do not agree with each other; read the changes above with care.</b>':' Under 0.2 % of net assets, so cash, the units and the listed changes account for each other. Whether a creation settled in cash is not shown by this figure: it rests on untraded share counts not moving on creation days (so far they have not), and the prospectus of 2 Feb 2026 says the fund expects to effect many creations for cash.'}`;
+  return `<details class="plain"><summary>where the money went${r.unitsNotInCash?' — <b>the units did not settle in cash</b>':r.warn?' — <b>the files do not reconcile</b>':''}</summary><div class="body">Cash, currency balances and the cash-like rows moved ${money(r.dCash)}. ${units}. The listed changes at the files’ own values: ${r.trades>=0?'net bought':'net sold'} ${money(Math.abs(r.trades))}. ${tail}</div></details>`;
+}
+// The share figure is the raw difference; the interval's unit flow is stated separately (the creations so far settled in cash).
 function tradesTable(list,L){
   const rows=[...list].sort((a,b)=>(b.absValue||0)-(a.absValue||0)).map(c=>{
     const d=c.delta, r=L&&L.rows&&L.rows[c.ticker];
-    const pro = c.flowAdjusted&&c.unitFlow ? ` title="vs pro-rata deployment of the ${fmt(Math.abs(c.unitFlow.delta))}-unit ${esc(c.unitFlow.kind)}: ${c.flowAdjustedDelta>0?'+':''}${fmt(c.flowAdjustedDelta)} shares"` : '';
-    return `<tr class="${d>0?'chg-buy':'chg-sell'}"><td>${flagOf(c.ticker)} <span class="tick">${esc(c.ticker)}</span> ${esc(nameOf(c.ticker))}</td><td><span class="badge ${d>0?'b-buy':'b-sell'}" style="margin:0">${esc(actionOf(c))}</span></td><td class="num ${cls(d)}"${pro}>${d>0?'+':''}${fmt(d)} <span class="muted">(${pct(c.pct,1)})</span></td><td class="num">${fmt(c.approxUsd)}</td><td class="num">${r?fmt(r.shares)+' <span class="muted">· '+pct(r.weight,1,false)+'</span>':'0'}</td></tr>`;
+    return `<tr class="${d>0?'chg-buy':'chg-sell'}"><td>${flagOf(c.ticker)} <span class="tick">${esc(c.ticker)}</span> ${esc(nameOf(c.ticker))}</td><td><span class="badge ${d>0?'b-buy':'b-sell'}" style="margin:0">${esc(actionOf(c))}</span></td><td class="num ${cls(d)}">${d>0?'+':''}${fmt(d)} <span class="muted">(${pct(c.pct,1)})</span></td><td class="num">${fmt(c.approxUsd)}</td><td class="num">${r?fmt(r.shares)+' <span class="muted">· '+pct(r.weight,1,false)+'</span>':'0'}</td></tr>`;
   }).join('');
   return `<div class="tablewrap"><table class="trades-table"><thead><tr><th>Holding</th><th title="Direction of the change in shares held between the two files">Action</th><th class="num">Shares</th><th class="num" title="At the latest holding-file value; not an execution price">≈ Value USD</th><th class="num" title="Shares held in the latest file and its weight in the fund">Now holds</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -1089,7 +1141,7 @@ function renderTradeHistory(H,LOG,CASHLOG,byDate){
   for(let i=dates.length-1;i>0;i--){
     const from=dates[i-1], to=dates[i], items=groups[from+'→'+to]||[], s=sessionOf(from,to,byDate,NAV_DATA);
     const flow=unitFlowWithImplied(byDate[from],byDate[to],NAV_DATA);
-    const chips=[...items].sort((a,b)=>(b.absValue||0)-(a.absValue||0)).map(c=>`<span class="tchip ${c.delta>0?'buy':'sell'}" title="${esc(nameOf(c.ticker))}: ${c.delta>0?'+':''}${fmt(c.delta)} shares (${pct(c.pct,1)}), ≈ $${fmt(c.approxUsd)} at the file’s value${c.flowAdjusted&&c.unitFlow?`; vs pro-rata ${c.flowAdjustedDelta>0?'+':''}${fmt(c.flowAdjustedDelta)}`:''}"><span class="k">${esc(actionOf(c))}</span>${esc(c.ticker)}<span class="n">${c.delta>0?'+':''}${fmt(c.delta)}</span></span>`);
+    const chips=[...items].sort((a,b)=>(b.absValue||0)-(a.absValue||0)).map(c=>`<span class="tchip ${c.delta>0?'buy':'sell'}" title="${esc(nameOf(c.ticker))}: ${c.delta>0?'+':''}${fmt(c.delta)} shares (${pct(c.pct,1)}), ≈ $${fmt(c.approxUsd)} at the file’s value"><span class="k">${esc(actionOf(c))}</span>${esc(c.ticker)}<span class="n">${c.delta>0?'+':''}${fmt(c.delta)}</span></span>`);
     if(flow.known&&flow.delta) chips.push(`<span class="tchip units" title="${fmt(flow.unitsFrom)}${flow.fromUnits.implied?' (implied)':''} → ${fmt(flow.unitsTo)}${flow.toUnits.implied?' (implied)':''} WAGN units (${pct(flow.pct,2)}); proportional moves are not listed as trades"><span class="k">units</span><span class="n">${flow.delta>0?'+':''}${fmt(flow.delta)}</span></span>`);
     else if(!flow.known) chips.push(`<span class="tchip units" title="${esc(flow.reason||'')}"><span class="k">units</span><span class="n">unknown</span></span>`);
     const cash=CASHLOG.filter(c=>c.from===from&&c.to===to);
@@ -1150,24 +1202,18 @@ function renderBuildUp(H,LOG,Q){
   note.textContent=`${fmt(series.length)} holdings changed · files ${fmtDate(snaps[0].date)} → ${fmtDate(L.date)} · prices are the fund’s file closes${usdSek?' · SEK at '+fmt(usdSek,2)+' USD/SEK':''}`;
 }
 // The badge column is the kind of share-count change between two files (NEW / SOLD OUT / INCREASE / DECREASE), not a signal.
-// "vs pro-rata" needs the unit flow over the interval; where a file reports no unit count, the count implied from
-// NetAssets ÷ NAV is used and said so, and otherwise the cell says the units are unknown.
+// The dated log carries the interval's unit flow as a column (a count implied from NetAssets ÷ NAV where a file reports
+// none, said so; "unknown" otherwise); the creations so far have settled in cash, so no figure is restated against the flow.
 function changesTable(list,withDate){
   const byDate=Object.fromEntries(((LAST_H&&LAST_H.snapshots)||[]).map(s=>[s.date,s]));
-  const proCell=c=>{
-    if(c.flowAdjusted) return `<span class="${cls(c.flowAdjustedDelta)}">${c.flowAdjustedDelta>0?'+':''}${fmt(c.flowAdjustedDelta)}</span>${withDate&&c.unitFlow?`<div class="s">${fmt(c.unitFlow.unitsFrom)} → ${fmt(c.unitFlow.unitsTo)} units</div>`:''}`;
-    if(!(c.unitFlow&&c.unitFlow.known===false)) return '<span class="flat">—</span>';
-    const f=unitFlowWithImplied(byDate[c.from],byDate[c.to],NAV_DATA);
-    if(!f.known) return `<span class="flat">—</span><div class="s">${esc(c.unitFlow.state||'units unknown')}</div>`;
-    if(!f.delta) return `<span class="flat">—</span><div class="s">no unit flow (${fmt(f.unitsFrom)} units${f.implied?', implied':''})</div>`;
-    const adj=c.sharesTo-c.sharesFrom*f.unitsTo/f.unitsFrom;
-    return `<span class="${cls(adj)}">${adj>0?'+':''}${fmt(adj)}</span><div class="s">${fmt(f.unitsFrom)}${f.fromUnits.implied?' (implied)':''} → ${fmt(f.unitsTo)}${f.toUnits.implied?' (implied)':''} units</div>`;
-  };
-  const flowCol=list.some(c=>c.flowAdjusted||(c.unitFlow&&c.unitFlow.known===false));
-  return `<div class="tablewrap"><table class="changes-table${withDate?' changes-table--dated':''}"><thead><tr>${withDate?'<th>Between files</th>':''}<th>Holding</th><th title="Kind of share-count change between the two files">Change</th><th class="num">Shares Δ</th><th class="num">Δ %</th>${flowCol?'<th class="num">vs pro-rata</th>':''}<th class="num">After</th><th class="num">≈ Value USD</th></tr></thead><tbody>`+
+  const unitsCell=c=>{ const f=unitFlowWithImplied(byDate[c.from],byDate[c.to],NAV_DATA);
+    if(!f.known) return `<span class="flat">unknown</span><div class="s">${esc((c.unitFlow&&c.unitFlow.state)||f.reason||'units unknown')}</div>`;
+    if(!f.delta) return `<span class="flat">—</span><div class="s">${fmt(f.unitsFrom)} units${f.implied?' (implied)':''}</div>`;
+    return `<span class="${cls(f.delta)}">${f.delta>0?'+':''}${fmt(f.delta)}</span><div class="s">${fmt(f.unitsFrom)}${f.fromUnits.implied?' (implied)':''} → ${fmt(f.unitsTo)}${f.toUnits.implied?' (implied)':''}</div>`; };
+  return `<div class="tablewrap"><table class="changes-table${withDate?' changes-table--dated':''}"><thead><tr>${withDate?'<th>Between files</th>':''}<th>Holding</th><th title="Kind of share-count change between the two files">Change</th><th class="num">Shares Δ</th><th class="num">Δ %</th>${withDate?'<th class="num" title="WAGN units created (+) or redeemed (−) between the two files; the creations so far have settled in cash (untraded share counts did not move), so a creation is not itself a share change">Units Δ</th>':''}<th class="num">After</th><th class="num">≈ Value USD</th></tr></thead><tbody>`+
     list.map(c=>{ const d=c.delta, p=c.pct;
       return `<tr class="${d>0?'chg-buy':'chg-sell'}">${withDate?`<td class="mono">${fmtDate(c.from)} → ${fmtDate(c.to)}</td>`:''}<td>${flagOf(c.ticker)} <span class="tick">${esc(c.ticker)}</span> ${esc(nameOf(c.ticker))}</td>
-      <td><span class="badge ${d>0?'b-buy':'b-sell'}" style="margin:0">${esc(c.kind)}</span></td><td class="num ${cls(d)}">${d>0?'+':''}${fmt(d)}</td><td class="num ${cls(d)}">${pct(p,1)}</td>${flowCol?`<td class="num">${proCell(c)}</td>`:''}<td class="num">${fmt(c.sharesTo)}</td><td class="num">${fmt(c.approxUsd)}</td></tr>`; }).join('')+'</tbody></table></div>';
+      <td><span class="badge ${d>0?'b-buy':'b-sell'}" style="margin:0">${esc(c.kind)}</span></td><td class="num ${cls(d)}">${d>0?'+':''}${fmt(d)}</td><td class="num ${cls(d)}">${pct(p,1)}</td>${withDate?`<td class="num">${unitsCell(c)}</td>`:''}<td class="num">${fmt(c.sharesTo)}</td><td class="num">${fmt(c.approxUsd)}</td></tr>`; }).join('')+'</tbody></table></div>';
 }
 
 // The NAV KPIs from the fund's DailyNAV file: the NAV change is the file's one-day change versus the previous rate date, the
@@ -1242,7 +1288,7 @@ function renderDalal(D){
   const next = dl
     ? ` <b>Next 13F${D.nextReportDate?' (for the quarter ending '+fmtDate(D.nextReportDate)+')':''} due by ${fmtDate(dl)}</b>${D.nextFilingSource==='computed'?' — '+esc(humanDates(D.nextFilingNote||'45 days after that quarter end, a Saturday or Sunday rolled to Monday; a US federal holiday on that day would move it later, which is not modelled')):' — a date typed into the configuration, used because SEC could not be fetched'}${past?`; that date has passed, so a newer 13F may exist that this ${STATIC_BUILD?'snapshot':'page'} does not show`:''}.`
     : D.nextFilingWindow ? ` <b>Next filing expected ${esc(D.nextFilingWindow)}</b> (a configured date).` : '';
-  $('#dalalHint').innerHTML=`<b>$${fmt(D.portfolioValueUsd/1e6,1)}M</b> in ${(D.holdings||[]).filter(h=>!h.exited).length} reported securities as of ${fmtDate(D.asOf)}, filed ${fmtDate(D.filed)}${dl?`; the next 13F is due by ${fmtDate(dl)}${past?' (that date has passed, so a newer one may exist)':''}`:''}. A 13F is quarterly and delayed, and lists only reportable long positions in 13(f) securities (cash, shorts and many non-US listings are absent); ${esc(dmText)}.`;
+  $('#dalalHint').innerHTML=`<b>$${fmt(D.portfolioValueUsd/1e6,1)}M</b> in ${(D.holdings||[]).filter(h=>!h.exited).length} reported securities as of ${fmtDate(D.asOf)}, filed ${fmtDate(D.filed)}${dl?`; the next 13F is due by ${fmtDate(dl)}${past?' (that date has passed, so a newer one may exist)':''}`:''}. Filed by Dalal Street LLC, the manager of Pabrai’s private funds — a separate portfolio from the ETF’s (the same-date check under the table). A 13F is quarterly and delayed, and lists only reportable long positions in 13(f) securities (cash, shorts and many non-US listings are absent); ${esc(dmText)}.`;
   $('#dalalCall').innerHTML=`${state} <b>$${fmt(D.portfolioValueUsd/1e6,1)}M across ${(D.holdings||[]).filter(h=>!h.exited).length} reported securities.</b> This is Dalal Street LLC’s manager-aggregated 13F, not a complete or live private-fund portfolio. It is quarterly and generally covers reportable long Section 13(f) securities; cash, shorts and many non-US securities are absent.${deMinimis} It is manager-submitted data; SEC publication does not mean SEC has certified its accuracy or completeness.${prev}${next}${src}`;
   const mine=new Set(CFG.myPositions.map(p=>p.secTicker||p.ticker));
   $('#tblDalal tbody').innerHTML=(D.holdings||[]).map(h=>{
@@ -1286,6 +1332,86 @@ function renderDalalHistory(D){
   const pos={};
   byQ.forEach(({q,m},i)=>{ for(const [c,r] of Object.entries(m)){ const p=pos[c]=pos[c]||{cusip:c,name:nameOf(r),first:q.reportDate,last:null,count:0,peak:0,peakDate:null,now:0}; p.last=q.reportDate; p.count++; if(r.shares>p.peak){ p.peak=r.shares; p.peakDate=q.reportDate; } p.now=i===byQ.length-1?r.shares:0; } });
   body.innerHTML=Object.values(pos).sort((a,b)=>b.last.localeCompare(a.last)||b.peak-a.peak).map(p=>`<tr class="${p.now?'':'cashrow'}"><td>${esc(p.name)}<div class="s">CUSIP ${esc(p.cusip)}</div></td><td>${fmtDate(p.first)}</td><td>${fmtDate(p.last)}</td><td class="num">${fmt(p.count)}</td><td class="num">${fmt(p.peak)} <span class="muted">${fmtDate(p.peakDate)}</span></td><td class="num">${p.now?fmt(p.now):'—'}</td></tr>`).join('');
+}
+// Pabrai's private funds on Borsa Istanbul: for each Turkish holding, KAP's >5 % holder table (read by the build, with
+// the committed history of its Pabrai rows) next to the ETF's own share count from its daily file. A page that could
+// not be read shows its last recorded table with the date it was read. A fund below 5 % is not listed, so totals are
+// floors and "none listed" is not "none". The changes the history records are listed above the table.
+function renderKap(K,H){
+  const note=$('#kapNote'), changes=$('#kapChanges'), body=$('#tblKap tbody'), hint=$('#kapHint'), call=$('#kapCall'); if(!body) return;
+  const when=STATIC_BUILD?'build':'update';
+  if(!K||!Array.isArray(K.companies)){ note.textContent='not in this snapshot'; changes.innerHTML=''; body.innerHTML='<tr><td colspan="4" class="muted">This snapshot carries no KAP data.</td></tr>'; hint.textContent=''; call.textContent=''; return; }
+  const fileRows=(H&&H.latest&&H.latest.rows)||{};
+  // "THE PABRAI INVESTMENT FUND IIL.P." as the registry writes it → "The Pabrai Investment Fund II L.P."
+  const holderName=s=>String(s||'').replace(/\b(II|III|IV)L\.P\./,'$1 L.P.').split(' ').map(w=>/^(II|III|IV|L\.P\.)$/.test(w)?w:w.charAt(0)+w.slice(1).toLowerCase()).join(' ');
+  const cos=K.companies.map(c=>{
+    const hist=Array.isArray(c.history)?c.history:[], last=hist.length?hist[hist.length-1]:null;
+    const cur = c.ok ? {rows:(c.rows||[]).filter(r=>r.pabrai),totalShares:c.totalShares,tableDate:c.tableDate,seenAt:c.fetchedAt,live:true} : last ? {...last,live:false} : null;
+    const file=fileRows[c.ticker]||null, etfShares=file?file.shares:null, total=cur&&cur.totalShares;
+    const etfPct = etfShares!=null&&total ? etfShares/total*100 : null;
+    const priv=cur?cur.rows.filter(r=>!r.etf):[], etfRow=cur?(cur.rows.find(r=>r.etf)||null):null;
+    const privPct=priv.reduce((x,r)=>x+(r.pct||0),0), etfShown=etfPct!=null?etfPct:(etfRow?etfRow.pct:0);
+    const etfMatch = etfRow&&etfShares!=null ? Math.abs(etfRow.shares-etfShares)<1 : null;
+    return {c,hist,cur,file,etfShares,total,etfPct,priv,etfRow,privPct,etfShown,totalPct:cur?privPct+etfShown:null,etfMatch};
+  });
+  body.innerHTML=cos.map(({c,cur,file,etfShares,total,etfPct,priv,etfRow,privPct,etfShown,totalPct,etfMatch})=>`<tr class="${priv.length?'mine':''}"><td>${flagOf(c.ticker)} <span class="tick">${esc(c.ticker)}</span> ${esc(nameOf(c.ticker))}<div class="s">${cur?`KAP’s table dated ${cur.tableDate?fmtDate(cur.tableDate):'—'} · ${fmt(total)} shares in issue${cur.live?'':' · <b>last read '+whenShort(cur.seenAt)+'; not read at '+when+' time</b>'}`:'<b>not read at '+when+' time, and no recorded table</b>'}</div></td>
+    <td class="num">${file?`${fmt(etfShares)}<div class="s">${etfPct!=null?pct(etfPct,2,false)+' of the company':''}</div>`:'<span class="muted">not in the latest file</span>'}</td>
+    <td>${priv.length?priv.map(r=>`<div><b>${esc(holderName(r.holder))}</b> ${pct(r.pct,2,false)} <span class="muted">(${fmt(r.shares)} shares${r.votingPct!=null&&r.votingPct!==r.pct?', '+pct(r.votingPct,2,false)+' of the votes':''})</span></div>`).join(''):cur?'<span class="muted">none listed at 5 % or more</span>':'—'}${etfRow?`<div class="s">+ the ETF itself, listed as “${esc(holderName(etfRow.holder))}”, ${pct(etfRow.pct,2,false)}${etfMatch===true?' — equal to its file share count':etfMatch===false?' — differs from its file share count ('+fmt(etfShares)+')':''}</div>`:''}</td>
+    <td class="num">${totalPct!=null?`<b>${pct(totalPct,2,false)}</b><div class="s">${priv.length?`private funds ${pct(privPct,2,false)} + the ETF ${pct(etfShown,2,false)}`:'the ETF alone'}</div>`:'—'}</td></tr>`).join('');
+  // changes: per holder, between consecutive observations of a company's Pabrai rows, newest first
+  const items=[];
+  for(const {c,hist} of cos) for(let i=1;i<hist.length;i++){
+    const a=Object.fromEntries((hist[i-1].rows||[]).map(r=>[r.holder,r])), b=Object.fromEntries((hist[i].rows||[]).map(r=>[r.holder,r]));
+    for(const h of new Set([...Object.keys(a),...Object.keys(b)])){ const x=a[h], y=b[h]; if(x&&y&&Math.abs((x.shares||0)-(y.shares||0))<1&&x.pct===y.pct) continue; items.push({ticker:c.ticker,holder:h,etf:!!((y||x).etf),seenAt:hist[i].seenAt,tableDate:hist[i].tableDate,pending:!!hist[i].pending,from:x,to:y}); }
+  }
+  items.sort((p,q)=>String(q.seenAt).localeCompare(String(p.seenAt)));
+  const firstSeen=cos.flatMap(({hist})=>hist.map(o=>o.seenAt)).filter(Boolean).sort()[0];
+  // the direction is the percentage's; shares that move with the percentage unchanged are a capital change, not a trade
+  const kindOf=it=> !it.from ? 'Listed' : !it.to ? 'No longer listed' : it.from.pct!=null&&it.to.pct!=null&&it.to.pct!==it.from.pct ? (it.to.pct>it.from.pct?'Up':'Down') : 'Capital change';
+  const chipClass=it=> kindOf(it)==='Capital change' ? 'units' : /^(Listed|Up)$/.test(kindOf(it)) ? 'buy' : 'sell';
+  // seenAt is the fetch time of the build whose read the record job persisted; a read no record run has persisted yet
+  // (pending, from this build's own fetch) is said to be exactly that
+  const seenText=it=> it.pending ? `seen by this ${when}, not yet in the committed record` : `recorded from the ${when} whose read the record job persisted`;
+  changes.innerHTML = items.length
+    ? `<ul class="trades">${items.map(it=>`<li><span class="d">${whenFull(it.seenAt)}<span class="s">${seenText(it)} · KAP’s table dated ${it.tableDate?fmtDate(it.tableDate):'—'}</span></span><span class="acts"><span class="tchip ${chipClass(it)}" title="${esc(holderName(it.holder))}: ${it.from?fmt(it.from.shares)+' shares ('+pct(it.from.pct,2,false)+')':'not listed'} → ${it.to?fmt(it.to.shares)+' shares ('+pct(it.to.pct,2,false)+')':'not listed (below 5 %, or sold)'}"><span class="k">${kindOf(it)}</span>${esc(it.ticker.split(' ')[0])} · ${esc(holderName(it.holder))}${it.etf?' (the ETF)':''}<span class="n">${it.to?pct(it.to.pct,2,false):'—'}</span></span></span></li>`).join('')}</ul>`
+    : `<p class="hint">No change in a Pabrai fund’s listed stake since the first record${firstSeen?', '+fmtDate(String(firstSeen).slice(0,10)):''}; the tables are re-read on every ${when}.</p>`;
+  const okCount=K.companies.filter(c=>c.ok).length;
+  note.textContent = okCount===K.companies.length ? `${fmt(K.companies.length)} companies · KAP read at ${when} ${whenShort(K.fetchedAt)}` : `${fmt(K.companies.length-okCount)} of ${fmt(K.companies.length)} KAP pages unreadable at ${when} time — last recorded list shown`;
+  hint.innerHTML=`Borsa Istanbul’s Public Disclosure Platform (KAP) lists each direct holder of 5 % or more of a company’s capital or votes. Pabrai Investment Funds II, IV and 3 are Pabrai’s private funds, a separate portfolio from the ETF; the ETF’s own stake comes from its daily file. A fund below 5 % is not listed, so a total is a floor and “none listed” is not “none”.`;
+  const per=K.companies.map(c=>`<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.code||c.ticker)}</a> ${c.ok?'read '+whenShort(c.fetchedAt):'<b>failed: '+esc(c.fetchError||'no reason given')+'</b>'}`).join(' · ');
+  // the nominal value per share as KAP's own share-group item states it (scripts/kap-holders.js nominalValuePerShare):
+  // 1 TL makes the figures share counts; a malformed or different entry is said to be unconfirmed for that company
+  const listAnd=a=>a.length<=1?a.join(''):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+  const oneTl=K.companies.filter(c=>c.ok&&c.nominalValuePerShare===1).map(c=>nameOf(c.ticker)), notOne=K.companies.filter(c=>c.ok&&c.nominalValuePerShare!==1).map(c=>nameOf(c.ticker)+(c.nominalValuePerShare==null?'':' ('+fmt(c.nominalValuePerShare,2)+' TL)'));
+  const nominalText = oneTl.length ? `KAP’s own share-group table gives a nominal value of 1 TL per share for ${listAnd(oneTl)}${notOne.length?`, but not for ${listAnd(notOne)} (its entry there is malformed or states another value, so 1 TL is not confirmed by the page for it)`:''}; where it is 1 TL the figures are share counts.` : 'KAP’s share-group table does not confirm a nominal value of 1 TL per share here, so the figures are lira of nominal capital, not necessarily share counts.';
+  const etfMatched=cos.filter(x=>x.etfMatch===true).map(x=>nameOf(x.c.ticker));
+  call.innerHTML=`<b>Source:</b> each company’s general-information page on KAP, the section “${esc(K.tableTitle||'Breakdown of Shareholders Holding More Than 5% of the Capital and Voting Rights')}”, embedded in the page as data and read by the ${when} (scripts/kap-holders.js); your browser does not contact KAP. The table is part of the company’s own general-information form on KAP; the date shown is the one KAP stamps on the entry, not a trade date. Figures are nominal lira of capital. ${nominalText} The ETF is listed under its former name, Pabrai Wagons Fund${etfMatched.length?` (its ${listAnd(etfMatched)} row equals its daily file to the share)`:''}. Only direct holders at 5 % or more appear, each on its own, so a private fund’s stake below 5 % is invisible here; threshold crossings are disclosed separately on KAP (“Pay Alım Satım Bildirimi”), which this site does not read. A change in a Pabrai row is listed above: as seen by this ${when} until the record job (after a push build or the daily slot) has persisted the read that showed it (data/kap-holders.json), then with that read’s time. Pages: ${per}.`;
+}
+// The 13F held against the ETF's own N-PORT for the same date: which of the ETF's holdings that a 13F can show (US-listed
+// shares and ADSs; config sec13f.reportable) the 13F does not list, or lists with fewer shares than the ETF holds — so a
+// reader does not take Dalal Street's filing for a superset of the ETF. States what the two documents say, never why.
+function renderDalalVsEtf(D,N){
+  const el=$('#dalalEtf'); if(!el) return;
+  const listAnd=a=>a.length<=1?a.join(''):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+  if(!D||!N||!N.ok||!Array.isArray(N.holdings)||!D.asOf||!N.reportDate){ el.hidden=true; el.innerHTML=''; return; }
+  const who='Dalal Street LLC manages Pabrai’s private funds; the ETF’s adviser is a separate firm under common control (prospectus of 2 Feb 2026), and the ETF reports its own holdings in Form N-PORT.';
+  if(D.asOf!==N.reportDate){ el.hidden=false; el.innerHTML=`<b>Not the ETF’s portfolio.</b> ${who} The two documents in this snapshot are for different dates (13F ${fmtDate(D.asOf)}, N-PORT ${fmtDate(N.reportDate)}), so they are not compared here.`; return; }
+  // a 13F row's ticker comes from the configuration's copy, and the N-PORT's foreign-incorporated names carry no CUSIP, so
+  // the issuer name (its first two words, corporate suffixes dropped) is the third key; a match by any key is a match
+  const nameKey=x=>String(x||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(w=>w&&!/^(inc|corp|corporation|co|company|ltd|limited|plc|llc|lp|sa|ag|nv|jsc|holdings?)$/.test(w)).slice(0,2).join(' ');
+  const byCusip=Object.fromEntries((D.holdings||[]).filter(h=>h.cusip).map(h=>[String(h.cusip).toUpperCase(),h])), byTicker=Object.fromEntries((D.holdings||[]).filter(h=>h.ticker).map(h=>[h.ticker,h])), byName=Object.fromEntries((D.holdings||[]).map(h=>[nameKey(h.secIssuer||h.name),h]).filter(([k])=>k));
+  const eligible=N.holdings.filter(h=>!h.cashLike&&h.ticker&&((CFG.names[h.ticker]||{}).sec13f||{}).reportable===true);
+  const absent=[], fewer=[], covered=[];
+  for(const h of eligible){ const f=(h.cusip&&byCusip[String(h.cusip).toUpperCase()])||byTicker[h.ticker]||byName[nameKey(h.name)]; if(!f||!(f.shares>0)) absent.push(h); else if(f.shares<h.balance) fewer.push({h,f}); else covered.push({h,f}); }
+  const name=h=>`${esc(h.ticker)} (${fmt(h.balance)})`;
+  const lines=[];
+  if(absent.length||fewer.length){
+    lines.push(`<b>Not a superset of the ETF.</b> On ${fmtDate(D.asOf)}, the date of both documents, the ETF’s own N-PORT held ${listAnd([...absent,...fewer.map(x=>x.h)].map(name))}; this 13F ${absent.length?'does not list '+listAnd(absent.map(h=>esc(h.ticker))):''}${absent.length&&fewer.length?', and ':''}${fewer.length?'lists '+listAnd(fewer.map(({h,f})=>`${esc(h.ticker)} with ${fmt(f.shares)} shares`)):''}.`);
+  } else if(eligible.length) lines.push(`<b>Same date, ${fmtDate(D.asOf)}:</b> every holding of the ETF’s own N-PORT that a 13F can show appears in this 13F with at least the ETF’s share count.`);
+  else lines.push(`<b>Same date, ${fmtDate(D.asOf)}:</b> the ETF’s own N-PORT lists no holding a 13F can show, so there is nothing to compare.`);
+  if(covered.length) lines.push(`Whether the ${listAnd(covered.map(({h})=>esc(h.ticker)))} row${covered.length===1?'':'s'} include${covered.length===1?'s':''} the ETF’s ${listAnd(covered.map(({h})=>fmt(h.balance)))} shares cannot be told from the filings.`);
+  lines.push(`${who} Read the 13F as the private funds’ US positions${absent.length||fewer.length?', not as the ETF’s':''}. Rows are matched by CUSIP, ticker or the first words of the issuer name.`);
+  el.hidden=false; el.innerHTML=lines.join(' ');
 }
 // The fund's own Form N-PORT held against the saved daily file priced as of the same date. Says exactly what
 // was compared, or why nothing could be, and never turns "SEC unavailable" into a statement about the fund.

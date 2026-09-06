@@ -103,7 +103,11 @@ test('the page labels snapshot data, times and changes truthfully', () => {
   assert.match(html, /Pricing date not asserted:/);
   // changes are share differences; dilution by a cash creation is explained, not listed as a trade
   assert.match(html, /WAGN units were \$\{flow\.delta>0\?'created':'redeemed'\}/);
-  assert.match(html, /vs pro-rata/);
+  // since 6 Sep 2026 nothing is restated "pro-rata" (creations have settled in cash); the two files are reconciled instead
+  assert.doesNotMatch(html, /pro-rata/);
+  assert.match(html, /where the money went/);
+  assert.match(html, /the creations so far have settled in cash/);
+  assert.doesNotMatch(html, /a creation settles in cash/, 'cash settlement is an observation, never a rule');
   assert.doesNotMatch(html, /WAGN flow-adjusted signal/);
   // SEC: the browser-side recency check reports when it could not run
   assert.match(html, /Filing recency unconfirmed/);
@@ -266,8 +270,32 @@ test('the browser copy of the implied-unit rule agrees with pabrai.js and labels
   assert.match(html, /first-file unit count unknown/);
   assert.match(html, /so its count is implied from NetAssets ÷ NAV/);
   assert.match(html, /= NAV \$\{pct\(ratio\(pL\.nav,pF\.nav\),1\)\}/, 'the fund-assets change is split into NAV change x unit flow');
-  assert.match(html, /vs pro-rata \$\{adj>0\?'\+':''\}\$\{fmt\(adj\)\}/);
   assert.doesNotMatch(html, /function unitFlowBetween\(/);
+  // "where the money went": cash moved − units × the later file's pricing NAV + the listed changes at the files' values
+  // closes to the residual; a creation is valued at the NAV the file is proven to be priced at; cash-like rows are cash
+  const isCashLike = t => t === 'FXFXX';
+  const a = { date: '2026-09-03', netAssets: 294891395.17, sharesOutstanding: 18320814, cash: { USD: 1000000 }, rows: { FXFXX: { shares: 2000000, mv: 2000000 }, X: { shares: 100, mv: 10000 } } };
+  const b = { date: '2026-09-04', netAssets: 296253105.4, sharesOutstanding: 18400814, cash: { USD: 1000000 }, rows: { FXFXX: { shares: 3278000, mv: 3278000 }, X: { shares: 200, mv: 20000 } } };
+  const N2 = { history: [{ date: '2026-09-02', nav: 16.26 }, { date: '2026-09-03', nav: 16.1 }] };
+  const log = [{ from: '2026-09-03', to: '2026-09-04', ticker: 'X', delta: 100, approxUsd: 10000 }, { from: '2026-09-03', to: '2026-09-04', ticker: 'FXFXX', delta: 1278000, approxUsd: 1278000, cashLike: true }, { from: '2026-09-02', to: '2026-09-03', ticker: 'X', delta: 5, approxUsd: 500 }];
+  const r = context.cashReconciliation(a, b, N2, log, { isCashLike });
+  // values from the page's own context (its Object differs from the test's), so compared by value (plain) not by prototype
+  assert.deepEqual(plain([r.from, r.to, r.dCash, r.flow.delta, r.nav, r.unitsUsd, r.trades, r.warn]), ['2026-09-03', '2026-09-04', 1278000, 80000, { nav: 16.1, date: '2026-09-03', proven: true }, 1288000, 10000, false]);
+  assert.ok(Math.abs(r.residual) < 1e-6 && Math.abs(r.residualPct) < 1e-9, 'the identity closes');
+  const noNav = context.cashReconciliation(a, b, { history: [] }, log, { isCashLike });
+  assert.equal(noNav.unitsUsd, null); assert.equal(noNav.residual, null); assert.equal(noNav.warn, false);
+  const unproven = context.cashReconciliation(a, { ...b, netAssets: 296253105.4 + 5000 }, N2, log, { isCashLike });
+  assert.deepEqual(plain(unproven.nav), { nav: 16.1, date: '2026-09-03', proven: false }, 'an unproven pricing date falls back to the previous rate date and says so');
+  const off = context.cashReconciliation(a, { ...b, cash: { USD: 10000000 } }, N2, log, { isCashLike });
+  assert.ok(off.residual > 5e6 && off.warn && !off.unitsNotInCash, 'a residual above 0.2 % of net assets is flagged');
+  // units whose value did not arrive as cash (an in-kind basket, or a later settlement): named, not called a disagreement
+  const inKind = context.cashReconciliation(a, { ...b, rows: a.rows }, N2, [], { isCashLike });
+  assert.ok(inKind.warn && inKind.unitsNotInCash && Math.abs(inKind.residual + 1288000) < 1e-6);
+  assert.match(html, /the units’ value did not arrive as cash between these files/);
+  assert.equal(context.cashReconciliation(a, b, N2, [], { isCashLike }).trades, 0);
+  assert.match(html, /const RECON_WARN_PCT=0\.2;/, 'the warning threshold is 0.2 % of net assets');
+  assert.match(html, /const recon = P \? cashReconciliation\(P,L,NAV_DATA,H\.log\) : null;/);
+  assert.match(html, /Above 0\.2 % of net assets: the two files do not agree with each other/);
 });
 
 test('the Pabrai tab states file capture and confirmation, cash rows, currencies and 13F facts truthfully', () => {
@@ -321,6 +349,16 @@ test('the Pabrai tab states file capture and confirmation, cash rows, currencies
   assert.match(html, /that date has passed, so a newer 13F may exist/);
   assert.match(html, /sec13f&&sec13f\.reportable===false \? `<span class="muted" title="\$\{esc\(sec13f\.note\)\}">not in the 13F — cannot be listed there<\/span>`/);
   assert.match(html, /no 13F data exists for this listing/);
+  // the 13F is named for what it is and held against the ETF's own N-PORT for the same date (never a cause, only the two documents)
+  assert.match(html, /Dalal Street \(Pabrai’s private funds\) — 13F filing/);
+  assert.match(html, /function renderDalalVsEtf\(D,N\)/);
+  assert.match(html, /renderDalalVsEtf\(DALAL,NPORT\)/);
+  assert.match(html, /Not a superset of the ETF\./);
+  assert.match(html, /cannot be told from the filings/);
+  assert.match(html, /so they are not compared here/);
+  assert.match(html, /Read the 13F as the private funds’ US positions/);
+  assert.match(html, /the 13F is the private funds’ filing — see the same-date check under the 13F table/);
+  assert.match(html, /Rows are matched by CUSIP, ticker or the first words of the issuer name\./);
   for (const [ticker, entry] of Object.entries(config.names)) {
     assert.ok(entry.sec13f && typeof entry.sec13f.reportable === 'boolean' && typeof entry.sec13f.note === 'string' && entry.sec13f.note.length > 0, `config.names['${ticker}'].sec13f`);
   }
@@ -711,7 +749,7 @@ test('build.json digests are the SHA-256 of the exact bytes written, for index.h
     fs.writeFileSync(path.join(dir, 'api', 'trades.xml'), '<feed/>\n');
     fs.writeFileSync(path.join(dir, 'api', 'build.json'), '{}\n');
     const files = build.artifactDigests(dir, build.DIGESTED_FILES);
-    assert.deepEqual(Object.keys(files), ['index.html', 'api/config.json', 'api/holdings.json', 'api/dalal.json', 'api/nport.json', 'api/nav.json', 'api/perf.json', 'api/quotes.json', 'api/marketfg.json', 'api/trades.xml']);
+    assert.deepEqual(Object.keys(files), ['index.html', 'api/config.json', 'api/holdings.json', 'api/dalal.json', 'api/nport.json', 'api/kap.json', 'api/nav.json', 'api/perf.json', 'api/quotes.json', 'api/marketfg.json', 'api/trades.xml']);
     for (const [relative, digest] of Object.entries(files)) {
       assert.equal(digest, crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, relative))).digest('hex'));
     }

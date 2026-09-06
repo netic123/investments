@@ -21,6 +21,7 @@ const {
   validateWagnHoldingsFreshness,
 } = require('./pabrai');
 const { mergeCurrent, readHistory: readDalalHistory } = require('./scripts/dalal-13f-history');
+const { fetchAll: fetchKapHolders, mergeCurrent: mergeKapCurrent, readHistory: readKapHistory } = require('./scripts/kap-holders');
 
 const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
@@ -462,6 +463,27 @@ async function getQuotes() {
   return out;
 }
 
+// ---------- KAP: Pabrai's private funds on Borsa Istanbul ----------
+// The >5 % shareholder table of each configured Turkish holding's page on KAP,
+// Turkey's Public Disclosure Platform (scripts/kap-holders.js; config
+// names[<ticker>].kap), with the committed history of the Pabrai rows appended
+// per company, the current table included when it differs. A page that could
+// not be read is labelled (ok:false, fetchError) and keeps its recorded
+// history, so the site shows the last observation with the date it was read.
+async function getKap() {
+  // the ETF's own share count per company, from the holdings receipt this same build fetches (the route cache shares
+  // the in-flight fetch), so a Pabrai row equal to it is recognised as the ETF even under another name
+  let rows = null;
+  try { const h = await cached('holdings', getHoldings, v => v.ok); rows = (h && h.latest && h.latest.rows) || null; } catch { rows = null; }
+  const live = await fetchKapHolders(config, { userAgent: UA, timeoutMs: 20000, etfSharesOf: t => (rows && rows[t] && Number.isFinite(rows[t].shares) ? rows[t].shares : null) });
+  let history = null, pending = new Set();
+  try { const merged = mergeKapCurrent(readKapHistory(), live); history = merged.history; pending = new Set(merged.added); }
+  catch (error) { live.historyError = String(error && error.message || error); }
+  // an observation appended in memory (this build's read differs from the committed record) is pending until a record
+  // run persists a read of it; the page says so instead of calling this build's time the first sighting
+  return { ...live, companies: live.companies.map(c => ({ ...c, history: history ? (history.companies[c.ticker] || []).map((o, i, all) => pending.has(c.ticker) && i === all.length - 1 ? { ...o, pending: true } : o) : undefined })) };
+}
+
 // ---------- http ----------
 function send(res, code, body, type = 'application/json; charset=utf-8') {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
@@ -471,6 +493,7 @@ const routes = {
   '/api/holdings': () => cached('holdings', getHoldings, v => v.ok), // a failed fetch is not cached
   '/api/dalal': () => cached('dalal', getDalalStreet, v => v.ok), // fail closed for publishing; local UI may show labelled fallback
   '/api/nport': () => cached('nport', getNport, v => v.ok), // SEC failures are not cached, like dalal
+  '/api/kap': () => cached('kap', getKap, v => v.ok), // a KAP page that could not be read is not cached either
   '/api/nav': () => cached('nav', getNav),
   '/api/perf': () => cached('perf', getPerf),
   '/api/quotes': () => cached('quotes', getQuotes, v => Object.values(v).some(q => !q.error)),

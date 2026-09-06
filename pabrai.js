@@ -517,7 +517,10 @@ function summarizeWagnUnitFlow(before, after) {
 // in-kind creation/redemption basket) is not a manager decision either and is
 // skipped. Where both receipts carry SharesOutstanding and units changed, the
 // flow-adjusted figures describe the same trade relative to a pro-rata
-// deployment of the flow; they are context, not the headline.
+// deployment of the flow; they stay in the contract for its consumers, but the
+// page stopped showing them on 6 Sep 2026: the creations so far have settled
+// in cash (untraded share counts did not move on creation days), which the
+// page shows by reconciling cash, units and trades between the two files.
 function diffWagnSnapshots(before, after, options = {}) {
   const cashLike = new Set(options.cashLike || []);
   const oldEntries = Object.entries(before.rows || {}).map(([ticker, row]) => ({ ticker, row }));
