@@ -482,7 +482,7 @@ function describeSchedules(list){
 
 const APP_MODE=document.querySelector('meta[name="investments-mode"]')?.content||'local';
 const STATIC_BUILD=APP_MODE==='static';
-let CFG=null, TR_WEIGHT=null, BUILD_META=null, DALAL=null, NPORT=null;
+let CFG=null, TR_WEIGHT=null, BUILD_META=null, DALAL=null, NPORT=null, REFS=null;
 let STATUS_RENDER=()=>{};
 const apiUrl=u=>{
   if(!STATIC_BUILD||!u.startsWith('/api/')) return u;
@@ -524,8 +524,8 @@ async function fetchApi(u,opt={}){
   }
 }
 const getJson=async(u,opt)=>(await fetchApi(u,opt)).json;
-const SNAPSHOT_FILES=['config','holdings','nav','perf','quotes','dalal','nport','kap','marketfg'];
-// Fetch build.json and the nine data files and check that they come from one build: each file is a separate CDN object with its
+const SNAPSHOT_FILES=['config','holdings','nav','perf','quotes','dalal','nport','kap','refs','marketfg'];
+// Fetch build.json and the ten data files and check that they come from one build: each file is a separate CDN object with its
 // own expiry, so right after a deployment the CDN can serve a mixed set. On a mismatch build.json is fetched again (it may be the
 // stale one) and then whatever still disagrees, once; a set that is still mixed is returned flagged, never silently.
 // index.html itself cannot check its own hash from inside the page (build.json.files carries it for external readers).
@@ -676,6 +676,10 @@ async function renderSet(set){
   renderAbout(set);
   const Q=data.quotes||{};
   DALAL=data.dalal||CFG.dalalStreet;
+  // the independent readings next to the Fear & Greed scores (api/refs.json); missing or partly failed is said on the Markets tab
+  REFS=data.refs||null;
+  if(!data.refs) marketErrs.push('independent readings (CNN, Cboe, OFR, alternative.me) could not be fetched ('+errMsg(errors.refs)+')');
+  else if(!data.refs.ok) marketErrs.push(`independent reading unavailable at ${STATIC_BUILD?'build':'update'} time: ${(data.refs.failed||[]).join(', ')} — the market’s block says so`);
   // NAV carries the actual pricing date for the T+1 holdings file. Render it first so the watch cards show that date too.
   if(data.nav) renderNav(data.nav,Q); else pabraiErrs.push('NAV could not be fetched');
   if(data.holdings){
@@ -1678,6 +1682,7 @@ function fgPanelHtml(t){
 <section>
   <div class="sec-head"><h2 id="${id}-title">Fear &amp; Greed</h2><span class="note" id="${id}-note">—</span></div>
   <div id="${id}-error"></div>
+  <div class="callout refs" id="${id}-refs" hidden></div>
   <div class="cards fg-top fg-data">
     <div class="card">
       <svg class="gauge" id="${id}-gauge" viewBox="0 0 200 124" role="img" aria-label="Fear and Greed gauge"></svg>
@@ -1851,13 +1856,14 @@ function renderFg(id){
     $i('note').textContent='—'; $i('chartnote').textContent='—'; $i('label').textContent='—'; $i('sub').textContent='—'; $i('explnote').textContent='';
     $i('explain').innerHTML = ''; $i('footer').innerHTML=''; if($i('plain')) $i('plain').textContent='';
     if($i('rule')){ $i('rule').innerHTML='<div class="empty">—</div>'; $i('rulenote').textContent='—'; }
-    clearChartExplorer($i('chart'),$i('charttip'),$i('chartlive')); return;
+    renderRefs(id); clearChartExplorer($i('chart'),$i('charttip'),$i('chartlive')); return;
   }
   panel.classList.remove('nodata');
   const bands=N.bands, v=Math.max(0,Math.min(100,N.value)), b=fgBand(v,bands);
   $i('title').textContent=N.title; $i('note').innerHTML=N.note;
   $i('summary').innerHTML=`${esc(t.tab)} · <span class="fg-c${b}">${fmt(v,1)} ${esc(N.label)}</span> · as of ${fmtDate(N.asOf)}${N.carriedCount?' · '+fmt(N.carriedCount)+' of '+fmt(N.total||6)+' indicators carried':''}`;
   $i('error').innerHTML=N.callouts.map(c=>`<div class="callout">${c}</div>`).join('');
+  renderRefs(id);
   // gauge: five coloured bands, marker on the arc, the value in the middle
   const seg=bands.map(([lo,hi],i)=>{ const e=Math.min(100,Math.round((hi+0.1)*10)/10); const [x1,y1]=arcPt(lo+0.6,80),[x2,y2]=arcPt(e-0.6,80);
     return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}A80 80 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${FG_COL[i]}" stroke-opacity="${FG_OP[i]}" stroke-width="16"/>`; }).join('');
@@ -1884,6 +1890,35 @@ function renderFg(id){
   if($i('plain')) $i('plain').textContent=`Six indicators from daily Yahoo prices for ${t.forName}, each ranked 0–100 against its own history and averaged, volatility counted the other way round. A descriptive regime score, not investment advice; the block below has the exact rules, the series, what was checked and the research record.`;
   $i('explain').innerHTML=N.explain; $i('explnote').textContent=N.explnote; $i('footer').innerHTML=N.footer;
   renderFgChart(id);
+}
+
+// Independent readings under each market's score (api/refs.json, fetched by the build, never by the browser): CNN's
+// Fear & Greed and Cboe's put/call ratio for the US, alternative.me's index for crypto, the OFR Financial Stress Index
+// for Europe, Global and Sweden. Each with its own date and source; a source that could not be read says so; none of
+// them is an input to this site's score, so the reader sees where the model and the outside world disagree.
+const capital=s=>{ const x=String(s||''); return x.charAt(0).toUpperCase()+x.slice(1); };
+function renderRefs(id){
+  const el=document.getElementById(id+'-refs'); if(!el) return;
+  const R=REFS; if(!R){ el.hidden=true; el.innerHTML=''; return; }
+  const N=FGS[id].norm, ours = N&&!N.error&&isFinite(N.value) ? `${fmt(N.value,1)} ${esc(N.label)}` : null;
+  const when=STATIC_BUILD?'build':'update';
+  const bad=(name,x)=>`<span class="muted">${esc(name)} could not be read at ${when} time${x&&x.fetchError?' ('+esc(x.fetchError)+')':''}.</span>`;
+  const cnn=()=>{ const c=R.cnn; if(!c||!c.ok) return bad('CNN’s Fear & Greed',c);
+    const cmp=c.comparison||{}, band=fgBand(c.score,MARKET_BANDS);
+    const gap = cmp.meanGap==null ? '' : Math.abs(cmp.meanGap)<0.5 ? 'level with CNN on average' : cmp.meanGap>0 ? `this model ${fmt(cmp.meanGap,1)} points greedier than CNN on average` : `this model ${fmt(-cmp.meanGap,1)} points more fearful than CNN on average`;
+    const agree = cmp.n>=20 ? ` Over the ${fmt(cmp.n)} days both have (${fmtDate(cmp.from)} → ${fmtDate(cmp.to)}): correlation ${fmt(cmp.correlation,2)}, ${gap}, the same band on ${fmt(cmp.sameBandPct,0)} % of days and within one band on ${fmt(cmp.withinOneBandPct,0)} %.` : '';
+    return `<b>CNN Fear &amp; Greed (US):</b> <span class="fg-c${band}">${fmt(c.score,0)} ${esc(capital(c.rating))}</span> as of ${fmtDate(c.date)}${ours?` · this model ${ours}`:''}.${agree} <a href="${esc(c.snapshotUrl)}" target="_blank" rel="noopener">Internet Archive snapshot of CNN’s data, ${whenShort(c.snapshotAt)}</a>; CNN’s own endpoint refuses automated readers, so the archive’s latest copy is used.`; };
+  const cboe=()=>{ const c=R.cboe; if(!c||!c.ok) return bad('Cboe’s put/call ratio',c);
+    const side = c.pctBelowFiveDay>=67 ? 'the fearful side' : c.pctBelowFiveDay<=33 ? 'the calm side' : 'the middle';
+    return `<b>Cboe put/call ratio (US options):</b> ${fmt(c.latest.t,2)} on ${fmtDate(c.latest.date)}, five-day average ${fmt(c.fiveDay,2)} — higher than ${fmt(c.pctBelowFiveDay,0)} % of five-day readings since ${fmtDate(c.historyFrom)}, ${side} (more puts than calls means hedging, read as fear). <a href="${esc(c.page)}" target="_blank" rel="noopener">Cboe</a>, which furnishes the data without responsibility for accuracy.`; };
+  const ofr=(which)=>{ const o=R.ofr; if(!o||!o.ok) return bad('the OFR Financial Stress Index',o); const L=o.latest;
+    const sub = which==='em' ? ` Regional contributions: United States ${fmt(L.us,2)}, other advanced economies ${fmt(L.otherAdvanced,2)}, emerging markets ${fmt(L.em,2)}.` : which==='other' ? ` Other advanced economies contribute ${fmt(L.otherAdvanced,2)}; no public gauge exists for Sweden alone.` : '';
+    return `<b>OFR Financial Stress Index:</b> ${fmt(L.fsi,2)} on ${fmtDate(L.date)} — ${L.fsi<0?'calmer':'more stressed'} than ${fmt(L.fsi<0?100-o.pctBelow:o.pctBelow,0)} % of days since ${fmtDate(o.historyFrom)} (0 is average stress, negative is calm).${sub} <a href="${esc(o.page)}" target="_blank" rel="noopener">US Office of Financial Research</a>, two business days behind.`; };
+  const alt=()=>{ const a=R.crypto; if(!a||!a.ok) return bad('alternative.me’s crypto index',a); const band=fgBand(a.value,MARKET_BANDS);
+    return `<b>Crypto Fear &amp; Greed (alternative.me):</b> <span class="fg-c${band}">${fmt(a.value,0)} ${esc(a.classification)}</span> on ${fmtDate(a.date)}${ours?` · this model ${ours}`:''}. <a href="${esc(a.page)}" target="_blank" rel="noopener">alternative.me</a>.`; };
+  const parts = id==='usa' ? [cnn(),cboe()] : id==='ustech' ? [cboe(),'<span class="muted">CNN’s index covers the whole US market; it is under USA.</span>'] : id==='crypto' ? [alt()] : id==='europe'||id==='global' ? [ofr('em')] : id==='sweden' ? [ofr('other')] : [];
+  if(!parts.length){ el.hidden=true; el.innerHTML=''; return; }
+  el.hidden=false; el.innerHTML=`<b>Independent readings</b> <span class="muted">— not inputs to this score; where they and the model disagree, the model is the one to doubt</span>${parts.map(p=>`<div style="margin-top:6px">${p}</div>`).join('')}`;
 }
 
 function renderFgChart(id){
@@ -1932,12 +1967,15 @@ $('#fgPanels').addEventListener('click',e=>{ const b=e.target.closest('.range[da
 // button that opens that market's block below; the note line carries the definition. A market not yet loaded shows so.
 function renderMarketsStrip(){
   const strip=$('#marketsStrip'); if(!strip) return;
-  $('#fgFileNote').innerHTML = `<b>Fear &amp; Greed for six markets</b> · six indicators from daily Yahoo prices, each ranked against its own history · the score of the last bar before the build day, never live <details class="plain"><summary>how the score is defined</summary><div class="body">Six indicators from daily Yahoo price data, each ranked 0–100 against its own history and averaged; the score is that of the benchmark’s last daily bar dated before the build day at its exchange — a bar dated the build day is left out until the next day, even after the close, because the provider may still revise it — never live.</div></details>`;
+  $('#fgFileNote').innerHTML = `<b>Fear &amp; Greed for six markets</b> · six indicators from daily Yahoo prices, each ranked against its own history · the score of the last bar before the build day, never live · independent readings (CNN, Cboe, OFR, alternative.me) inside each market <details class="plain"><summary>how the score is defined</summary><div class="body">Six indicators from daily Yahoo price data, each ranked 0–100 against its own history and averaged; the score is that of the benchmark’s last daily bar dated before the build day at its exchange — a bar dated the build day is left out until the next day, even after the close, because the provider may still revise it — never live.</div></details>`;
   strip.querySelectorAll('.kpi.mkt').forEach(el=>el.remove());
   strip.insertAdjacentHTML('beforeend', FG_TABS.map(t=>{ const N=FGS[t.id].norm, ok=N&&!N.error;
     const v = ok ? `<span class="fg-c${fgBand(N.value,N.bands)}">${fmt(N.value,1)}</span>` : '—';
     const s = ok ? `${esc(N.label)} · ${dayMon(N.asOf)}${N.carriedCount?' · '+fmt(N.carriedCount)+' carried':''}` : (N&&N.error ? 'not available' : 'loading…');
-    return `<button type="button" class="kpi mkt" data-market="${t.id}" title="Open ${esc(t.tab)} below"><div class="l">${esc(t.tab)}</div><div class="v mono">${v}</div><div class="s">${s}</div></button>`; }).join(''));
+    // the outside reading under the tile where one exists: CNN for the US, alternative.me for crypto
+    const R=REFS, ref = R&&t.id==='usa'&&R.cnn&&R.cnn.ok ? `<div class="s" title="CNN’s Fear &amp; Greed as of ${fmtDate(R.cnn.date)}, via the Internet Archive; the block below compares the two">CNN ${fmt(R.cnn.score,0)} ${esc(capital(R.cnn.rating))}</div>`
+      : R&&t.id==='crypto'&&R.crypto&&R.crypto.ok ? `<div class="s" title="alternative.me’s crypto Fear &amp; Greed on ${fmtDate(R.crypto.date)}">alt.me ${fmt(R.crypto.value,0)} ${esc(R.crypto.classification)}</div>` : '';
+    return `<button type="button" class="kpi mkt" data-market="${t.id}" title="Open ${esc(t.tab)} below"><div class="l">${esc(t.tab)}</div><div class="v mono">${v}</div><div class="s">${s}</div>${ref}</button>`; }).join(''));
   const n=FG_TABS.filter(t=>FGS[t.id].norm&&!FGS[t.id].norm.error).length, note=$('#marketsNote');
   if(note) note.textContent = n ? `${fmt(n)} of ${fmt(FG_TABS.length)} markets scored · one decimal · open a market for its notes` : '—';
 }

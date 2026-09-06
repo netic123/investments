@@ -57,7 +57,11 @@ the two FX pairs and WAGN itself); the 13F (five requests to SEC: the submission
 and infotable.xml for each of the two quarters); the N-PORT (the submissions index plus one primary
 document per trust filing opened until one names the fund's series — eight on 2 Sep 2026, at most 30); and, since
 6 Sep 2026, the five KAP company pages behind the Turkish holdings (scripts/kap-holders.js; 320–435 KB each, no
-key, one request per company; api/build.json kapCheck says how many were read). When a
+key, one request per company; api/build.json kapCheck says how many were read); and, since 6 Sep 2026 evening, the
+independent readings (scripts/reference-gauges.js; api/build.json refsCheck): the Internet Archive's availability
+API and its latest snapshot of CNN's Fear & Greed data (two requests), Cboe's daily put/call JSON for each
+trading day the committed record lacks (usually one), the OFR Financial Stress Index CSV (514 KB) and
+alternative.me's crypto index (one request each). When a
 Fear & Greed component is carried forward on the first attempt, the build asks the server to drop its route
 cache and the Yahoo series cache (/api/refresh?force=1) and repeats every one of those fetches once (a third
 attempt only after a failure); yahooRequests describes the model computation behind the published snapshot,
@@ -65,7 +69,7 @@ not the discarded attempt. A holiday and a feed gap look the same to that retry 
 
 The workflow first compiles the page's inline script without running it (a syntax error would leave the
 public page at "loading…" forever, so the build fails before any network work), then starts the local server
-temporarily on the GitHub runner, fetches and validates the nine public API responses, and publishes only
+temporarily on the GitHub runner, fetches and validates the ten public API responses, and publishes only
 _site/index.html, _site/.nojekyll, _site/api/*.json and _site/api/trades.xml (an Atom feed of the trades; see the
 Pabrai tab under TABS). The published index.html carries a
 Content-Security-Policy that the build adds and verifies in the artifact: default-src 'none'; script-src only
@@ -151,7 +155,9 @@ provenance are kept; a later capture of the same date wins), then scripts/dalal-
 which appends to data/dalal13f-history.json the 13F quarter the published api/dalal.json carries when the file
 lacks it, then scripts/kap-holders.js --from-published --expect-sha256 <digest>, which appends to
 data/kap-holders.json a changed Pabrai row of a Borsa Istanbul >5 % holder table only when the served kap.json
-matches the digest build.json names for it and its read is later than the last recorded one, and commits "Record WAGN holdings history <date> [skip ci]" only when
+matches the digest build.json names for it and its read is later than the last recorded one, then
+scripts/reference-gauges.js --from-published --expect-sha256 <digest>, which appends to data/cboe-putcall.json the
+put/call days the published api/refs.json fetched, and commits "Record WAGN holdings history <date> [skip ci]" only when
 a receipt, a quarter or a KAP row was added or replaced. A local checkout therefore sees those commits; build.json
 historyDurability says so. The Pages build is deliberately forced to the approved data/positions.public.json
 watchlist: Constellation Software, Kaspi.kz and Warrior Met Coal, all with entry price set to null. It never
@@ -591,6 +597,19 @@ dates, 13F fallback and N-PORT note re-checked 4 Sep 2026)
   and net assets come from the fund's DailyNAV file, not from Yahoo; Yahoo's WAGN quote (NYSE Arca) is shown
   only in the market-price tooltip. FX (USD/SEK, CAD/SEK): Yahoo's last tick; on 26 Aug 2026 it differed from
   the ECB/Riksbank daily fix by ~0.1 %. The rate and its time are shown under "Price in SEK".
+- Independent readings on the Markets tab (since 6 Sep 2026 evening; scripts/reference-gauges.js, api/refs.json):
+  CNN Fear & Greed through https://archive.org/wayback/available?url=production.dataviz.cnn.io/index/fearandgreed/graphdata
+  and the id_ snapshot URL it names (the JSON is served gzip-compressed; verified 6 Sep 2026: snapshot 16:38 UTC,
+  score 41.9 "fear" as of 4 Sep, 250 history points, nine component scores); Cboe put/call from
+  https://cdn.cboe.com/data/us/options/market_statistics/daily/<YYYY-MM-DD>_daily_options (JSON with a "ratios"
+  array, TOTAL / EQUITY / INDEX PUT/CALL RATIO; a non-trading day answers 403; 4 Sep 2026: 0.76 / 0.58 / 0.89) with
+  the record since 1 Nov 2006 in data/cboe-putcall.json (2019-10-07 onward fetched day by day, 1,739 days; the
+  2006–2019 part from the Internet Archive's 2020-07-01 capture of Cboe's totalpc.csv, 3,253 days, total ratio
+  only); the OFR Financial Stress Index from https://www.financialresearch.gov/financial-stress-index/data/fsi.csv
+  (daily since 3 Jan 2000, composite plus five category and three regional columns; 2 Sep 2026: -2.768, calmer
+  than 76 % of days); alternative.me's crypto Fear & Greed from https://api.alternative.me/fng/?limit=2 (6 Sep
+  2026: 73 "Greed"). The browser fetches none of them; each is labelled when unread, and the set is cached in the
+  server only when all four read.
 - KAP (Pabrai's private funds in Turkey, since 6 Sep 2026): https://www.kap.org.tr/en/sirket-bilgileri/genel/<oid>
   for each Turkish holding (config names[<ticker>].kap.oid; the ids come from the JSON behind
   https://www.kap.org.tr/tr/bist-sirketler, mkkMemberOid). The page embeds its data as JSON inside JavaScript
@@ -729,8 +748,17 @@ dates, 13F fallback and N-PORT note re-checked 4 Sep 2026)
   without counting them, so the sentence cannot drift from the component table beside it. Model validation: the US version of the FIRST rolling-window model (v1) was compared ONCE, on
   23 Aug 2026, by hand with CNN's published index number (CNN publishes a number, not an open feed or component
   data): correlation 0.88 over 398 trading days, mean gap 8.9 points, ours on average 6 points greedier, same
-  label 56 % of days, within one band 93 %. That check predates the v3 expanding-percentile score and does not
-  validate it. The remaining gap is CNN's put/call and NYSE breadth inputs, which have no open data source.
+  label 56 % of days, within one band 93 %. That check predated the v3 expanding-percentile score. Since 6 Sep 2026
+  evening the comparison is automatic and shown on the USA block: every build reads the Internet Archive's latest
+  snapshot of CNN's graphdata JSON (CNN's own endpoint answers 418 to automated readers), shows CNN's score and rating
+  with its date and a link to the snapshot, and compares the 250 daily points in the snapshot with this site's US
+  score over the days both have — on 6 Sep 2026: 249 days, correlation 0.88, this model 14.8 points greedier than CNN
+  on average, the same band on 26 % of days, within one band on 81 %. CNN's series is used for that statistic only
+  and is not republished. The same block shows Cboe's put/call ratio ranked against the record since Nov 2006
+  (data/cboe-putcall.json); Europe, Global and Sweden show the OFR Financial Stress Index (a US-government work)
+  with its regional contributions; Crypto shows alternative.me's index. None of them is an input to the score; the
+  page says so and says which one to doubt when they disagree. CNN's put/call and NYSE breadth inputs still have no
+  open daily feed usable inside the model.
   Known caveats, now also printed on the tabs: OMXSBGI is a gross total return index but STOXX 600 is a price
   index (every ex-dividend drop lowers it, so Europe's momentum, strength and safe-haven read lower than on a
   total-return benchmark; European dividends cluster in spring); Sweden/Europe use realised volatility because
@@ -849,7 +877,7 @@ hand. Where to change it when it is:
   above and the timeout comment on the build job in pages.yml.
 - "Every GitHub build since 2 Sep 2026 verified the SEC filings with the built-in default User-Agent": GITHUB
   PAGES and SOURCES above, the header comment of pabrai.js, the SEC_USER_AGENT comment in pages.yml and in
-  scripts/build-pages.js. api/build.json dalalVerification, nportCheck, kapCheck and secContact are the live record.
+  scripts/build-pages.js. api/build.json dalalVerification, nportCheck, kapCheck, refsCheck and secContact are the live record.
 - The N-PORT quarter dates (next report 30 Sep 2026, due 30 Nov 2026) and candidateCount 228: SOURCES above;
   the page computes both from SEC's index at each build.
 - The Yahoo gap observations of 2 and 4 Sep 2026: HOW IT WORKS above.

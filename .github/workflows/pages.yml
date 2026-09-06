@@ -287,12 +287,14 @@ jobs:
           served=""
           want=""
           wantKap=""
+          wantRefs=""
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             build_json=$(curl -fsS -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$PUBLISHED_API/build.json" || true)
             served=$(printf '%s' "$build_json" | node -e "let t='';process.stdin.on('data',c=>t+=c).on('end',()=>{try{process.stdout.write(String(JSON.parse(t).commit||''))}catch{}})" || true)
             # the digest this build published for the file about to be committed
             want=$(printf '%s' "$build_json" | node -e "let t='';process.stdin.on('data',c=>t+=c).on('end',()=>{try{process.stdout.write(String((JSON.parse(t).files||{})['api/holdings.json']||''))}catch{}})" || true)
             wantKap=$(printf '%s' "$build_json" | node -e "let t='';process.stdin.on('data',c=>t+=c).on('end',()=>{try{process.stdout.write(String((JSON.parse(t).files||{})['api/kap.json']||''))}catch{}})" || true)
+            wantRefs=$(printf '%s' "$build_json" | node -e "let t='';process.stdin.on('data',c=>t+=c).on('end',()=>{try{process.stdout.write(String((JSON.parse(t).files||{})['api/refs.json']||''))}catch{}})" || true)
             if [ "$served" = "$EXPECTED_COMMIT" ]; then
               echo "the CDN serves build $served (attempt $attempt)"
               break
@@ -323,6 +325,8 @@ jobs:
           # a changed Pabrai row in a Borsa Istanbul >5 % holder table (api/kap.json) is persisted the same way, and only
           # when the served file matches the digest this build published for it (a stale CDN copy is refused)
           node scripts/kap-holders.js --from-published "$PUBLISHED_API/kap.json" --expect-sha256 "$wantKap" || echo "::warning::the KAP holder history could not be updated from the published kap.json; the next record run tries again"
+          # the Cboe put/call days the build fetched (api/refs.json) join data/cboe-putcall.json the same way
+          node scripts/reference-gauges.js --from-published "$PUBLISHED_API/refs.json" --expect-sha256 "$wantRefs" || echo "::warning::the Cboe put/call record could not be updated from the published refs.json; the next record run tries again"
 
       - name: Commit and push new receipts
         shell: bash
@@ -330,9 +334,9 @@ jobs:
           set -euo pipefail
           git config user.name "netic123"
           git config user.email "155821030+netic123@users.noreply.github.com"
-          git add data/snapshots.json data/dalal13f-history.json data/kap-holders.json
+          git add data/snapshots.json data/dalal13f-history.json data/kap-holders.json data/cboe-putcall.json
           if git diff --cached --quiet; then
-            echo "no new receipts, 13F quarters or KAP rows (the committed files already carry the published history)"
+            echo "no new receipts, 13F quarters, KAP rows or put/call days (the committed files already carry the published history)"
             exit 0
           fi
           git commit -m "Record WAGN holdings history $(date -u +%F) [skip ci]"
