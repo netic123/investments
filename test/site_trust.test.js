@@ -352,51 +352,22 @@ test('the Pabrai tab states file capture and confirmation, cash rows, currencies
   assert.doesNotMatch(html, /function rollToBusinessDay/);
 });
 
-test('the owner live update only ever talks to api.github.com and keeps the token in local storage', () => {
-  assert.match(html, /const LIVE_REPO='netic123\/investments', LIVE_WORKFLOW='pages\.yml', LIVE_TOKEN_KEY='investments\.liveUpdateToken';/);
-  assert.match(html, /\/actions\/workflows\/'\+LIVE_WORKFLOW\+'\/dispatches'/);
-  assert.match(html, /inputs:\{skip_tests:'true',reason:opts\.auto\?'automatic live update from the page \(snapshot older than '\+liveAutoMinutes\(\)\+' min\)':'live update requested from the page'\}/);
-  assert.match(html, /fetch\('https:\/\/api\.github\.com\/repos\/'\+LIVE_REPO\+path/);
-  // the token is never rendered or logged, only its last four characters are shown
-  assert.doesNotMatch(html, /console\.(log|warn|error)\([^)]*token/i);
-  assert.match(html, /esc\(token\.slice\(-4\)\)/);
-  assert.match(html, /type="password" id="liveTokenInput"/);
-  // visitors never see the button: it needs #owner (remembered per session) or a stored token
+test('the public page holds no credential and cannot start a build: the owner live update is gone', () => {
+  for (const gone of ['LIVE_TOKEN_KEY', 'liveTokenInput', 'runLiveUpdate', 'maybeAutoLiveUpdate', 'LIVE_RUNNING', 'btnLive', 'livePanel', "/dispatches'", 'Authorization:']) {
+    assert.ok(!html.includes(gone), `index.html still contains "${gone}"`);
+  }
+  assert.doesNotMatch(html, /type="password"/);
+  assert.doesNotMatch(html, /localStorage\.setItem/);
+  // the owner hash still gates the research card only
   assert.match(html, /const OWNER_MODE=/);
-  assert.match(html, /btn\.hidden=!\(token\|\|OWNER_MODE\);/);
   assert.match(html, /sessionStorage\.setItem\('investments\.owner','1'\)/);
-  // and the disclosure names it
-  assert.match(html, /api\.github\.com, only when you open Build history \(an unauthenticated read of the last 20 runs\) or when the owner’s live update runs with a stored token/);
-  // the token panel states the real storage boundary and what an Actions read-and-write token allows
-  assert.match(html, /every page served from https:\/\/netic123\.github\.io \(all of this account’s Pages sites\) and any browser extension with page access can read/);
-  assert.match(html, /cancelling, re-running and approving workflow runs and deleting runs, logs, artifacts and caches/);
-  assert.doesNotMatch(html, /nothing more/);
-  assert.doesNotMatch(html, /stored only in this browser/);
-  // the button promises only what happens: wait for the served build.json to come from the followed run, then reload
-  assert.match(html, /wait until the CDN serves its snapshot, then reload this page/);
-  assert.doesNotMatch(html, /reload this page when it is deployed/);
-  assert.match(html, /if\(j&&\(String\(j\.runId\)===String\(run\.id\)\|\|\(Number\.isFinite\(Date\.parse\(j\.generatedAt\)\)&&Date\.parse\(j\.generatedAt\)>sinceMs\)\)\)\{ say\('the new snapshot is served — reloading this page…'\); location\.reload\(\); return; \}/);
-  assert.match(html, /while\(Date\.now\(\)-waitStart<10\*60\*1000\)\{/);
-  assert.match(html, /await sleep\(20000\);/);
-  assert.doesNotMatch(html, /await load\('manual'\)/, 'the live update never mixes new JSON into old page code');
-  // error paths are told apart by status, a poll failure keeps the last good run object, and the poll gives up at 15 min
-  assert.match(html, /function explainGithub\(r\)/);
-  for (const status of ['401', '403', '404', '429']) assert.match(html, new RegExp(`r\\.status===${status}`));
-  assert.match(html, /r\.status>=500/);
-  assert.match(html, /x-ratelimit-remaining/);
-  assert.match(html, /x-ratelimit-reset/);
-  assert.match(html, /if\(!activeList\.ok\) throw new Error\(explainGithub\(activeList\)\);/);
-  assert.match(html, /if\(r&&r\.ok\)\{ run=await r\.json\(\); pollFailures=0; continue; \}/);
-  assert.match(html, /if\(\+\+pollFailures>=4\) throw new Error\(lastProblem\+' while following '\+run\.html_url\);/);
-  assert.match(html, /gave up after 15 minutes/);
-  assert.match(html, /could not reach api\.github\.com/);
-  // the 10-minute timer and the Reload button stay out of the way while a live update runs
-  assert.match(html, /setInterval\(\(\)=>\{ if\(!LIVE_RUNNING\) load\('auto'\); \}, 10\*60\*1000\);/);
-  assert.match(html, /\$\('#btnRefresh'\)\.disabled=LIVE_RUNNING;/);
-  assert.match(html, /async function load\(mode\)\{[^\n]*\n\s*if\(LIVE_RUNNING\) return;/);
+  // the timer and the load are unconditional again, and the disclosure says the page has no input
+  assert.match(html, /setInterval\(\(\)=>load\('auto'\), 10\*60\*1000\);/);
+  assert.match(html, /api\.github\.com, only when you open Build history \(an unauthenticated read of the last 20 runs\)\. The page has no input field and stores no credential/);
   const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pages.yml'), 'utf8');
   assert.match(workflow, /skip_tests:\n\s+#[^\n]*\n(\s+#[^\n]*\n)*\s+description:/);
   assert.match(workflow, /INVESTMENTS_BUILD_TRIGGER: \$\{\{ github\.event_name \}\}/);
+  assert.match(workflow, /The ticker \(ticker\.yml\) dispatches this workflow with skip_tests=true/);
 });
 
 test('the page shows its provenance and reads the build history from GitHub only when asked', () => {
@@ -444,9 +415,9 @@ test('the page shows its provenance and reads the build history from GitHub only
   assert.match(html, /Locally your browser contacts only the local server at 127\.0\.0\.1 and Google Fonts/);
   // the SEC check runs on every load while the fallback is published, whichever tab is open
   assert.match(disclosure, /data\.sec\.gov \(SEC’s EDGAR submissions index\), on a page load and, at most once an hour, on a re-check that loads a newer snapshot, while the published snapshot carries the manually verified 13F fallback — whichever tab you have open/);
-  // the owner's token and interval are the exception to "nothing you type is sent"
-  assert.match(disclosure, /Nothing you type on this page is sent anywhere, except the owner’s token and rebuild interval, which the live update sends to api\.github\.com/);
-  assert.match(disclosure, /automatic rebuilds, by itself on load, when the tab becomes visible again, and on the 10-minute re-check/);
+  // nothing on the page is typed or stored; the reads named are the only contacts
+  assert.match(disclosure, /The page has no input field and stores no credential; apart from the reads named here, nothing is sent anywhere, and a page load contacts nothing on GitHub\./);
+  assert.doesNotMatch(disclosure, /live update|token/);
   // the Dates note matches renderDates (an entry stays through day +3)
   assert.match(html, /a configured entry stays listed until three days after its date; a filed shareholder report stays for 45 days after its filing date, and a due date appears up to 120 days ahead/);
   assert.match(html, /if\(days<-3\) return null;/);
@@ -883,20 +854,4 @@ test('build.json states the SEC contact kind, the attestation prerequisite and t
   assert.match(source, /INVESTMENTS_ALLOW_SNAPSHOT_HISTORY_SHRINK/);
   assert.throws(() => build.assertPublishedHoldingsUrl('https://example.com/investments/api/holdings.json'), /approved GitHub Pages endpoint/);
   assert.equal(build.assertPublishedHoldingsUrl(build.PUBLISHED_HOLDINGS_URL).origin, 'https://netic123.github.io');
-});
-
-test('the owner auto mode is opt-in, rate-limited, and follows an existing build instead of starting another', () => {
-  assert.match(html, /LIVE_AUTO_KEY='investments\.liveUpdateAutoMinutes'/);
-  assert.match(html, /document\.visibilityState!=='visible'/);
-  assert.match(html, /Date\.now\(\)-LIVE_LAST_AUTO<15\*60\*1000/);
-  assert.match(html, /const ACTIVE=\['queued','in_progress','waiting','pending','requested'\];/);
-  assert.match(html, /runs\.find\(x=>ACTIVE\.includes\(x\.status\)\)/);
-  assert.match(html, /if\(mode!=='manual'\) maybeAutoLiveUpdate\(\);/);
-  // the age is judged as of the CDN copy of build.json, a build that finished after the loaded snapshot is followed
-  // instead of dispatching another, and a failed automatic build pauses auto mode until a newer snapshot or a click
-  assert.match(html, /const cdnMs=\(SNAPSHOT&&SNAPSHOT\.cdnAge\|\|0\)\*1000;/);
-  assert.match(html, /\(Date\.now\(\)-cdnMs-new Date\(BUILD_META\.generatedAt\)\.getTime\(\)\)\/60000/);
-  assert.match(html, /x\.status==='completed'&&x\.conclusion==='success'&&loadedBuild&&Date\.parse\(x\.updated_at\)>Date\.parse\(loadedBuild\)&&String\(x\.id\)!==String\(BUILD_META\.runId\)/);
-  assert.match(html, /LIVE_AUTO_BLOCKED_BUILD/);
-  assert.match(html, /if\(liveToken\(\)\)\{ LIVE_AUTO_BLOCKED_BUILD=null; runLiveUpdate\(\); \}/);
 });
