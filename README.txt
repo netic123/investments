@@ -249,6 +249,19 @@ the suite only when a tested run of the same commit exists, and api/build.json r
 "workflow_dispatch" with the reason, which the page's About line shows. GitHub's own schedules keep running
 either way; when both fire, the later one queues behind the earlier.
 
+NOTIFICATIONS (GitHub issues)
+Since 6 Sep 2026 the build job opens a GitHub issue when the snapshot it just built shows a new trade
+(scripts/notify-trades.js, run after the snapshot is written, with the workflow's own token and issues: write):
+one issue per file-to-file interval that lists at least one trade — the same entries as api/trades.xml; a unit
+creation or a cash-like move alone does not count — titled "Pabrai trades, <session>: <the trades>", with the
+same lines, basis sentence and links as the feed, labelled "trade" (the label is created on first use) and
+mentioning the repository owner, so GitHub's own e-mail and app notifications carry it. Each issue ends with a
+hidden marker naming the interval's file dates; before posting, the existing "trade" issues (open or closed) are
+read and a marked interval is skipped, so the ticker's rebuilds never post twice. Only the three newest
+intervals are considered, and when no trade issue exists at all only the newest, so the first run does not post
+the whole history. A failure to reach GitHub is logged as a warning and never fails the build. The issues are
+written by github-actions[bot]; they are not commits and do not appear among the contributors.
+
 AUTOMATIC UPDATES (the ticker)
 GitHub starts this repository's scheduled runs late and skips most slots (GITHUB PAGES), so since 5 Sep 2026 a
 second workflow, .github/workflows/ticker.yml, keeps the clock as a chain of runs: each run waits on the "ticker"
