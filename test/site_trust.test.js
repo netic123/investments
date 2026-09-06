@@ -102,7 +102,8 @@ test('the page labels snapshot data, times and changes truthfully', () => {
   assert.match(html, /mode:'per-share'/);
   assert.match(html, /Pricing date not asserted:/);
   // changes are share differences; dilution by a cash creation is explained, not listed as a trade
-  assert.match(html, /WAGN units were \$\{flow\.delta>0\?'created':'redeemed'\}/);
+  assert.match(html, /WAGN shares \(.*?\) were \$\{flow\.delta>0\?'created':'redeemed'\} between these files/);
+  assert.match(html, /\$\{flow\.delta>0\?'New money':'Money out'\}/);
   // since 6 Sep 2026 nothing is restated "pro-rata" (creations have settled in cash); the two files are reconciled instead
   assert.doesNotMatch(html, /pro-rata/);
   assert.match(html, /where the money went/);
@@ -316,10 +317,10 @@ test('the Pabrai tab states file capture and confirmation, cash rows, currencies
   assert.match(html, /excludes the '\+cashLikeNames\+' money-market row above/);
   assert.match(html, /Net cash incl\. the \$\{cashLikeNames\} money-market fund/);
   assert.match(html, /it does not state the cause/);
-  assert.match(html, /Cash-like rows are not listed as trades: \$\{cashChange\(CASH\)\}/);
+  assert.match(html, /Cash moved \$\{cashChange\(CASH\)\} between these files \(money-market fund, not a trade\)/);
   assert.doesNotMatch(html, /Cash \/ currencies \(net\)/);
   // prices carry their listing currency; every ticker suffix in the configuration has a currency
-  assert.match(html, /Price \(listing currency\)/);
+  assert.match(html, /title="The price in the currency of the listing named by the file’s ticker suffix[^"]*">Price<\/th>/, 'the price column names its currency in the tooltip');
   const suffixes = /const SUFFIX_CCY=\{([^}]*)\}/.exec(html)[1].split(',').map(x => x.split(':')[0].trim());
   for (const ticker of Object.keys(config.names)) { const suffix = ticker.split(' ')[1]; if (suffix) assert.ok(suffixes.includes(suffix), `index.html SUFFIX_CCY lacks '${suffix}' (${ticker})`); }
   assert.match(html, /const money = \(n,cur='USD'\)=> n==null \? '—' : fmt\(n,2\)\+' '\+cur;/);
@@ -327,11 +328,11 @@ test('the Pabrai tab states file capture and confirmation, cash rows, currencies
   // price is a close, and the watchlist note names the files compared
   assert.doesNotMatch(html, /<th>Signal<\/th>/);
   assert.match(html, /<th title="Kind of share-count change between the two files">Change<\/th>/);
-  assert.match(html, /Avanza \(SE broker\)<\/th>/);
+  assert.match(html, /title="Whether the line can be bought through the Swedish retail broker Avanza[^"]*">Avanza<\/th>/, 'the Avanza column explains itself in the tooltip');
   assert.match(html, /Swedish retail broker Avanza/);
   assert.match(html, /for the day\$\{prev\?' \(vs '\+fmtDate\(prev\.date\)\+'\)':''\}/);
   assert.match(html, /'closing market price · '/);
-  assert.match(html, /watched holdings · WAGN file dated '\+fmtDate\(L\.date\)/);
+  assert.match(html, /watched holdings · '\+\(priced\.matched\?'as of the '\+fmtDate\(priced\.navDate\)\+' close':'file dated '\+fmtDate\(L\.date\)\)/);
   // the performance basis is what the file carries; "total return" is claimed only for the rows the file names so
   assert.match(html, /the file does not state the return basis of the fund rows/);
   assert.doesNotMatch(html, /is total return\)/);
@@ -350,10 +351,13 @@ test('the Pabrai tab states file capture and confirmation, cash rows, currencies
   assert.match(html, /sec13f&&sec13f\.reportable===false \? `<span class="muted" title="\$\{esc\(sec13f\.note\)\}">not in the 13F — cannot be listed there<\/span>`/);
   assert.match(html, /no 13F data exists for this listing/);
   // the 13F is named for what it is and held against the ETF's own N-PORT for the same date (never a cause, only the two documents)
-  assert.match(html, /Dalal Street \(Pabrai’s private funds\) — 13F filing/);
+  assert.match(html, /<h2>Pabrai’s private funds<\/h2>/);
+  assert.match(html, /<h2>In the US — the 13F filing<\/h2>/);
+  assert.match(html, /the manager of the private funds — not the ETF’s portfolio/);
   assert.match(html, /function renderDalalVsEtf\(D,N\)/);
   assert.match(html, /renderDalalVsEtf\(DALAL,NPORT\)/);
-  assert.match(html, /Not a superset of the ETF\./);
+  assert.match(html, /Not the ETF’s portfolio\./);
+  assert.match(html, /<summary><b>Not the ETF’s portfolio<\/b> — how this was checked<\/summary>/);
   assert.match(html, /cannot be told from the filings/);
   assert.match(html, /so they are not compared here/);
   assert.match(html, /Read the 13F as the private funds’ US positions/);
@@ -796,7 +800,14 @@ test('the build publishes an Atom feed of the trades: one entry per interval wit
   // the seven-day digest nets each holding over the window and is skipped when the window is one interval
   assert.match(html, /<b>Last 7 days<\/b>/);
   // the build-up cards: one point per saved file, cash-like rows left out, unchanged holdings not shown
-  assert.match(html, /<h2>How each position was built, and how it has gone<\/h2>/);
+  assert.match(html, /<h2>Each position over time<\/h2>/);
+  // plain words in the visible flow: no "session", "cash-like" or "WAGN units" outside tooltips and folded blocks
+  assert.match(html, /<h2>All holdings<\/h2>/);
+  assert.match(html, /<h2>Coming up<\/h2>/);
+  assert.match(html, /<h2>Cross-check with the fund’s own SEC report<\/h2>/);
+  assert.match(html, /<summary id="watchSummary">/);
+  assert.match(html, /'latest: '\+sess\.label\b/);
+  assert.doesNotMatch(html, /Latest session/);
   assert.match(html, /function renderBuildUp\(H,LOG,Q\)/);
   // trades are priced at the fund's file closes, never called execution prices; a sale that emptied the row takes the older file's close
   assert.match(html, /not execution prices\. Result = shares traded × \(price now − price then\)/);

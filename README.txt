@@ -279,10 +279,12 @@ TABS (top of the page)
     dated by the closes the two files are priced at ("the 4 Sept 2026 session" when the files are consecutive
     trading days, else the range of closes; the file dates when a pricing date cannot be proven), largest
     first, with the shares now held and the weight; a one-line unit-flow callout when WAGN's units changed;
-    a line stating what the cash-like rows did (never listed as trades); then Trade history: one row per
+    a line "Cash moved … (money-market fund, not a trade)" and, where WAGN shares were created or redeemed,
+    "New money: +N WAGN shares (…)" — the word "units" left the visible flow on 6 Sep 2026 evening after a
+    fresh-reader review, with the unit counts in tooltips; then Trade history: one row per
     file-to-file interval since the first saved file, newest first, the trades as chips (largest first), a
-    unit creation or redemption marked, "no change in any holding" stated where nothing moved, the cash-like
-    move in dollars. Under the latest table, "where the money went" (collapsed) reconciles the two files: cash,
+    creation or redemption and the money-market move as one muted "new money … · cash …" note after the chips,
+    "no change in any holding" stated where nothing moved. Under the latest table, "where the money went" (collapsed) reconciles the two files: cash,
     currency balances and cash-like rows moved − units created or redeemed × the later file's pricing NAV (proven
     by the NAV check, else the previous rate date, said so) + the listed changes at the files' own values = the
     residual, in dollars and as a share of net assets, flagged above 0.2 % (fees accruing, dividends, FX on the
@@ -292,13 +294,14 @@ TABS (top of the page)
     disagree). The creations so far have settled in cash — untraded share counts did not move on creation days,
     which the identity alone could not show — so an untraded holding is simply unchanged and nothing is restated "pro-rata" (removed
     6 Sep 2026). The full change log with every column (the dated log carries the interval's unit flow) stays
-    under "Full change log". "How each position was built, and how it has gone": one card per holding whose share count changed over the
+    under "Full change log". "Each position over time" (renamed 6 Sep 2026): one card per holding whose share count changed over the
     saved files — a line of shares per saved file (one point per file, dates in the tooltip), first → last, the
     change and its approximate value at that holding's latest file price, then how its trades have gone at the
     fund's own file closes: shares bought at their share-weighted average price (the close of the day each change
     appeared, in the listing currency) → the latest file's close and the change, the same for shares sold, and
     the result — shares traded × (price now − price then) — in USD at the file's own conversion and in SEK at
-    the snapshot's USD/SEK quote, "vs not trading" (a sale reads the same way: what it avoided or missed). Never
+    the snapshot's USD/SEK quote, "so far" (a sale reads the same way: what it avoided or missed; "vs not
+    trading" until 6 Sep 2026). Never
     execution prices; only the listed trades count; a holding no longer in the latest file has no later price;
     cash-like rows and unchanged holdings are left out. Above the latest session a "Last 7 days" callout nets each holding's change over the
     intervals whose closes fall within seven calendar days of the latest file's pricing date (skipped when that
@@ -307,19 +310,20 @@ TABS (top of the page)
     Bought more ODL NO +64,507; …"), dated by the capture time of the newer file, with the unit flow and the
     cash-like moves in the text; the "feed (Atom)" link in the section head points to it, and a feed reader that
     polls it says when the fund's file shows a trade without anyone opening the page.
-  - Your watchlist (from data/positions.local.json; the public site's three approved tickers): one card per
+  - Watchlist (collapsed since 6 Sep 2026, the summary naming the holdings; from data/positions.local.json; the public site's three approved tickers): one card per
     position — shares held in WAGN with the change vs the previous file (the dilution by a unit creation as a
     tooltip on the badge), Dalal Street's 13F position and its change vs the named prior filing, the Yahoo
     price in the listing currency with the SEK price, the next report, and (locally, when an entry price is
     entered) the price return since your entry. A ticker that a 13F structurally cannot show (a listing only
     abroad, a money-market fund; config names[<ticker>].sec13f) says "cannot be listed there", the reason in
     a tooltip, instead of "not reported".
-  - The whole ETF portfolio sorted by weight, with plain "Δ shares" columns (the per-unit dilution on a "0" and
+  - All holdings: the whole ETF portfolio sorted by weight, with plain "Δ shares" columns (the per-unit dilution on a "0" and
     "∝ unit flow" as tooltips on the figures; an explanatory line under the table), the price with its listing currency code, and the "Avanza (SE broker)" column: whether the line can be bought through the Swedish
     retail broker Avanza (online / by phone / not available), a note checked by hand in the configuration, not
     fetched live and carrying no checked-on date
   - Fund performance vs S&P 500 (the fund's own month-end return table) and the NAV curve
-  - Pabrai's private funds in Turkey (since 6 Sep 2026): for each Turkish holding, the >5 % shareholder table of
+  - Pabrai's private funds (one section since 6 Sep 2026 evening: a one-paragraph intro, then "In Turkey" and "In the
+    US — the 13F filing" as sub-blocks). In Turkey: for each Turkish holding, the >5 % shareholder table of
     the company's page on KAP, Borsa Istanbul's Public Disclosure Platform (scripts/kap-holders.js, read by the
     build; the browser never contacts KAP), next to the ETF's own share count from its daily file — the Pabrai
     Investment Funds II, IV and 3 (the private funds) with their shares and percentages, the ETF's own row where
@@ -337,8 +341,9 @@ TABS (top of the page)
     in the per-share column and is refused, so the page says 1 TL is not confirmed for it; the ETF's Gimat row
     equals its daily file to the share. A page that cannot be read shows its last recorded table with the date it
     was read, and the status line says so.
-  - Dalal Street's manager-aggregated 13F — filed by the manager of Pabrai's private funds, which the hint says —
-    a one-line summary (value, count, next deadline, what a 13F leaves out) above the table, then the same-date
+  - In the US — the 13F filing: Dalal Street's manager-aggregated 13F — filed by the manager of Pabrai's private
+    funds, which the line says — a one-line summary (value, count, next deadline; "what a 13F leaves out" folded
+    under it) above the table, then the same-date
     check (renderDalalVsEtf): the ETF's holdings that a 13F can show (config sec13f.reportable) which the 13F for
     the N-PORT's report date does not list, or lists with fewer shares than the ETF holds (30 Jun 2026: NE, VAL
     and DAC absent, KSPI listed with 1,702 shares against the ETF's 124,184), so the 13F is read as the private
@@ -363,11 +368,11 @@ TABS (top of the page)
     excluded), the newest eight visible and the rest collapsed, then "Positions over time": every security ever
     listed with its first and last quarter, quarters held, peak shares and current shares. The hint says what a
     13F cannot show.
-  - Independent check — SEC N-PORT (collapsed; its summary line says whether the report is comparable yet or
+  - Cross-check with the fund's own SEC report — N-PORT (collapsed; its summary line says whether the report is comparable yet or
     which report the first comparison waits for): the fund's own quarterly portfolio report to SEC, held against the saved
     daily file proven to be priced as of the report date (share counts per position, with the matching method
     per row), or the statement that no such file is saved yet and when the first comparison becomes possible
-  - Dates: the hand-maintained entries from data/config.json plus the fund's annual and semi-annual
+  - Coming up (the dates list; each entry shows its first clause, the whole note in the tooltip): the hand-maintained entries from data/config.json plus the fund's annual and semi-annual
     shareholder reports (Forms N-CSR and N-CSRS) as SEC's submissions index lists them at build time
   Open directly: / or /#pabrai
 - Markets = the six Fear & Greed markets (Crypto, Sweden, USA, US Tech, Europe, Global) on one tab since 5 Sep
