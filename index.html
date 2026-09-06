@@ -1159,7 +1159,12 @@ function renderHoldings(H,Q){
     return `<div class="callout"><b>Last 7 days</b> <span class="muted">· ${fmtDate(first)} → ${fmtDate(end)} closes · ${fmt(intervals.length)} file intervals</span><div class="acts" style="display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:8px">${rows.length?chips.join(''):'<span class="muted">no change in any holding</span>'+(chips.length?' '+chips.join(''):'')}</div>${cash?`<div class="hint" style="margin-top:6px">Cash-like rows net ${cash<0?'−':'+'}$${fmt(Math.abs(cash)/1e6,2)}M over the period, not listed as trades.</div>`:''}</div>`;
   })();
   const latestHead = P ? `<p class="hint" style="margin:${digest?'14px':'0'} 0 8px;color:var(--ink)"><b>Latest session${sess.proven&&sess.sessions===1?': '+sess.label:''}</b> <span class="muted">(${sess.proven?sess.sub:'files '+span})</span></p>` : '';
-  $('#chgNote').textContent = P ? (sess.proven ? (sess.sessions===1 ? 'latest: the '+sess.label+' session' : 'latest: '+sess.label+' closes') : 'latest: '+span) : '—';
+  // On a day without a newer session (weekend, holiday) say why, and when the next file is due, from the NYSE calendar
+  const sinceNote=(()=>{ if(!P||!sess.proven||!BUILD_META||!/^\d\d:\d\d$/.test(String(BUILD_META.holdingsFileExpectedByUtc||''))) return '';
+    const nextFile=nextTradingDay(L.date), due=holdingsFilePublishedAt(nextFile,BUILD_META.holdingsFileExpectedByUtc); if(Date.now()>=Date.parse(due)) return '';
+    const closed=[]; for(let d=shiftDay(sess.to,1); d<nextFile; d=shiftDay(d,1)){ const hol=usMarketHoliday(d); if(hol) closed.push(fmtDate(d)+' ('+hol+')'); }
+    return (closed.length?' · NYSE closed '+closed.join(', '):' · no session since')+' · next file due by '+whenFull(due); })();
+  $('#chgNote').textContent = P ? (sess.proven ? (sess.sessions===1 ? 'latest: the '+sess.label+' session' : 'latest: '+sess.label+' closes') : 'latest: '+span)+sinceNote : '—';
   $('#changes').innerHTML = !P ? '<div class="empty">Only one snapshot saved so far — changes appear from the next file day.</div>'
     : !C.length ? digest+latestHead+flowCallout+`<div class="empty">No change in any holding (${sess.proven?sess.label:span}).</div>`+cashLine+basis
     : digest+latestHead+gapCallout+flowCallout+tradesTable(C,L)+cashLine+basis;
