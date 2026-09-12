@@ -1,0 +1,213 @@
+{
+ "candidate": "EUROPE-MONTHLY-CONTRARIAN-V1",
+ "cash": {
+  "rawSha256": "530081baf0415aa2c7281841c57deb738520ce24b59a89aeb6957a6d8176aa4f",
+  "rows": [
+   {
+    "date": "2026-08-28",
+    "percent": 3.74
+   },
+   {
+    "date": "2026-08-31",
+    "percent": 3.78
+   },
+   {
+    "date": "2026-09-01",
+    "percent": 3.78
+   },
+   {
+    "date": "2026-09-02",
+    "percent": 3.78
+   },
+   {
+    "date": "2026-09-03",
+    "percent": 3.75
+   },
+   {
+    "date": "2026-09-04",
+    "percent": 3.77
+   },
+   {
+    "date": "2026-09-07",
+    "percent": 0
+   },
+   {
+    "date": "2026-09-08",
+    "percent": 3.8
+   },
+   {
+    "date": "2026-09-09",
+    "percent": 3.81
+   },
+   {
+    "date": "2026-09-10",
+    "percent": 3.86
+   }
+  ],
+  "series": "DTB3",
+  "sourceUrl": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3&cosd=2026-08-13"
+ },
+ "collectedAt": "2026-09-12T00:29:06.033Z",
+ "entryDate": "2026-09-12",
+ "europe": {
+  "asOf": "2026-09-10",
+  "components": {
+   "breadth": {
+    "asOf": "2026-09-10",
+    "raw": 1.9,
+    "score": 99
+   },
+   "credit": {
+    "asOf": "2026-09-10",
+    "raw": 1.3,
+    "score": 99.4
+   },
+   "momentum": {
+    "asOf": "2026-09-10",
+    "raw": 1.2,
+    "score": 6.5
+   },
+   "safeHaven": {
+    "asOf": "2026-09-10",
+    "raw": -0.7,
+    "score": 16.9
+   },
+   "strength": {
+    "asOf": "2026-09-10",
+    "raw": -3.7,
+    "score": 13.7
+   },
+   "volatility": {
+    "asOf": "2026-09-10",
+    "raw": -9.7,
+    "score": 62.5
+   }
+  },
+  "label": "Neutral",
+  "n": 6,
+  "score": 49.7
+ },
+ "failedMarkets": {},
+ "instrument": {
+  "bars": [
+   {
+    "adjclose": 170.55999755859375,
+    "close": 170.55999755859375,
+    "date": "2026-08-21"
+   },
+   {
+    "adjclose": 170.60000610351562,
+    "close": 170.60000610351562,
+    "date": "2026-08-24"
+   },
+   {
+    "adjclose": 171.25999450683594,
+    "close": 171.25999450683594,
+    "date": "2026-08-25"
+   },
+   {
+    "adjclose": 170.94000244140625,
+    "close": 170.94000244140625,
+    "date": "2026-08-26"
+   },
+   {
+    "adjclose": 170.0800018310547,
+    "close": 170.0800018310547,
+    "date": "2026-08-27"
+   },
+   {
+    "adjclose": 170.8800048828125,
+    "close": 170.8800048828125,
+    "date": "2026-08-28"
+   },
+   {
+    "adjclose": 169.66000366210938,
+    "close": 169.66000366210938,
+    "date": "2026-08-31"
+   },
+   {
+    "adjclose": 168.97999572753906,
+    "close": 168.97999572753906,
+    "date": "2026-09-01"
+   },
+   {
+    "adjclose": 168.52000427246094,
+    "close": 168.52000427246094,
+    "date": "2026-09-02"
+   },
+   {
+    "adjclose": 169.4600067138672,
+    "close": 169.4600067138672,
+    "date": "2026-09-03"
+   },
+   {
+    "adjclose": 169.63999938964844,
+    "close": 169.63999938964844,
+    "date": "2026-09-04"
+   },
+   {
+    "adjclose": 169.6999969482422,
+    "close": 169.6999969482422,
+    "date": "2026-09-07"
+   },
+   {
+    "adjclose": 169.5800018310547,
+    "close": 169.5800018310547,
+    "date": "2026-09-08"
+   },
+   {
+    "adjclose": 167.17999267578125,
+    "close": 167.17999267578125,
+    "date": "2026-09-09"
+   },
+   {
+    "adjclose": 165.75999450683594,
+    "close": 165.75999450683594,
+    "date": "2026-09-10"
+   }
+  ],
+  "currency": "EUR",
+  "name": "Xtrackers Stoxx Europe 600 UCITS ETF 1C (accumulating; price series is total return)",
+  "rawSha256": "0e1c39c648115a87834fd47d6d8501f76f346db04294b0fd45c49d8742da0e06",
+  "symbol": "XSX6.DE",
+  "timezone": "Europe/Berlin"
+ },
+ "modelIdentity": {
+  "configSha256": "28493767c8cf9697b3bd3c6460fa9c01976befb0078f365bbec9766c577fdd51",
+  "marketfgSha256": "b8fdfacd4dc06bd066e4416471825a34afcf9c1e7d30bc9072c7d896731eb8cd",
+  "modelId": "investments-unified-fear-greed",
+  "version": 2
+ },
+ "otherMarkets": {
+  "crypto": {
+   "asOf": "2026-09-10",
+   "label": "Extreme Greed",
+   "score": 78.5
+  },
+  "global": {
+   "asOf": "2026-09-10",
+   "label": "Fear",
+   "score": 32.3
+  },
+  "sweden": {
+   "asOf": "2026-09-10",
+   "label": "Fear",
+   "score": 44.1
+  },
+  "usa": {
+   "asOf": "2026-09-10",
+   "label": "Fear",
+   "score": 31.9
+  },
+  "ustech": {
+   "asOf": "2026-09-10",
+   "label": "Neutral",
+   "score": 48.5
+  }
+ },
+ "previousEntry": {
+  "previousDate": "2026-09-11",
+  "previousSha256": "dcb6216e0a6048daf19f78e1cb96b1b6526788e4daa02ef496c82950be8571b3"
+ },
+ "schema": "europe-lockbox-entry-v1"
+}
